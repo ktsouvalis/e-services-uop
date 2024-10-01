@@ -1,9 +1,11 @@
 <!-- resources/views/mailers/edit.blade.php -->
-
+@push('title')
+    <title>Edit Mailer</title>  
+@endpush
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Edit Mail to Department') }}
+            {{ __('Edit Mailer') }}
         </h2>
     </x-slot>
 
@@ -63,7 +65,7 @@
                     @csrf
                     <div class="mb-4">
                         <label for="files" class="block text-sm font-medium text-gray-700">{{ __('Files') }}</label>
-                        <input type="file" name="files[]" id="files" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" multiple>
+                        <input type="file" name="files[]" id="files" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" multiple required>
                         <div class="flex items-center justify-end mt-4">
                             <x-primary-button>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 mx-1">
@@ -76,12 +78,11 @@
                     </div>
                 </form>
                 @if ($mailer->files)
-                    <p class="mt-2 text-sm text-gray-500">{{ __('Currently uploaded files:') }}</p>
+                    <p class="mt-2 text-sm text-gray-500">{{ __('Currently uploaded files:') }} {{count($mailer->files)}}</p>
                     <table class="border text-center w-full divide-y divide-gray-200">
                         <tbody>
                             @foreach ($mailer->files as $file)
                                 <tr class="border">
-                                    {{-- <td class="border">{{ $file['index'] }}</td> --}}
                                     <td>{{ $file['filename'] }}</td>
                                     <td class="flex">
                                         <a href="{{ route('mailers.download_file', ['mailer' => $mailer->id, 'index' => $file['index']]) }}" class="text-blue-600">
@@ -119,9 +120,6 @@
                             Delete All Files
                         </button>
                     </form>
-                    {{-- <x-secondary-button href="{{ route('mailers.review', $mailer->id) }}" class="bg-blue-300">Review</x-secondary-button> --}}
-                    {{-- <button action="{{ route('mailers.review', $mailer->id) }}" class="bg-blue-500">Review</button> --}}
-                    {{-- <a href="{{ route('mailers.review', $mailer->id) }}" class="bg-blue-500">Review</a> --}}
                     <a href="{{ route('mailers.review', $mailer->id) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-300 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-400 focus:bg-blue-400 active:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 transition ease-in-out duration-150">
                         Review
                     </a>

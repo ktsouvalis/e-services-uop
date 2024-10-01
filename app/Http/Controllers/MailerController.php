@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use App\Models\Mailer;
 use App\Models\Department;
 use Illuminate\Http\Request;
 use App\Mail\MailToDepartment;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
@@ -31,11 +33,18 @@ class MailerController extends Controller
      */
     public function store(StoreMailerRequest $request)
     {
-        //
+        Gate::authorize('create', Mailer::class);
         $validated = $request->validated();
 
         $validated['user_id'] = auth()->user()->id;
-        $mailer = Mailer::create($validated);
+        try{
+            $mailer = Mailer::create($validated);;
+        }
+        catch(Exception $e){
+            Log::channel('mailers')->error($e->getMessage());
+            return redirect()->back()->with('error', 'Files not uploaded. Check today\'s mailers log for more information.');
+        }
+        
         return redirect()->route('mailers.edit', $mailer->id)->with('success', 'Mailer created successfully.');
     }
 
@@ -44,8 +53,7 @@ class MailerController extends Controller
      */
     public function edit(Mailer $mailer)
     {
-        //
-        Gate::authorize('view', $mailer);
+        Gate::authorize('update', $mailer);
 
         return view('mailers.edit', [
             'mailer' => $mailer,
@@ -60,9 +68,15 @@ class MailerController extends Controller
         Gate::authorize('update', $mailer);
 
         $data_to_update = $request->validated();
-        $mailer->update($data_to_update);
-
-        return redirect()->back()->with('success', 'Mail to Departments updated successfully.');
+        try{
+            $mailer->update($data_to_update);
+        }
+        catch(\Exception $e){
+            Log::channel('mailers')->error($e->getMessage());
+            return redirect()->back()->with('error', 'Mailer not updated. Check today\'s mailers log for more information.');
+        }
+        
+        return redirect()->back()->with('success', 'Mailer updated successfully.');
     }
 
     /**
@@ -70,11 +84,16 @@ class MailerController extends Controller
      */
     public function destroy(Mailer $mailer)
     {
-        //
         Gate::authorize('delete',$mailer );
-
-        $mailer->delete();
-        return redirect()->route('mailers.index')->with('success', 'Mail to Departments deleted successfully.');
+        try{
+            $mailer->delete();
+        }
+        catch(\Exception $e){
+            Log::channel('mailers')->error($e->getMessage());
+            return redirect()->back()->with('error', 'Mailer not deleted. Check today\'s mailers log for more information.');
+        }
+        
+        return redirect()->route('mailers.index')->with('success', 'Mailer deleted successfully.');
     }
 
     public function download_file(Mailer $mailer, string $index)
@@ -85,22 +104,48 @@ class MailerController extends Controller
         $filename = $files[$fileKey]['filename'];
         $path = "/mailers/$mailer->id/$filename";
         ob_end_clean();
-        return Storage::download($path);
+        try{
+            return Storage::download($path);
+        }
+        catch(\Exception $e){
+            Log::channel('mailers')->error($e->getMessage());
+            return redirect()->back()->with('error', 'File error. Check today\'s mailers log for more information.');
+        }
     }
 
     public function delete_file(Mailer $mailer, string $index)
     {
-        Gate::authorize('view', $mailer);
+        Gate::authorize('update', $mailer);
+        $result = $this->delete_f($mailer, $index);
+        return redirect()->back()->with(json_decode($result->getContent(),true));
+    }
+
+    private function delete_f($mailer, $index){
         $files = $mailer->files;
         $fileKey = $this->search_key($files, $index);
+
+        if ($fileKey === null) {
+            return response()->json(['error' => 'File not found.'], 404);
+        }
+
         $filename = $files[$fileKey]['filename'];
         $path = "/mailers/$mailer->id/$filename";
-        Storage::delete($path);
+
         unset($files[$fileKey]);
-        !empty($files) ? $mailer->files = array_values($files) : $mailer->files = NULL;
-        $mailer->save();
-        
-        return redirect()->back()->with('success', 'File deleted successfully.');
+        $mailer->files = !empty($files) ? array_values($files) : null;
+
+        DB::beginTransaction();
+        try{
+            $mailer->save();
+            Storage::delete($path);
+            DB::commit();
+        }
+        catch(\Exception $e){
+            DB::rollBack();
+            Log::channel('mailers')->error($e->getMessage());
+            return response()->json(['error' => 'File not deleted. Check today\'s mailers log for more information.'], 500);
+        }
+        return response()->json(['success' => 'File deleted successfully.'], 200);
     }
 
     private function search_key($array, $index)
@@ -113,45 +158,62 @@ class MailerController extends Controller
         return null;
     }
 
-    public function clean_storage(Mailer $mailer)
-    {
-        Gate::authorize('view', $mailer);
+    public function clean_storage(Mailer $mailer){
+        Gate::authorize('update', $mailer);
         $files = $mailer->files;
         foreach ($files as $file) {
-            $filename = $file['filename'];
-            $path = "/mailers/$mailer->id/$filename";
-            Storage::delete($path);
+            $result = $this->delete_f($mailer, $file['index']);
+            if ($result->getStatusCode() != 200) {
+                return redirect()->back()->with('error', 'Storage not cleaned. Check today\'s mailers log for more information.');
+            }
         }
-        $mailer->files = null;
-        $mailer->save();
         return redirect()->back()->with('success', 'Storage cleaned successfully.');
     }
 
-    public function upload_files(Mailer $mailer, Request $request){
-        Gate::authorize('view', $mailer);
+    public function upload_files(Mailer $mailer, UpdateMailerRequest $request){
+        Gate::authorize('update', $mailer);
+        $uploaded_files = $request->validated()['files'] ?? [];
+        if(empty($uploaded_files)){
+            return redirect()->back()->with('warning', 'No files uploaded.');
+        }
         $existingFiles = $mailer->files ?? [];
         $index = count($existingFiles);
-        foreach ($request->file('files') as $file) {
+        $error = false;
+        foreach ($uploaded_files as $file) {
             $filename =  $file->getClientOriginalName();
+            try{
+                $file->storeAs("/mailers/$mailer->id", $filename);
+            }
+            catch(\Exception $e){
+                Log::error($e->getMessage());
+                $error=true;
+                continue;
+            }
             $file->storeAs("/mailers/$mailer->id", $filename);
             $existingFiles[] = ['index' => $index++, 'filename' => $filename]; 
         }
         $mailer->files = $existingFiles; 
         $mailer->save();
+        if ($error) {
+            return redirect()->back()->with('error', 'Files uploaded with errors. Check today\'s mailers log for more information.');
+        }
         return redirect()->back()->with('success', 'Files Uploaded Successfully');
     }
 
     public function review(Mailer $mailer)
     {
-        Gate::authorize('view', $mailer);
+        Gate::authorize('update', $mailer);
         $files = $mailer->files;
         foreach ($files as $file) {
             $filename = $file['filename'];
             $fileindex = $file['index'];
-            if (preg_match('/\d{4}/', $filename, $matches)) {
+            
+            if (preg_match('/\d{4} -/', $filename, $matches)) {
+                $key= (int) substr($matches[0], 0, 4);
                 $review_array[] = ['index' => $fileindex, 'filename' => $filename, 'to' => Department::find($matches[0])];   
             }
-            else if (preg_match('/\d{3}/', $filename, $matches)){
+            else if (preg_match('/\d{3} -/', $filename, $matches)){
+                $key= (int) substr($matches[0], 0, 3);
                 $review_array[] = ['index' => $fileindex, 'filename' => $filename, 'to' => Department::find($matches[0])];
             }
         }

@@ -32,6 +32,7 @@ class MailersPolicy
     public function create(User $user): bool
     {
         //
+        return auth()->check();
     }
 
     /**

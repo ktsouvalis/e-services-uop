@@ -1,3 +1,6 @@
+@push('title')
+    <title>Review</title>
+@endpush
 <x-app-layout>
 <div class="container mx-auto px-4">
     <x-slot name="header">
@@ -7,7 +10,7 @@
     </x-slot>
    
     
-    <div class="overflow-x-auto">
+    <div class="py-12 overflow-x-auto">
         <table class="min-w-full bg-white border border-gray-200 text-center">
             <thead>
                 <tr>
@@ -20,7 +23,6 @@
             </thead>
             <tbody>
                 @foreach ($review_array as $review)
-                {{-- {{dd($review)}} --}}
                     <tr>
                         <td class="px-4 py-2 border-b">{{ $review['to']->id }}</td>
                         <td class="px-4 py-2 border-b">{{ $review['to']->name }}</td>
