@@ -22,15 +22,21 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ($review_array as $review)
+                @foreach (session('review_array',[]) as $review)
                     <tr>
+                        @if(is_string($review['to']))
+                            <td class="px-4 py-2 border-b">{{ $review['to'] }}</td>
+                            <td class="px-4 py-2 border-b">-</td>
+                            <td class="px-4 py-2 border-b">-</td>
+                            <td class="px-4 py-2 border-b">{{ $review['filename'] }}</td>
+                            <td class="px-4 py-2 border-b">-</td>
+                        @else
                         <td class="px-4 py-2 border-b">{{ $review['to']->id }}</td>
                         <td class="px-4 py-2 border-b">{{ $review['to']->name }}</td>
                         <td class="px-4 py-2 border-b">{{ $review['to']->email }}</td>
                         <td class="px-4 py-2 border-b">{{ $review['filename'] }}</td>
                         <td class="px-4 py-2 border-b">
-                            <form action="{{ route('mailers.send', ['mailer'=>$mailer, 'index' => $review['index'], 'department' => $review['to']]) }}" method="POST">
-                            <form action="">    
+                            <form action="{{ route('mailers.send', ['mailer'=>$mailer, 'index' => $review['index'], 'department' => $review['to']]) }}" method="POST">    
                                 @csrf
                                 <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-500 focus:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
@@ -40,6 +46,7 @@
                                 </button>
                             </form>
                         </td>
+                        @endif
                     </tr>
                 @endforeach
             </tbody>
@@ -47,8 +54,7 @@
     </div>
 
     <div class="mt-4">
-        {{-- <form action="{{ route('send.all.emails') }}" method="POST"> --}}
-            <form action="">
+        <form action="{{ route('mailers.send_all', $mailer) }}" method="POST">
             @csrf
             <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 focus:bg-green-500 active:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 mx-1">

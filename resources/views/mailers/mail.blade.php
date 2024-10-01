@@ -1,8 +1,8 @@
 Αγαπητοί συνάδελφοι,
 <div>
-{{$body}}
+<p>{{$body}}</p>
 </div>
 <div>
 Με εκτίμηση,
-{{$signature}}
+<p>{{$signature}}</p>
 </div>

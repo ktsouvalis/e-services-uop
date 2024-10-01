@@ -207,19 +207,24 @@ class MailerController extends Controller
         foreach ($files as $file) {
             $filename = $file['filename'];
             $fileindex = $file['index'];
-            
+            $key=null;
             if (preg_match('/\d{4} -/', $filename, $matches)) {
                 $key= (int) substr($matches[0], 0, 4);
-                $review_array[] = ['index' => $fileindex, 'filename' => $filename, 'to' => Department::find($matches[0])];   
+                
             }
             else if (preg_match('/\d{3} -/', $filename, $matches)){
                 $key= (int) substr($matches[0], 0, 3);
-                $review_array[] = ['index' => $fileindex, 'filename' => $filename, 'to' => Department::find($matches[0])];
             }
+            $department = Department::find($key);
+            if($department){
+                $review_array[] = ['index' => $fileindex, 'filename' => $filename, 'to' => $department];
+            }
+            else{
+                $review_array[] = ['index' => $fileindex, 'filename' => $filename, 'to' => 'Department not found'];
+            }   
         }
-        
+        session()->put('review_array', $review_array);
         return view('mailers.review')
-            ->with('review_array', $review_array)
             ->with('mailer', $mailer);
     }
 
@@ -237,5 +242,28 @@ class MailerController extends Controller
             return redirect()->back()->with('error', 'Mail not sent.');
         }
         return redirect()->back()->with('success', 'Mail sent successfully.');
+    }
+
+    public function send_all(Mailer $mailer){
+        Gate::authorize('view', $mailer);
+        $review_array = session('review_array');
+        foreach ($review_array as $file) {
+            $error = ['warning' => 'No Departments as stakeholders. Please upload some valid files'];
+            if($file['to'] == 'Department not found'){
+                continue;
+            }
+            $filename = $file['filename'];
+            $department = $file['to'];
+            $path = "/mailers/$mailer->id/$filename";
+            $error = ['success' => 'Valid mails sent successfully.'];
+            try{
+                Mail::to($department->email)->send(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path]));
+            }
+            catch(\Exception $e){
+                Log::error($e->getMessage());
+                $error = ['warning' => 'Mails sent with errors. Check today\'s mailers log for more information.'];
+            }
+        }
+        return redirect()->back()->with($error);
     }
 }

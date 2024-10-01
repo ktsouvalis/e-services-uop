@@ -35,6 +35,8 @@ Route::group(['prefix' => 'mailers'], function(){
     Route::get('/{mailer}/review', [MailerController::class, 'review'])->name('mailers.review');
 
     Route::post('/{mailer}/send/{index}/{department}', [MailerController::class, 'send'])->name('mailers.send');
+
+    Route::post('/{mailer}/send_all/', [MailerController::class, 'send_all'])->name('mailers.send_all');
 });
 
 
