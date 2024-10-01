@@ -2,7 +2,12 @@
 
 namespace App\Providers;
 
+
+use App\Models\Mailer;
+use App\Policies\MailersPolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,5 +25,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         //
+        Gate::policy(Mailer::class, MailersPolicy::class);
     }
 }

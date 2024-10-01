@@ -1,7 +1,11 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
+use App\Models\City;
+use App\Models\Department;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MailerController;
+use App\Http\Controllers\ProfileController;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -16,5 +20,22 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+Route::resource('/mailers', MailerController::class);
+
+Route::group(['prefix' => 'mailers'], function(){
+    Route::get('/{mailer}/download_f/{index}', [MailerController::class, 'download_file'])->name('mailers.download_file');
+
+    Route::post('/{mailer}/delete_f/{index}', [MailerController::class, 'delete_file'])->name('mailers.delete_file');
+
+    Route::post('/{mailer}/clean_f', [MailerController::class, 'clean_storage'])->name('mailers.clean_storage');
+
+    Route::post(('/{mailer}/upload_files'), [MailerController::class, 'upload_files'])->name('mailers.upload_files');
+
+    Route::get('/{mailer}/review', [MailerController::class, 'review'])->name('mailers.review');
+
+    Route::post('/{mailer}/send/{index}/{department}', [MailerController::class, 'send'])->name('mailers.send');
+});
+
 
 require __DIR__.'/auth.php';
