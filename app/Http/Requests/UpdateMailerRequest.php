@@ -40,12 +40,14 @@ class UpdateMailerRequest extends FormRequest
                 'files.*' => 'required|file|max:2048',
             ];
         }
+        return [];
     }
 
     public function messages(): array
     {
         return [
             'name.required' => 'The name field is required.',
+//            'name.max' => 'The name must not exceed 255 characters.',
             'subject.max' => 'The subject must not exceed 255 characters.',
             'signature.max' => 'The signature must not exceed 255 characters.',
             // 'files.*.file' => 'Each file must be a valid file.',
