@@ -1,0 +1,59 @@
+services:
+  application:
+  # laravel.test for sail
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: e-services:latest
+    container_name: e-services-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+      - ./docker/logs:/var/www/storage/logs
+    ports:
+      - "81:80"
+    env_file:
+      - ./docker/.env
+    depends_on:
+      - db
+    networks:
+      - e-services
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db:
+    image: 'mysql/mysql-server:latest'
+    container_name: e-services-db
+    ports:
+      - '3308:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: 'klainmain'
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: 'e-services'
+      MYSQL_USER: 'app_user'
+      MYSQL_PASSWORD: 'klainmain'
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - e-services
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - '-h'
+        - localhost
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  e-services:
+
+volumes:
+  dbdata:
