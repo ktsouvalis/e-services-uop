@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Exception;
 use App\Models\Mailer;
 use App\Models\Department;
-use Illuminate\Http\Request;
 use App\Mail\MailToDepartment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -44,7 +43,7 @@ class MailerController extends Controller
             Log::channel('mailers')->error($e->getMessage());
             return redirect()->back()->with('error', 'Files not uploaded. Check today\'s mailers log for more information.');
         }
-        
+
         return redirect()->route('mailers.edit', $mailer->id)->with('success', 'Mailer created successfully.');
     }
 
@@ -75,7 +74,7 @@ class MailerController extends Controller
             Log::channel('mailers')->error($e->getMessage());
             return redirect()->back()->with('error', 'Mailer not updated. Check today\'s mailers log for more information.');
         }
-        
+
         return redirect()->back()->with('success', 'Mailer updated successfully.');
     }
 
@@ -92,7 +91,7 @@ class MailerController extends Controller
             Log::channel('mailers')->error($e->getMessage());
             return redirect()->back()->with('error', 'Mailer not deleted. Check today\'s mailers log for more information.');
         }
-        
+
         return redirect()->route('mailers.index')->with('success', 'Mailer deleted successfully.');
     }
 
@@ -190,9 +189,9 @@ class MailerController extends Controller
                 continue;
             }
             $file->storeAs("/mailers/$mailer->id", $filename);
-            $existingFiles[] = ['index' => $index++, 'filename' => $filename]; 
+            $existingFiles[] = ['index' => $index++, 'filename' => $filename];
         }
-        $mailer->files = $existingFiles; 
+        $mailer->files = $existingFiles;
         $mailer->save();
         if ($error) {
             return redirect()->back()->with('error', 'Files uploaded with errors. Check today\'s mailers log for more information.');
@@ -210,7 +209,7 @@ class MailerController extends Controller
             $key=null;
             if (preg_match('/\d{4} -/', $filename, $matches)) {
                 $key= (int) substr($matches[0], 0, 4);
-                
+
             }
             else if (preg_match('/\d{3} -/', $filename, $matches)){
                 $key= (int) substr($matches[0], 0, 3);
@@ -221,7 +220,7 @@ class MailerController extends Controller
             }
             else{
                 $review_array[] = ['index' => $fileindex, 'filename' => $filename, 'to' => 'Department not found'];
-            }   
+            }
         }
         session()->put('review_array', $review_array);
         return view('mailers.review')
@@ -247,8 +246,8 @@ class MailerController extends Controller
     public function send_all(Mailer $mailer){
         Gate::authorize('view', $mailer);
         $review_array = session('review_array');
-        foreach ($review_array as $file) {
-            $error = ['warning' => 'No Departments as stakeholders. Please upload some valid files'];
+        $error = ['warning' => 'No Departments as stakeholders. Please upload some valid files'];
+        foreach ($review_array as $file){
             if($file['to'] == 'Department not found'){
                 continue;
             }
@@ -260,9 +259,11 @@ class MailerController extends Controller
                 Mail::to($department->email)->send(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path]));
             }
             catch(\Exception $e){
-                Log::error($e->getMessage());
+                Log::channel('mailers')->error("File '".$filename."' to ".$department->name.": ".$e->getMessage());
                 $error = ['warning' => 'Mails sent with errors. Check today\'s mailers log for more information.'];
+                continue;
             }
+            Log::channel('mailers')->info("File '".$filename."' to ".$department->name.": Mail sent successfully.");
         }
         return redirect()->back()->with($error);
     }

@@ -36,7 +36,7 @@ class MailToDepartment extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            // from: new Address('noreply@uop.gr', 'Πανεπιστήμιο Πελοποννήσου'),
+            from: new Address('noreply@uop.gr', 'Πανεπιστήμιο Πελοποννήσου'),
             subject: $this->subject,
         );
     }

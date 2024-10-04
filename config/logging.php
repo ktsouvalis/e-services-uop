@@ -54,8 +54,10 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', env('LOG_STACK', 'single')),
+            'channels' => ['single','daily'],
+//            'channels' => explode(',', env('LOG_STACK', 'single')),
             'ignore_exceptions' => false,
+            'encoding'=> 'utf-8',
         ],
 
         'single' => [
@@ -79,6 +81,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            'encoding'=> 'utf-8',
         ],
 
         'slack' => [
