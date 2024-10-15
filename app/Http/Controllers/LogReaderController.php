@@ -13,12 +13,18 @@ class LogReaderController extends Controller
     //
     public function read(Request $request)
     {
-        // $uploaded_files = $request->validated()['files'] ?? [];
+        //read input
         $uploaded_file = $request->file('file');
         if(empty($uploaded_file)){
             return redirect()->back()->with('warning', 'No file uploaded.');
         }
-        
+
+        $regex = $request->input('regex');
+        if (empty($regex)) {
+            return redirect()->back()->with('warning', 'No regex provided.');
+        }
+
+        // save file
         $filename =  $uploaded_file->getClientOriginalName();
         try{
             $uploaded_file->storeAs("/log-reader", $filename);
@@ -28,17 +34,13 @@ class LogReaderController extends Controller
             return back()->with('error', 'File uploaded with errors. Check today\'s log-reader log for more information.');
         }
             
-        $regex = $request->input('regex');
-        if (empty($regex)) {
-            return redirect()->back()->with('warning', 'No regex provided.');
-        }
-
+        // read file
         $path = storage_path("app/private/log-reader/{$filename}");
         $content = file_get_contents($path);
-
         preg_match_all("/{$regex}/", $content, $matches);
-        $uniqueMatches = array_unique($matches[0]);
+        $uniqueMatches = array_unique($matches[0]); // $matches[0] contains the full match and the rest are the matches for each capturing group
 
+        // create excel
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $rowIndex = 1;
@@ -56,9 +58,9 @@ class LogReaderController extends Controller
         $writer = new Xlsx($spreadsheet);
         $writer->save(storage_path("app/private/log-reader/{$newFilename}"));
 
+        //log action, download and delete file
         ob_end_clean();
         Log::channel('log-reader')->info("File {$filename} was read with regex {$regex}");
         return response()->download(storage_path("app/private/log-reader/{$newFilename}"))->deleteFileAfterSend(true);
-        
     }
 }
