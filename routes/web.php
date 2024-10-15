@@ -5,6 +5,7 @@ use App\Models\Department;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MailerController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\LogReaderController;
 
 
 Route::get('/', function () {
@@ -37,6 +38,12 @@ Route::group(['prefix' => 'mailers'], function(){
     Route::post('/{mailer}/send/{index}/{department}', [MailerController::class, 'send'])->name('mailers.send');
 
     Route::post('/{mailer}/send_all/', [MailerController::class, 'send_all'])->name('mailers.send_all');
+});
+
+Route::group(['prefix' => 'log-reader'], function(){
+    Route::view('/', 'log-reader.main')->name('log-reader');
+
+    Route::post('/read_logs', [LogReaderController::class, 'read'])->name('log-reader.read-logs');
 });
 
 

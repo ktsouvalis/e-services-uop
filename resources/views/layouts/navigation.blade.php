@@ -18,6 +18,9 @@
                     <x-nav-link :href="route('mailers.index')" :active="request()->routeIs('mailers')">
                         {{ __('Mailers') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('log-reader')" :active="request()->routeIs('log-reader')">
+                        {{ __('Log Reader') }}
+                    </x-nav-link>
                 </div>
             </div>
 

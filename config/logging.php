@@ -84,6 +84,15 @@ return [
             'encoding'=> 'utf-8',
         ],
 
+        'log-reader' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/log-reader.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'encoding'=> 'utf-8',
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
