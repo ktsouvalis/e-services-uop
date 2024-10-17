@@ -16,13 +16,13 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     <x-nav-link :href="route('mailers.index')" :active="request()->routeIs('mailers')">
-                        {{ __('Mailers') }}
+                        {{ __('Distinct Files To Departments') }}
                     </x-nav-link>
                     <x-nav-link :href="route('log-reader')" :active="request()->routeIs('log-reader')">
                         {{ __('Log Reader') }}
                     </x-nav-link>
                     <x-nav-link :href="route('sheetmailers.index')" :active="request()->routeIs('sheetmailers')">
-                        {{ __('Sheet Mailers') }}
+                        {{ __('Mailers') }}
                     </x-nav-link>
                 </div>
             </div>

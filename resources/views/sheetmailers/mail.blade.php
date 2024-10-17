@@ -1,5 +1,5 @@
 <div>
-<p>{{$sheetmailer->body}}</p>
+{!! $sheetmailer->body !!}
 </div>
 
 @if($additionalData)
@@ -9,6 +9,5 @@
 @endif
 
 <div>
-Με εκτίμηση,
 <p><i>{{$sheetmailer->signature}}</i></p>
 </div>

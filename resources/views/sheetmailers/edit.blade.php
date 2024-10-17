@@ -38,11 +38,15 @@
 
                     <!-- Body Field -->
                     <div class="mb-4">
-                        <label for="body" class="block text-sm font-medium text-gray-700">{{ __('Body') }}</label>                   
+                      <textarea name="body" id="myeditorinstance">{{ old('body', $sheetmailer->body) }}</textarea>
+                      @error('body')
+                          <span class="text-red-500 text-sm">{{ $message }}</span>
+                      @enderror
+                        {{-- <label for="body" class="block text-sm font-medium text-gray-700">{{ __('Body') }}</label>                   
                         <textarea name="body" id="body" rows="4" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('body', $sheetmailer->body) }}</textarea>
                         @error('body')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
-                        @enderror
+                        @enderror --}}
                     </div>
                     
                     <!-- Signature Field -->
