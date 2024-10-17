@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use Exception;
 use App\Models\Sheetmailer;
-use App\Mail\Sheetmailer as MailSheetmailer;
+
 use Illuminate\Http\Request;
+use App\Mail\MailSheetMailer;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -166,7 +167,7 @@ class SheetmailerController extends Controller
 
     public function preview(Request $request, Sheetmailer $sheetmailer){
         $emails = session('emails');
-        return new MailSheetmailer($sheetmailer, $emails[0]['additionalData']);
+        return new MailSheetMailer($sheetmailer, $emails[0]['additionalData']);
     }
 
     public function send(Request $request, Sheetmailer $sheetmailer){
@@ -176,7 +177,7 @@ class SheetmailerController extends Controller
         foreach($emails as $email){
             $error=0;
             try{
-                Mail::to($email['email'])->send(new MailSheetmailer($sheetmailer, $email['additionalData']));
+                Mail::to($email['email'])->send(new MailSheetMailer($sheetmailer, $email['additionalData']));
             }
             catch(\Exception $e){
                 Log::channel('sheetmailers_failure')->error("Sheetmailer #$sheetmailer->id: mail not sent to ".$email['email']);

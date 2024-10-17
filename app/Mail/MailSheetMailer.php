@@ -9,9 +9,9 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use App\Models\Sheetmailer as ModelSheetmailer;
+use App\Models\Sheetmailer;
 
-class SheetMailer extends Mailable
+class MailSheetMailer extends Mailable
 {
     use Queueable, SerializesModels;
     public $sheetmailer;
@@ -19,7 +19,7 @@ class SheetMailer extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(ModelSheetmailer $sheetmailer, $additionalData)
+    public function __construct(Sheetmailer $sheetmailer, $additionalData)
     {
         $this->sheetmailer = $sheetmailer;
         $this->additionalData = $additionalData;
