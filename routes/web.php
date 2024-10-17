@@ -3,6 +3,7 @@
 use App\Models\City;
 use App\Models\Department;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MailerController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogReaderController;
@@ -22,6 +23,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+Route::resource('/menus', MenuController::class);
 
 Route::resource('/mailers', MailerController::class);
 

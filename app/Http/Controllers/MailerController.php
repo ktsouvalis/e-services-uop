@@ -22,8 +22,13 @@ class MailerController extends Controller
     public function index()
     {
         $user = auth()->user();
-
-        $mailers = Mailer::where('user_id',$user->id)->get();
+        if($user->admin){
+            $mailers = Mailer::all();
+        }
+        else{
+            $mailers = Mailer::where('user_id',$user->id)->get();
+        }
+    
         return view('mailers.index', compact('mailers'));
     }
 
@@ -41,7 +46,7 @@ class MailerController extends Controller
         }
         catch(Exception $e){
             Log::channel('mailers')->error($e->getMessage());
-            return redirect()->back()->with('error', 'Files not uploaded. Check today\'s mailers log for more information.');
+            return redirect()->back()->with('error', 'Mailer not created. Check today\'s mailers log for more information.');
         }
 
         return redirect()->route('mailers.edit', $mailer->id)->with('success', 'Mailer created successfully.');
@@ -67,6 +72,7 @@ class MailerController extends Controller
         Gate::authorize('update', $mailer);
 
         $data_to_update = $request->validated();
+        $data_to_update['body'] = strip_tags($request->validated('body'), '<p><a><strong><i><em><b><u><ul><ol><li>');
         try{
             $mailer->update($data_to_update);
         }

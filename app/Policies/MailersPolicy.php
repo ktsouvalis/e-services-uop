@@ -23,6 +23,9 @@ class MailersPolicy
     {
         //
         // dd($mailer);
+        if($user->admin){
+            return true;
+        }
         return $mailer->user->id===$user->id;
     }
 
@@ -31,7 +34,6 @@ class MailersPolicy
      */
     public function create(User $user): bool
     {
-        //
         return auth()->check();
     }
 
@@ -40,7 +42,6 @@ class MailersPolicy
      */
     public function update(User $user, Mailer $mailer): bool
     {
-        //
         return $this->view($user, $mailer);
     }
 
@@ -49,7 +50,6 @@ class MailersPolicy
      */
     public function delete(User $user, Mailer $mailer): bool
     {
-        //
         return $this->view($user, $mailer);
     }
 
@@ -58,7 +58,6 @@ class MailersPolicy
      */
     public function restore(User $user, Mailer $mailer): bool
     {
-        //
         return $this->view($user, $mailer);
     }
 }

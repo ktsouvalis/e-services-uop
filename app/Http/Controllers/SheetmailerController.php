@@ -18,8 +18,13 @@ class SheetmailerController extends Controller
     public function index()
     {
         $user = auth()->user();
-
-        $sheetmailers = Sheetmailer::where('user_id',$user->id)->get();
+        if($user->admin){
+            $sheetmailers = Sheetmailer::all();
+        }
+        else{
+            $sheetmailers = Sheetmailer::where('user_id',$user->id)->get();
+        }
+        
         return view('sheetmailers.index', compact('sheetmailers'));
     }
 

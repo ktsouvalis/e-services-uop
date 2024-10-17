@@ -1,11 +1,11 @@
 <!-- resources/views/mail_to_departments/index.blade.php -->
 @push('title')
-    <title>Mailers</title>
+    <title>DFDs</title>
 @endpush
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Mailers') }}
+            {{ __('DFDs') }}
         </h2>
     </x-slot>
 
@@ -13,7 +13,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <!-- Section 1: List of MailToDepartments -->
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                <h3 class="text-lg font-semibold mb-4">{{ __('Mailers List') }}</h3>
+                <h3 class="text-lg font-semibold mb-4">{{ __('DFDs List') }}</h3>
                 
                 @if($mailers->isEmpty())
                     <p>{{ __('No entries found.') }}</p>
@@ -81,7 +81,7 @@
 
             <!-- Section 2: Create Form -->
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                <h3 class="text-lg font-semibold mb-4">{{ __('Create New Mailer') }}</h3>
+                <h3 class="text-lg font-semibold mb-4">{{ __('Create New DFD') }}</h3>
                 <form action="{{ route('mailers.store') }}" method="POST">
                     @csrf
 

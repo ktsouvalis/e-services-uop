@@ -15,15 +15,16 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('mailers.index')" :active="request()->routeIs('mailers')">
-                        {{ __('Distinct Files To Departments') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('log-reader')" :active="request()->routeIs('log-reader')">
-                        {{ __('Log Reader') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('sheetmailers.index')" :active="request()->routeIs('sheetmailers')">
-                        {{ __('Mailers') }}
-                    </x-nav-link>
+                    @if(Auth::user()->admin)
+                        <x-nav-link :href="route('menus.index')" :active="request()->routeIs('menus')">
+                            {{ __('Menus') }}
+                        </x-nav-link>
+                    @endif
+                    @foreach(App\Models\Menu::all() as $menu)
+                        <x-nav-link :href="route($menu->route )" :active="request()->routeIs($menu->route_is)">
+                            {{ $menu->title }}
+                        </x-nav-link>
+                    @endforeach
                 </div>
             </div>
 

@@ -1,11 +1,11 @@
 <!-- resources/views/mail_to_departments/index.blade.php -->
 @push('title')
-    <title>Sheet/Comma Mailers</title>
+    <title>Menus</title>
 @endpush
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Sheet/Comma Mailers') }}
+            {{ __('Menus') }}
         </h2>
     </x-slot>
 
@@ -13,28 +13,28 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <!-- Section 1: List of MailToDepartments -->
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                <h3 class="text-lg font-semibold mb-4">{{ __('Sheet/Comma Mailers List') }}</h3>
+                <h3 class="text-lg font-semibold mb-4">{{ __('Menus List') }}</h3>
                 
-                @if($sheetmailers->isEmpty())
+                @if($menus->isEmpty())
                     <p>{{ __('No entries found.') }}</p>
                 @else
                     <table class="text-center w-full divide-y divide-gray-200">
                         <thead>
                             <tr>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            @foreach($sheetmailers as $sheetmailer)
+                            @foreach($menus as $menu)
                                 <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap">{{ $sheetmailer->id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">{{ $sheetmailer->name }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">{{ $menu->id }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">{{ $menu->title }}</td>
                                     <td class="px-6 py-4 flex justify-center">
-                                        {{-- <a href="{{ route('sheetmailers.edit', $sheetmailer->id) }}" class="text-blue-600 hover:text-blue-900">{{ __('Edit') }}</a> --}}
+                                        {{-- <a href="{{ route('menus.edit', $menu->id) }}" class="text-blue-600 hover:text-blue-900">{{ __('Edit') }}</a> --}}
                                         
-                                        <a href="{{ route('sheetmailers.edit', $sheetmailer->id) }}" class="text-blue-600" >
+                                        <a href="{{ route('menus.edit', $menu->id) }}" class="text-blue-600" >
                                             <svg 
                                                 xmlns="http://www.w3.org/2000/svg" 
                                                 fill="none" 
@@ -51,7 +51,7 @@
                                                 
                                         </a>
                                         
-                                        <form action="{{ route('sheetmailers.destroy', $sheetmailer->id) }}" method="POST" class="inline-block">
+                                        <form action="{{ route('menus.destroy', $menu->id) }}" method="POST" class="inline-block">
                                             @csrf
                                             @method('DELETE')
                                             {{-- <button type="submit" class="text-red-600 hover:text-red-900 ml-4" onclick="return confirm('Are you sure?')">{{ __('Delete') }}</button> --}}
@@ -81,18 +81,37 @@
 
             <!-- Section 2: Create Form -->
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                <h3 class="text-lg font-semibold mb-4">{{ __('Create New Sheet/Comma Mailer') }}</h3>
-                <form action="{{ route('sheetmailers.store') }}" method="POST">
+                <h3 class="text-lg font-semibold mb-4">{{ __('Create New Menu') }}</h3>
+                <form action="{{ route('menus.store') }}" method="POST">
                     @csrf
 
-                    <!-- Name Field -->
+                    <!-- Title Field -->
                     <div class="mb-4">
-                        <label for="name" class="block text-sm font-medium text-gray-700">{{ __('Name') }}</label>
-                        <input type="text" name="name" id="name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('name') }}">
-                        @error('name')
+                        <label for="title" class="block text-sm font-medium text-gray-700">{{ __('Title') }}</label>
+                        <input type="text" name="title" id="title" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('title') }}">
+                        @error('title')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
+
+                    <!-- Route Field -->
+                    <div class="mb-4">
+                        <label for="route" class="block text-sm font-medium text-gray-700">{{ __('Route') }}</label>
+                        <input type="text" name="route" id="route" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('route') }}">
+                        @error('route')
+                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <!-- RouteIs Field -->
+                    <div class="mb-4">
+                        <label for="route_is" class="block text-sm font-medium text-gray-700">{{ __('RouteIs') }}</label>
+                        <input type="text" name="route_is" id="route_is" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('route_is') }}">
+                        @error('route_is')
+                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        @enderror
+                    </div>
+
 
                     <!-- Submit Button -->
                     

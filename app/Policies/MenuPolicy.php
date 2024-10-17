@@ -2,29 +2,26 @@
 
 namespace App\Policies;
 
-use App\Models\Sheetmailer;
+use App\Models\Menu;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-class SheetmailersPolicy
+class MenuPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        //
+        return $user->admin;
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Sheetmailer $sheetmailer): bool
+    public function view(User $user, Menu $menu): bool
     {
-        if($user->admin){
-            return true;
-        }
-        return $sheetmailer->user->id===$user->id;
+        return $this->viewAny($user);
     }
 
     /**
@@ -32,22 +29,22 @@ class SheetmailersPolicy
      */
     public function create(User $user): bool
     {
-        return auth()->check(); 
+        return $this->viewAny($user);
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Sheetmailer $sheetmailer): bool
+    public function update(User $user, Menu $menu): bool
     {
-        return $this->view($user, $sheetmailer);
+        return $this->viewAny($user);
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Sheetmailer $sheetmailer): bool
+    public function delete(User $user, Menu $menu): bool
     {
-        return $this->view($user, $sheetmailer);
+        return $this->viewAny($user);
     }
 }
