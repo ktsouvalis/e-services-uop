@@ -84,6 +84,32 @@ return [
             'encoding'=> 'utf-8',
         ],
 
+        'sheetmailers_actions' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sheetmailers_actions.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'encoding'=> 'utf-8',
+        ],
+
+        'sheetmailers_success' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sheetmailers_success.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'encoding'=> 'utf-8',
+        ],
+        'sheetmailers_failure' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sheetmailers_failure.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'encoding'=> 'utf-8',
+        ],
+
         'log-reader' => [
             'driver' => 'daily',
             'path' => storage_path('logs/log-reader.log'),

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MailerController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogReaderController;
+use App\Http\Controllers\SheetmailerController;
 
 
 Route::get('/', function () {
@@ -38,6 +39,18 @@ Route::group(['prefix' => 'mailers'], function(){
     Route::post('/{mailer}/send/{index}/{department}', [MailerController::class, 'send'])->name('mailers.send');
 
     Route::post('/{mailer}/send_all/', [MailerController::class, 'send_all'])->name('mailers.send_all');
+});
+
+Route::resource('/sheetmailers', SheetmailerController::class);
+
+Route::group(['prefix' => 'sheetmailers'], function(){
+    Route::post('/{sheetmailer}/upload_file', [SheetmailerController::class, 'upload_file'])->name('sheetmailers.upload_file');
+
+    Route::view('/{sheetmailer}/confirm', 'sheetmailers.confirm')->name('sheetmailers.confirm');
+
+    Route::get('/{sheetmailer}/preview', [SheetmailerController::class, 'preview'])->name('sheetmailers.preview');
+
+    Route::post('/{sheetmailer}/send', [SheetmailerController::class, 'send'])->name('sheetmailers.send');
 });
 
 Route::group(['prefix' => 'log-reader'], function(){

@@ -48,4 +48,8 @@ class User extends Authenticatable
     public function mailers(){
         return $this->hasMany(Mailer::class);
     }
+
+    public function sheetmailers(){
+        return $this->hasMany(Sheetmailer::class);
+    }
 }
