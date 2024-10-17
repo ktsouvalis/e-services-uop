@@ -46,6 +46,8 @@ Route::resource('/sheetmailers', SheetmailerController::class);
 Route::group(['prefix' => 'sheetmailers'], function(){
     Route::post('/{sheetmailer}/upload_file', [SheetmailerController::class, 'upload_file'])->name('sheetmailers.upload_file');
 
+    Route::post('/{sheetmailer}/comma_mails', [SheetmailerController::class, 'comma_mails'])->name('sheetmailers.comma_mails');
+
     Route::view('/{sheetmailer}/confirm', 'sheetmailers.confirm')->name('sheetmailers.confirm');
 
     Route::get('/{sheetmailer}/preview', [SheetmailerController::class, 'preview'])->name('sheetmailers.preview');

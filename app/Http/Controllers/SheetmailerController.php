@@ -135,6 +135,30 @@ class SheetmailerController extends Controller
         return redirect()->route('sheetmailers.confirm', ['sheetmailer' => $sheetmailer->id]);
     }
 
+    public function comma_mails(Request $request, Sheetmailer $sheetmailer){
+        $emails = explode(',', $request->comma_mails);
+        $eligible_emails = [];
+        $non_emails = [];
+        foreach ($emails as $email) {
+            $email = trim($email);
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $eligible_emails[] = [
+                    'email' => $email,
+                    'additionalData' => ''
+                ];
+            }
+            else{
+                $non_emails[]=$email;
+            }
+        }
+        $emailCount = count($eligible_emails);
+        session()->put('emails', $eligible_emails);
+        session()->put('non_emails', $non_emails);
+        session()->put('emailCount', $emailCount);
+
+        return redirect()->route('sheetmailers.confirm', ['sheetmailer' => $sheetmailer->id]);
+    }
+
     public function preview(Request $request, Sheetmailer $sheetmailer){
         $emails = session('emails');
         return new MailSheetmailer($sheetmailer, $emails[0]['additionalData']);

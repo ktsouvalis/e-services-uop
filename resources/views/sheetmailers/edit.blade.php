@@ -55,27 +55,50 @@
                     </div>
                     <div class="flex items-center justify-end mt-4">
                         <x-primary-button>
-                            {{ __('Update') }}
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 mr-2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                          </svg>                          
+                          {{ __('Update') }}
                         </x-primary-button>
                     </div>
                 </form>
                 <hr class=my-2>
                 <form action="{{ route('sheetmailers.upload_file', $sheetmailer->id) }}" method="POST" enctype="multipart/form-data">
-                    <!-- Files Field (Multiple File Upload) -->
+                    <!-- Files Field (Single File Upload) -->
                     @csrf
                     <div class="mb-4">
-                        <label for="file" class="block text-sm font-medium text-gray-700">{{ __('File') }}</label>
+                        <label for="file" class="block text-sm font-medium text-gray-700">{{ __('You can upload one file') }}</label>
                         <input type="file" name="file" id="file" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
                         @error('file')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                         <div class="flex items-center justify-end mt-4">
                             <x-primary-button>
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 mx-1">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15m0-3-3-3m0 0-3 3m3-3V15" />
-                                  </svg>
-
-                                {{ __('Upload') }}
+                               {{ __('Next') }}
+                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 ml-2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
+                              </svg>
+                              
+                            </x-primary-button>
+                        </div>
+                    </div>
+                </form>
+                <hr class=my-2>
+                <form action="{{ route('sheetmailers.comma_mails', $sheetmailer->id) }}" method="POST" enctype="multipart/form-data">
+                    <!-- comma separated emails Field -->
+                    @csrf
+                    <div class="mb-4">
+                        <label for="comma_mails" class="block text-sm font-medium text-gray-700">{{ __('OR you can write comma separated emails') }}</label>
+                        <textarea name="comma_mails" id="comma_mails" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required></textarea>
+                        @error('file')
+                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        @enderror
+                        <div class="flex items-center justify-end mt-4">
+                            <x-primary-button>
+                                {{ __('Next') }}
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 ml-2">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
+                                </svg>
                             </x-primary-button>
                         </div>
                     </div>
