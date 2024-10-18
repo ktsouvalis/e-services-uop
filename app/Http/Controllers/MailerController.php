@@ -247,9 +247,10 @@ class MailerController extends Controller
             Mail::to($department->email)->send(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path]));
         }
         catch(\Exception $e){
-            Log::error($e->getMessage());
+            Log::channel('mailers')->error("File '".$filename."' to ".$department->name.": ".$e->getMessage());
             return redirect()->back()->with('error', 'Mail not sent.');
         }
+        Log::channel('mailers')->info("File '".$filename."' to ".$department->name.": Mail sent successfully.");
         return redirect()->back()->with('success', 'Mail sent successfully.');
     }
 

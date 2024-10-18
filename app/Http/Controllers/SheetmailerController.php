@@ -186,8 +186,7 @@ class SheetmailerController extends Controller
                 Mail::to($email['email'])->send(new MailSheetMailer($sheetmailer, $email['additionalData']));
             }
             catch(\Exception $e){
-                Log::channel('sheetmailers_failure')->error("Sheetmailer #$sheetmailer->id: mail not sent to ".$email['email']);
-                Log::error('mail not sent to '.$email['email']. '. Reason: '.$e->getMessage());
+                Log::channel('sheetmailers_failure')->error("Sheetmailer #$sheetmailer->id: mail not sent to ".$email['email']. '. Reason: '.$e->getMessage());
                 $error = 1;
                 $errors= 1;
             }

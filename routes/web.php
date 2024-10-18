@@ -2,6 +2,7 @@
 
 use App\Models\City;
 use App\Models\Department;
+use App\Models\Sheetmailer;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MailerController;
