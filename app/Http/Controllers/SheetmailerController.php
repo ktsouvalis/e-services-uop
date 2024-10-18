@@ -72,7 +72,7 @@ class SheetmailerController extends Controller
 
         // $data_to_update = $request->validated();
         $data_to_update = $request->input();
-        $data_to_update['body'] = strip_tags($request->input('body'), '<p><a><strong><i><em><b><u><ul><ol><li>'); //allow only these tags
+        $data_to_update['body'] = strip_tags($request->input('body'), '<p><a><strong><span><i><em><b><u><ul><ol><li>'); //allow only these tags
         try{
             $sheetmailer->update($data_to_update);
         }
