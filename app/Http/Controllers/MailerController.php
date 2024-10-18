@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Mail\MailToDepartment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -16,13 +17,16 @@ use App\Http\Requests\UpdateMailerRequest;
 
 class MailerController extends Controller
 {
+    public function initializeMiddleware(): void
+    {
+        $this->middleware('auth');
+    }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $user = auth()->user();
-        if($user->admin){
+        if(Auth::user()->admin){
             $mailers = Mailer::all();
         }
         else{

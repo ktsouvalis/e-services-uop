@@ -8,18 +8,23 @@ use App\Models\Sheetmailer;
 use Illuminate\Http\Request;
 use App\Mail\MailSheetMailer;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class SheetmailerController extends Controller
 {
+    public function initializeMiddleware(): void
+    {
+        $this->middleware('auth');
+    }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $user = auth()->user();
-        if($user->admin){
+        if(Auth::user()->admin){
             $sheetmailers = Sheetmailer::all();
         }
         else{
@@ -34,8 +39,7 @@ class SheetmailerController extends Controller
      */
     public function store(Request $request)
     {
-        // Gate::authorize('create', Mailer::class);
-        // $validated = $request->validated();
+        Gate::authorize('create', Sheetmailer::class);
 
         $validated = $request->input();
         $validated['user_id'] = auth()->user()->id;
@@ -55,7 +59,7 @@ class SheetmailerController extends Controller
      */
     public function edit(Sheetmailer $sheetmailer)
     {
-        // Gate::authorize('update', $sheetmailer);
+        Gate::authorize('update', $sheetmailer);
 
         return view('sheetmailers.edit', [
             'sheetmailer' => $sheetmailer,
@@ -67,10 +71,8 @@ class SheetmailerController extends Controller
      */
     public function update(Request $request, Sheetmailer $sheetmailer)
     {
-        // dd($request->all());
-        // Gate::authorize('update', $mailer);
+        Gate::authorize('update', $sheetmailer);
 
-        // $data_to_update = $request->validated();
         $data_to_update = $request->input();
         $data_to_update['body'] = strip_tags($request->input('body'), '<p><a><strong><span><i><em><b><u><ul><ol><li>'); //allow only these tags
         try{
@@ -89,7 +91,8 @@ class SheetmailerController extends Controller
      */
     public function destroy(Sheetmailer $sheetmailer)
     {
-        // Gate::authorize('delete',$sheetmailer );
+        Gate::authorize('delete',$sheetmailer );
+
         try{
             $sheetmailer->delete();
         }
@@ -166,11 +169,14 @@ class SheetmailerController extends Controller
     }
 
     public function preview(Request $request, Sheetmailer $sheetmailer){
+        Gate::authorize('view', $sheetmailer);
+
         $emails = session('emails');
         return new MailSheetMailer($sheetmailer, $emails[0]['additionalData']);
     }
 
     public function send(Request $request, Sheetmailer $sheetmailer){
+        Gate::authorize('view', $sheetmailer);
         ini_set('max_execution_time', 300); // Set max execution time to 300 seconds
         $emails = session('emails');
         $errors =0;

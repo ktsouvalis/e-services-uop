@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Gate;
 
 class MenuController extends Controller
 {
+    public function initializeMiddleware(): void
+    {
+        $this->middleware('auth');
+    }
     /**
      * Display a listing of the resource.
      */

@@ -4,7 +4,9 @@ namespace App\Providers;
 
 
 use App\Models\Mailer;
+use App\Models\Sheetmailer;
 use App\Policies\MailersPolicy;
+use App\Policies\SheetmailersPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,5 +28,6 @@ class AppServiceProvider extends ServiceProvider
     {
         //
         Gate::policy(Mailer::class, MailersPolicy::class);
+        Gate::policy(Sheetmailer::class, SheetmailersPolicy::class);
     }
 }

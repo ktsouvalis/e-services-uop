@@ -51,7 +51,9 @@ Route::group(['prefix' => 'sheetmailers'], function(){
 
     Route::post('/{sheetmailer}/comma_mails', [SheetmailerController::class, 'comma_mails'])->name('sheetmailers.comma_mails');
 
-    Route::view('/{sheetmailer}/confirm', 'sheetmailers.confirm')->name('sheetmailers.confirm');
+    Route::get('/{sheetmailer}/confirm', function (Sheetmailer $sheetmailer) {
+        return view('sheetmailers.confirm', compact('sheetmailer'));
+    })->name('sheetmailers.confirm')->middleware('can:view,sheetmailer');
 
     Route::get('/{sheetmailer}/preview', [SheetmailerController::class, 'preview'])->name('sheetmailers.preview');
 
