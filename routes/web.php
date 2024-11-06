@@ -2,7 +2,9 @@
 
 use App\Models\City;
 use App\Models\Department;
+use App\Events\MessageSent;
 use App\Models\Sheetmailer;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MailerController;
@@ -24,6 +26,12 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+Route::post('/chat/send-message', function (Request $request) {
+    $text = request()->input('content'); //the name of the input field from the js script!
+    $user = auth()->user();
+    MessageSent::dispatch($text, $user->name);
+})->middleware('auth')->name('chat.send-message');
 
 Route::resource('/menus', MenuController::class);
 
