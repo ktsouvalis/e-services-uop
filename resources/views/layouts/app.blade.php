@@ -14,23 +14,7 @@
 
         <!-- Scripts -->
         @stack('scripts')
-        @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/chat-modal.js', 'resources/css/chat-modal.css'])
-        {{-- <style>
-            .chat-modal {
-                position: fixed;
-                bottom: 0;
-                right: 0;
-                width: 300px;
-                height: 400px;
-                border: 1px solid #ddd;
-                background: #fff;
-                display: flex;
-                flex-direction: column;
-            }
-            .chat-header { padding: 10px; background: #333; color: #fff; }
-            .chat-messages { flex: 1; overflow-y: auto; padding: 10px; }
-            #chat-input { padding: 10px; width: 100%; }
-        </style> --}}
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">
