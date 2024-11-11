@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use App\Models\Item;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 
 class ItemController extends Controller
 {
-    public function initializeMiddleware(): void
-    {
-        $this->middleware('auth');
-    }
     /**
      * Display a listing of the resource.
      */
@@ -26,6 +25,7 @@ class ItemController extends Controller
      */
     public function create()
     {
+        Gate::authorize('create', Item::class);
         return view('items.create');
     }
 
@@ -33,7 +33,8 @@ class ItemController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-    {        
+    {     
+        Gate::authorize('create', Item::class);   
         $request->validate([
             'category_id' => 'required|exists:categories,id',
             'description' => 'required|string|max:255',
@@ -68,6 +69,7 @@ class ItemController extends Controller
     
 
     public function download_file(Request $request, Item $item){
+        Gate::authorize('view', $item);
         ob_end_clean();
         return response()->download(storage_path('app/private/items/'.$item->file_path));
     }
@@ -77,6 +79,7 @@ class ItemController extends Controller
      */
     public function edit(Item $item)
     {
+        Gate::authorize('update', $item);
         return view('items.edit')->with('item', $item);
     }   
     
@@ -85,6 +88,7 @@ class ItemController extends Controller
      */
     public function update(Request $request, Item $item)
     {
+        Gate::authorize('update', $item);
         $request->validate([
             'category_id' => 'required|exists:categories,id',
             'description' => 'required|string|max:255',
@@ -111,7 +115,17 @@ class ItemController extends Controller
             $incoming['file_path'] = $filename;
             Storage::delete('app/private/items/'.$item->file_path);
         }
-        $item->update($incoming);
+        DB::beginTransaction();
+        try{
+            $item->lockForUpdate();
+            $item->update($incoming);
+            DB::commit();
+        }
+        catch(\Exception $e){
+            DB::rollBack();
+            return redirect()->route('items.index')->with('error', 'Item update failed.');
+        }
+
         return redirect()->route('items.index')->with('success', 'Item updated successfully.'); 
     }
 
@@ -120,7 +134,18 @@ class ItemController extends Controller
      */
     public function destroy(Item $item)
     {
-        $item->delete();
+        Gate::authorize('delete', $item);
+        DB::beginTransaction();
+        try{
+            $item->lockForUpdate();
+            $item->delete();
+            DB::commit();
+        }
+        catch(Exception $e){
+            DB::rollBack();
+            return redirect()->route('items.index')->with('error', 'Item delete failed.');
+        }
+        Storage::delete('app/private/items/'.$item->file_path);
         return redirect()->route('items.index')->with('success', 'Item deleted successfully.');
     }
 }
