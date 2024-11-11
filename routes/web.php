@@ -6,6 +6,7 @@ use App\Events\MessageSent;
 use App\Models\Sheetmailer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\MailerController;
 use App\Http\Controllers\ProfileController;
@@ -35,9 +36,9 @@ Route::post('/chat/send-message', function (Request $request) {
 
 Route::resource('/menus', MenuController::class);
 
-Route::resource('/mailers', MailerController::class);
+Route::resource('/mailers', MailerController::class)->middleware('auth');
 
-Route::group(['prefix' => 'mailers'], function(){
+Route::group(['prefix' => 'mailers','middleware'=>'auth'], function(){
     Route::get('/{mailer}/download_f/{index}', [MailerController::class, 'download_file'])->name('mailers.download_file');
 
     Route::post('/{mailer}/delete_f/{index}', [MailerController::class, 'delete_file'])->name('mailers.delete_file');
@@ -53,9 +54,9 @@ Route::group(['prefix' => 'mailers'], function(){
     Route::post('/{mailer}/send_all/', [MailerController::class, 'send_all'])->name('mailers.send_all');
 });
 
-Route::resource('/sheetmailers', SheetmailerController::class);
+Route::resource('/sheetmailers', SheetmailerController::class)->middleware('auth');
 
-Route::group(['prefix' => 'sheetmailers'], function(){
+Route::group(['prefix' => 'sheetmailers','middleware'=>'auth'], function(){
     Route::post('/{sheetmailer}/upload_file', [SheetmailerController::class, 'upload_file'])->name('sheetmailers.upload_file');
 
     Route::post('/{sheetmailer}/comma_mails', [SheetmailerController::class, 'comma_mails'])->name('sheetmailers.comma_mails');
@@ -69,11 +70,18 @@ Route::group(['prefix' => 'sheetmailers'], function(){
     Route::post('/{sheetmailer}/send', [SheetmailerController::class, 'send'])->name('sheetmailers.send');
 });
 
-Route::group(['prefix' => 'log-reader'], function(){
+Route::group(['prefix' => 'log-reader', 'middleware'=>'auth'], function(){
     Route::view('/', 'log-reader.main')->name('log-reader');
 
     Route::post('/read_logs', [LogReaderController::class, 'read'])->name('log-reader.read-logs');
 });
+
+Route::resource('/items', ItemController::class)->middleware('auth');
+
+Route::group(['prefix' => 'items', 'middleware'=>'auth'], function(){
+    Route::get('/{item}/download_f', [ItemController::class, 'download_file'])->name('items.download_file');
+});
+
 
 
 require __DIR__.'/auth.php';

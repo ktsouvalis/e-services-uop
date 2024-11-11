@@ -9,6 +9,7 @@
       menubar: false,
       elementpath: false, // This line removes the element path
       statusbar: false,   // This line removes the status bar
+      license_key: 'gpl',
     });
   });
 </script>

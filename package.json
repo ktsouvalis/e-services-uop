@@ -18,6 +18,9 @@
         "vite": "^5.0"
     },
     "dependencies": {
+        "datatables.net-dt": "^2.1.8",
+        "datatables.net-responsive-dt": "^3.0.3",
+        "jquery": "^3.7.1",
         "tinymce": "^7.4.1"
     }
 }

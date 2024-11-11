@@ -11,9 +11,18 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
         @stack('links')
+        <style>
+            table {
+                table-layout: fixed;
+                width: 100%;
+            }
 
-        <!-- Scripts -->
-        @stack('scripts')
+            table#DataTable th, table#DataTable td {
+                word-wrap: auto;
+                white-space: normal;
+                font-size: 0.875rem;
+            } 
+        </style>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
@@ -57,8 +66,6 @@
                 </div>
                 @include('components.chat-modal')
             </main>
-            
         </div>
-        
     </body>
 </html>

@@ -17,10 +17,6 @@ use App\Http\Requests\UpdateMailerRequest;
 
 class MailerController extends Controller
 {
-    public function initializeMiddleware(): void
-    {
-        $this->middleware('auth');
-    }
     /**
      * Display a listing of the resource.
      */
@@ -30,7 +26,7 @@ class MailerController extends Controller
             $mailers = Mailer::all();
         }
         else{
-            $mailers = Mailer::where('user_id',$user->id)->get();
+            $mailers = Mailer::where('user_id',Auth::user()->id)->get();
         }
     
         return view('mailers.index', compact('mailers'));
