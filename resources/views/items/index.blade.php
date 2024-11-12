@@ -10,10 +10,15 @@
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight flex flex-x">
             {{ __('Items') }}
-            <a href="{{ route('items.create') }}" class="ml-5" title="Add New Item">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="blue" class="size-7">
+            <a href="{{ route('items.create') }}" class="mx-3 bg-blue-700 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded" title="Προσθήκη">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-7">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                   </svg>
+            </a>
+            <a href="{{route('items.extract')}}" class="mx-3 bg-green-700 hover:bg-green-900 text-white font-bold py-2 px-4 rounded" title="Εξαγωγή">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
             </a>
         </h2>
     </x-slot>
@@ -22,8 +27,10 @@
         <div class="max-w-full mx-auto sm:px-6 lg:px-8 space-y-6">
             <!-- Section 1: List of Items -->
             <div class="bg-white shadow-sm sm:rounded-lg p-6 overflow-x-auto">
+
+
                 <h3 class="text-lg font-semibold mb-4">{{ __('Items List') }}</h3>
-                
+
                 @if($items->isEmpty())
                     <p>{{ __('No entries found.') }}</p>
                 @else
@@ -31,18 +38,18 @@
                         <thead>
                             <tr>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Category</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Κατηγορία</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Περιγραφήn</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">S/N</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Brand/Model</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Status</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Year of Purchase</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Source of Funding</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Comments</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Assigned To</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">File Path</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Μάρκα/Μοντέλο</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Φυσική Κατάσταση</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Έτος κτήσης</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Αξία</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Πηγή Χρηματοδότησης</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Σχόλια</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Χρέωση</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Χρεωστικό</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Ενέργειες</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">

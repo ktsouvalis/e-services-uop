@@ -118,7 +118,7 @@
                     <label for="assigned_to" class="block text-sm font-medium text-gray-700">{{ __('Assigned To') }}</label>
                     <select name="assigned_to" id="assigned_to" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                         <option value="99">-</option>
-                        <option value="{{ auth()->user()->id }}">{{ auth()->user()->name }}</option>     
+                        <option value="{{ auth()->user()->id }}">{{ auth()->user()->name }}</option>
                     </select>
                     @error('assigned_to')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -140,10 +140,10 @@
             <!-- Submit Button -->
             <div class="flex items-center justify-between">
                 <a href="{{ route('items.index') }}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                    {{ __('Cancel') }}
+                    {{ __('Επιστροφή') }}
                 </a>
                 <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                    {{ __('Create Item') }}
+                    {{ __('Δημιουργία') }}
                 </button>
             </div>
         </form>

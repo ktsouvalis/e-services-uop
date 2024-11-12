@@ -50,7 +50,7 @@
                             <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
                                 <label for="status" class="block text-gray-700 text-sm font-bold mb-2">{{ __('Status') }}</label>
                                 <select name="status" id="status" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                    <option value="Άχρηστο" {{ $item->status == "Άχρηστο" ? 'selected' : '' }}>Άχρηστο</option>   
+                                    <option value="Άχρηστο" {{ $item->status == "Άχρηστο" ? 'selected' : '' }}>Άχρηστο</option>
                                     <option value="Μέτρια" {{ $item->status == "Μέτρια" ? 'selected' : '' }}>Μέτρια</option>
                                     <option value="Καλή" {{ $item->status == "Καλή" ? 'selected' : '' }}>Καλή</option>
                                     <option value="Άριστη" {{ $item->status == "Άριστη" ? 'selected' : '' }}>Άριστη</option>
@@ -71,7 +71,7 @@
                                 <label for="source_of_funding" class="block text-gray-700 text-sm font-bold mb-2">{{ __('Source of Funding') }}</label>
                                 <select name="source_of_funding" id="source_of_funding" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                                     <option value="Τακτικός Προϋπολογισμός" {{ $item->source_of_funding == "Τακτικός Προϋπολογισμός" ? 'selected' : '' }}>Τακτικός Προϋπολογισμός</option>
-                                    <option value="ΠΔΕ" {{ $item->source_of_funding == "ΠΔΕ" ? 'selected' : '' }}>ΠΔΕ</option>      
+                                    <option value="ΠΔΕ" {{ $item->source_of_funding == "ΠΔΕ" ? 'selected' : '' }}>ΠΔΕ</option>
                                 </select>
                             </div>
                         </div>
@@ -94,7 +94,7 @@
                             <div class="w-full px-3">
                                 Existing File: <a href="{{ route('items.download_file', ['item' => $item->id]) }}" class="text-blue-600">
                                     {{$item->file_path}}
-                                </a>  
+                                </a>
                                 <label for="file_path" class="block text-gray-700 text-sm font-bold mb-2">{{ __('File Path') }}</label>
                                 <input type="file" name="file_path" id="file_path" value="{{ $item->file_path }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                             </div>
@@ -102,10 +102,13 @@
 
                         <div class="flex items-center justify-between">
                             <a href="{{ route('items.index') }}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                                {{ __('Cancel') }}
+                                {{ __('Επιστροφή') }}
+                            </a>
+                            <a href="{{route('items.edit', $item->id)}}" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                {{ __('Αναίρεση αλλαγών') }}
                             </a>
                             <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                                {{ __('Update Item') }}
+                                {{ __('Ενημέρωση') }}
                             </button>
                         </div>
                     </form>
