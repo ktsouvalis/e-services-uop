@@ -11,11 +11,11 @@
             {{ __('Edit Item') }}
         </h2>
     </x-slot>
-    @if($item->given_away)
-    <div id="item-given-message" class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative text-center" role="alert">
+    {{-- @if($item->given_away) --}}
+    <div id="item-given-message" class=" @if($item->given_away) block @else hidden @endif bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative text-center" role="alert">
         <span class="block sm:inline">Το αντικείμενο έχει δοθεί εκτός ΜΨΔ</span>
     </div>
-    @endif
+    {{-- @endif --}}
     @include('components.message')
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
