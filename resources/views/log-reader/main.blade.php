@@ -21,7 +21,7 @@
                         @error('file')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
-                        
+
                     </div>
                     <div class="mb-4">
                         <label for="regex" class="block text-sm font-medium text-gray-700">{{ __('Regex') }}</label>
@@ -47,7 +47,7 @@
                     </div>
                 </form>
                 <div class="mb-4">
-                    <table class="my-2 w-full divide-y divide-gray-200 border border-gray-300">
+                    <table class="my-2 w-full table-fixed divide-y divide-gray-200 border border-gray-300">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>Αναζήτηση για</b></th>
@@ -56,16 +56,16 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap border border-gray-300">IP</td>
-                                <td class="px-6 py-4 whitespace-nowrap border border-gray-300">"\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"</td>
+                                <td class="px-6 py-4 border border-gray-300">IP</td>
+                                <td class="px-6 py-4 border border-gray-300">"\b((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"</td>
                             </tr>
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap border border-gray-300">email</td>
-                                <td class="px-6 py-4 whitespace-nowrap border border-gray-300">"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"</td>
+                                <td class="px-6 py-4 border border-gray-300">email</td>
+                                <td class="px-6 py-4 border border-gray-300">"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"</td>
                             </tr>
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap border border-gray-300">URL</td>
-                                <td class="px-6 py-4 whitespace-nowrap border border-gray-300">"\b(https?|ftp|file):\/\/[-A-Za-z0-9+&@#\/%?=~_|!:,.;]*[-A-Za-z0-9+&@#\/%=~_|]"</td>
+                                <td class="px-6 py-4 border border-gray-300">URL</td>
+                                <td class="px-6 py-4 border border-gray-300">"\b(https?|ftp|file):\/\/[-A-Za-z0-9+&@#\/%?=~_|!:,.;]*[-A-Za-z0-9+&@#\/%=~_|]"</td>
                             </tr>
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap border border-gray-300">Ημερομηνία</td>

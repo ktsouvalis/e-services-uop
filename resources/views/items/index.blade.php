@@ -39,7 +39,7 @@
                             <tr>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Κατηγορία</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Περιγραφήn</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Περιγραφή</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">S/N</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Μάρκα/Μοντέλο</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Φυσική Κατάσταση</th>
@@ -54,7 +54,7 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($items as $item)
-                                <tr>
+                                <tr @if($item->given_away) style="background-color: #fff3cd;" @endif>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $item->id }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $item->category->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $item->description }}</td>

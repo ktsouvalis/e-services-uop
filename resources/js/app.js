@@ -9,4 +9,5 @@ window.$ = window.jQuery = jQuery; // Make jQuery globally available
 
 Alpine.start();
 
-import './datatable_init'; // Import datatable_init.js after making jQuery globally available
+import './datatable_init'; // Import datatable_init.js
+import './item_given'; // Import item_given.js

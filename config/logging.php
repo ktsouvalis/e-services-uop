@@ -75,6 +75,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'items' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/items.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 365),
+            'replace_placeholders' => true,
+            'encoding'=> 'utf-8',
+        ],
+
         'menus' => [
             'driver' => 'daily',
             'path' => storage_path('logs/menus.log'),

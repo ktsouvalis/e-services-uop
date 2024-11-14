@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('source_of_funding')->nullable();
             $table->text('comments')->nullable();
             $table->string('file_path')->nullable();
+            $table->boolean('given_away')->default(false);
             $table->timestamps();
         });
     }

@@ -80,6 +80,10 @@ Route::resource('/items', ItemController::class)->middleware('auth');
 
 Route::group(['prefix' => 'items', 'middleware'=>'auth'], function(){
     Route::get('/{item}/download_f', [ItemController::class, 'download_file'])->name('items.download_file');
+
+    Route::post('/{item}/given', [ItemController::class, 'given'])->name('items.given');
+
+    Route::delete('/{item}/delete_f', [ItemController::class, 'delete_file'])->name('items.delete_file');
 });
 Route::get('/extract_items', [ItemController::class, 'extract'])->name('items.extract');
 

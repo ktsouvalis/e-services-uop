@@ -7,6 +7,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -65,8 +66,8 @@ class ItemController extends Controller
             $file->move(storage_path('app/private/items'), $filename);
             $incoming['file_path'] = $filename;
         }
-        Item::create($incoming);
-
+        $new_item = Item::create($incoming);
+        Log::channel('items')->info('User '.auth()->user()->name.' created item with id '.$new_item->id);
         return redirect()->route('items.index')->with('success', 'Item created successfully.');
     }
 
@@ -128,7 +129,7 @@ class ItemController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Item update failed.');
         }
-
+        Log::channel('items')->info('User '.auth()->user()->name.' updated item with id '.$item->id);
         return redirect()->back()->with('success', 'Item updated successfully.');
     }
 
@@ -149,13 +150,14 @@ class ItemController extends Controller
             return redirect()->route('items.index')->with('error', 'Item delete failed.');
         }
         Storage::delete('app/private/items/'.$item->file_path);
+        Log::channel('items')->info('User '.auth()->user()->name.' deleted item with id '.$item->id);
         return redirect()->route('items.index')->with('success', 'Item deleted successfully.');
     }
 
     public function extract()
     {
         Gate::authorize('create', Item::class);
-        $items = Item::all();
+        $items = Item::where('given_away', 0)->get();
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
@@ -201,7 +203,7 @@ class ItemController extends Controller
         $row = 2;
         foreach ($items as $item) {
             $sheet->setCellValue('A' . $row, $item->id);
-            $sheet->setCellValue('B' . $row, $item->user->name);
+            $sheet->setCellValue('B' . $row, optional($item->user)->name);
             $sheet->setCellValue('C' . $row, $item->comments);
             $sheet->setCellValue('D' . $row, $item->category->name);
             $sheet->setCellValue('E' . $row, $item->description);
@@ -229,5 +231,27 @@ class ItemController extends Controller
 
         ob_end_clean();
         return response()->download($path);
+    }
+
+    public function delete_file(Request $request, Item $item){
+        Gate::authorize('update', $item);
+        Storage::delete('app/private/items/'.$item->file_path);
+        $item->file_path = null;
+        $item->save();
+        Log::channel('items')->info('User '.auth()->user()->name.' deleted file of item with id '.$item->id);
+        return redirect()->back()->with('success', 'File deleted successfully.');
+    }
+
+    public function given(Request $request, Item $item){
+        Gate::authorize('update', $item);
+        if($request->input('checked')=='true'){
+            $item->given_away = 1;
+            $item->user_id = null;
+        }
+        else
+            $item->given_away = 0;
+        $item->save();
+        Log::channel('items')->info('User '.auth()->user()->name.' marked item with id '.$item->id).' as given.';
+        return response()->json(['message' => 'Item updated successfully']);  
     }
 }

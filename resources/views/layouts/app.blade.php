@@ -67,5 +67,6 @@
                 @include('components.chat-modal')
             </main>
         </div>
+        @stack('scripts')
     </body>
 </html>
