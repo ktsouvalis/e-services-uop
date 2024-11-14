@@ -12,7 +12,7 @@
         </h2>
     </x-slot>
     @if($item->given_away)
-    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative text-center" role="alert">
+    <div id="item-given-message" class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative text-center" role="alert">
         <span class="block sm:inline">Το αντικείμενο έχει δοθεί εκτός ΜΨΔ</span>
     </div>
     @endif

@@ -4,7 +4,7 @@ import 'datatables.net-dt';
 import jQuery from 'jquery';
 window.$ = window.jQuery = jQuery;
 
-$(document).ready(function () {
+$(function () {
 
     $('#DataTable thead tr #search').each(function() {
         
