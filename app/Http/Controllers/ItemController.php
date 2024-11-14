@@ -66,9 +66,15 @@ class ItemController extends Controller
             $file->move(storage_path('app/private/items'), $filename);
             $incoming['file_path'] = $filename;
         }
-        $new_item = Item::create($incoming);
+        try{
+            $new_item = Item::create($incoming);
+        }
+        catch(\Exception $e){
+            Log::channel('items')->error('User '.auth()->user()->name.' failed to create item. Error: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Κάποιο σφάλμα συνέβη. Ελέγξτε το αρχείο log/items για περισσότερες πληροφορίες.');
+        }
         Log::channel('items')->info('User '.auth()->user()->name.' created item with id '.$new_item->id);
-        return redirect()->route('items.index')->with('success', 'Item created successfully.');
+        return redirect()->route('items.index')->with('success', 'Το αντικείμενο δημιουργήθηκε επιτυχώς.');
     }
 
 
@@ -127,10 +133,11 @@ class ItemController extends Controller
         }
         catch(\Exception $e){
             DB::rollBack();
-            return redirect()->back()->with('error', 'Item update failed.');
+            Log::channel('items')->error('User '.auth()->user()->name.' failed to update item with id '.$item->id.'. Error: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Κάποιο σφάλμα συνέβη. Ελέγξτε το αρχείο log/items για περισσότερες πληροφορίες.');
         }
         Log::channel('items')->info('User '.auth()->user()->name.' updated item with id '.$item->id);
-        return redirect()->back()->with('success', 'Item updated successfully.');
+        return redirect()->back()->with('success', 'Το αντικείμενο ενημερώθηκε επιτυχώς.');
     }
 
     /**
@@ -147,11 +154,12 @@ class ItemController extends Controller
         }
         catch(Exception $e){
             DB::rollBack();
-            return redirect()->route('items.index')->with('error', 'Item delete failed.');
+            Log::channel('items')->error('User '.auth()->user()->name.' failed to delete item with id '.$item->id.'. Error: '.$e->getMessage());
+            return response()->json(['status'=>'error', 'message' => 'Κάποιο σφάλμα συνέβη. Ελέγξτε το αρχείο log/items για περισσότερες πληροφορίες.']);
         }
         Storage::delete('app/private/items/'.$item->file_path);
         Log::channel('items')->info('User '.auth()->user()->name.' deleted item with id '.$item->id);
-        return redirect()->route('items.index')->with('success', 'Item deleted successfully.');
+        return response()->json(['status'=>'success','message' => 'Το αντικείμενο διαγράφηκε επιτυχώς.']);
     }
 
     public function extract()
@@ -239,7 +247,7 @@ class ItemController extends Controller
         $item->file_path = null;
         $item->save();
         Log::channel('items')->info('User '.auth()->user()->name.' deleted file of item with id '.$item->id);
-        return redirect()->back()->with('success', 'File deleted successfully.');
+        return redirect()->back()->with('success', 'Το αρχείο διαγράφηκε επιτυχώς.');
     }
 
     public function given(Request $request, Item $item){
@@ -250,8 +258,15 @@ class ItemController extends Controller
         }
         else
             $item->given_away = 0;
+        try{
+            $item->save;
+        }
+        catch(\Exception $e){
+            Log::channel('items')->error('User '.auth()->user()->name.' failed to change item\'s with id '.$item->id.' given status. Error: '.$e->getMessage());
+            return response()->json(['status'=>'error','message' => 'Κάποιο σφάλμα συνέβη. Ελέγξτε το αρχείο log/items.log για περισσότερες πληροφορίες.']);
+        }
         $item->save();
-        Log::channel('items')->info('User '.auth()->user()->name.' marked item with id '.$item->id).' as given.';
-        return response()->json(['message' => 'Item updated successfully']);  
+        Log::channel('items')->info('User '.auth()->user()->name.' changed item\'s with id '.$item->id).' given status.';
+        return response()->json(['status'=>'success','message' => 'Το αντικείμενο ενημερώθηκε επιτυχώς.']);  
     }
 }

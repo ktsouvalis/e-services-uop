@@ -1,0 +1,1 @@
+<div id="message" class="text-center hidden p-4 mb-4 text-sm rounded-lg" role="alert"></div>
