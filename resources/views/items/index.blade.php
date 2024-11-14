@@ -38,16 +38,16 @@
                         <thead>
                             <tr>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Κατηγορία</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Περιγραφή</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Κατηγορία</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Περιγραφή</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">S/N</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Μάρκα/Μοντέλο</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Φυσική Κατάσταση</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Έτος κτήσης</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Μάρκα/Μοντέλο</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Φυσική Κατάσταση</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Έτος κτήσης</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Αξία</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Πηγή Χρηματοδότησης</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Πηγή Χρηματοδότησης</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Σχόλια</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" id="search">Χρέωση</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Χρέωση</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Χρεωστικό</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Ενέργειες</th>
                             </tr>
