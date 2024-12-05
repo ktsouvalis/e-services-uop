@@ -36,24 +36,29 @@ class AuthenticatedSessionController extends Controller
         // Connect to the LDAP server
         $ldap = Container::getDefaultConnection();
         $ldap->connect();
-               
+
         // Search for the user
         $user = User::where('uid', '=', $username)->first();
 
         if (!$user) {
             return redirect()->back()->with('error', 'Invalid credentials');
         }
-        
+
         // Attempt to bind with the user's credentials
         $isAuthenticated = $ldap->auth()->attempt($user, $password);
         if($isAuthenticated){
-            auth()->login(\App\Models\User::where('username', $username)->firstOrFail());
+            $app_user = \App\Models\User::where('username', $username)->firstOrFail();
+            auth()->login($app_user);
             session()->regenerate();
+            if($app_user->admin){
+                $token = $app_user->createToken($app_user->username,['create-menu']);
+                session(['token' => $token->plainTextToken]);
+            }
         }
         else{
             return redirect()->back()->with('error', 'Invalid credentials');
         }
-        
+
 
         Log::info('User logged in.');
 
