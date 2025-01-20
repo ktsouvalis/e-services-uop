@@ -179,14 +179,14 @@ class SheetmailerController extends Controller
         foreach($emails as $email){
             $error=0;
             try{
-                Mail::to($email['email'])->send(new MailSheetMailer($sheetmailer, $email['additionalData']));
+                Mail::to($email['email'])->queue(new MailSheetMailer($sheetmailer, $email['additionalData']));
             }
             catch(\Exception $e){
-                Log::channel('sheetmailers_failure')->error("Sheetmailer #$sheetmailer->id: mail not sent to ".$email['email']. '. Reason: '.$e->getMessage());
+                Log::channel('sheetmailers_failure')->error("Sheetmailer #$sheetmailer->id: mail not queued to ".$email['email']. '. Reason: '.$e->getMessage());
                 $error = 1;
                 $errors= 1;
             }
-            if(!$error)Log::channel('sheetmailers_success')->info("Sheetmailer #$sheetmailer->id: mail sent to ".$email['email']);        
+            if(!$error)Log::channel('sheetmailers_success')->info("Sheetmailer #$sheetmailer->id: mail queued to ".$email['email']);        
         }
         session()->forget('emails');
         session()->forget('emailCount');
