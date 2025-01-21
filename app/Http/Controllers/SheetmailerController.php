@@ -97,7 +97,7 @@ class SheetmailerController extends Controller
             return redirect()->back()->with('error', 'Sheetmailer not deleted. Check today\'s sheetmailers log for more information.');
         }
         Log::channel('sheetmailers_actions')->info('Sheetmailer deleted successfully');
-        return redirect()->route('sheetmailers.index')->with('success', 'sheetmailer deleted successfully.');
+        return redirect()->route('sheetmailers.index')->with('success', 'Sheetmailer deleted successfully.');
     }
 
     public function upload_file(Request $request, Sheetmailer $sheetmailer){
@@ -168,7 +168,7 @@ class SheetmailerController extends Controller
         Gate::authorize('view', $sheetmailer);
 
         $emails = session('emails');
-        return new MailSheetMailer($sheetmailer, $emails[0]['additionalData']);
+        return new MailSheetMailer($sheetmailer, $emails[0]['additionalData'], 'preview');
     }
 
     public function send(Request $request, Sheetmailer $sheetmailer){
@@ -179,7 +179,7 @@ class SheetmailerController extends Controller
         foreach($emails as $email){
             $error=0;
             try{
-                Mail::to($email['email'])->queue(new MailSheetMailer($sheetmailer, $email['additionalData']));
+                Mail::to($email['email'])->queue(new MailSheetMailer($sheetmailer, $email['additionalData'], Auth::user()->username));
             }
             catch(\Exception $e){
                 Log::channel('sheetmailers_failure')->error("Sheetmailer #$sheetmailer->id: mail not queued to ".$email['email']. '. Reason: '.$e->getMessage());
@@ -192,8 +192,8 @@ class SheetmailerController extends Controller
         session()->forget('emailCount');
         session()->forget('non_emails');
         if(!$errors)
-            return redirect()->route("sheetmailers.edit", ['sheetmailer' => $sheetmailer->id])->with('success', 'Η ενέργεια ολοκληρώθηκε χωρίς λάθη');
+            return redirect()->route("sheetmailers.edit", ['sheetmailer' => $sheetmailer->id])->with('success', 'Τα email προστέθηκαν στην ουρά προς αποστολή');
         else
-            return redirect()->route("sheetmailers.edit", ['sheetmailer' => $sheetmailer->id])->with('warning', 'Η ενέργεια ολοκληρώθηκε με λάθη που καταγράφηκαν στο log sheetmailers_failure');
+            return redirect()->route("sheetmailers.edit", ['sheetmailer' => $sheetmailer->id])->with('warning', 'Η προσθήκη των email στην ουρά προς αποστολή ολοκληρώθηκε με λάθη που καταγράφηκαν στο log sheetmailers_failure');
     }
 }

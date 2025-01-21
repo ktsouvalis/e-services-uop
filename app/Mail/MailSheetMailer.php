@@ -17,13 +17,15 @@ class MailSheetMailer extends Mailable implements ShouldQueue
     use SerializesModels, isMonitored;
     public $sheetmailer;
     public $additionalData;
+    public $username; //the user who triggered the mail job
     /**
      * Create a new message instance.
      */
-    public function __construct(Sheetmailer $sheetmailer, $additionalData)
+    public function __construct(Sheetmailer $sheetmailer, $additionalData, $username)
     {
         $this->sheetmailer = $sheetmailer;
         $this->additionalData = $additionalData;
+        $this->username = $username;
     }
 
     /**

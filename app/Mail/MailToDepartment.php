@@ -19,16 +19,18 @@ class MailToDepartment extends Mailable implements ShouldQueue
     public $signature;
     public $body;
     public $files;
+    public $username; //the user who triggered the mail job
     /**
      * Create a new message instance.
      */
-    public function __construct($subject, $signature, $body, $files)
+    public function __construct($subject, $signature, $body, $files, $username)
     {
         //
         $this->subject = $subject;
         $this->signature = $signature;
         $this->body = $body;
         $this->files = $files;
+        $this->username = $username;
     }
 
     /**

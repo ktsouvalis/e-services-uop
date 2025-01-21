@@ -240,14 +240,14 @@ class MailerController extends Controller
         $filename = $files[$fileKey]['filename'];
         $path = "/mailers/$mailer->id/$filename";
         try{
-            Mail::to($department->email)->send(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path]));
+            Mail::to($department->email)->queue(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path], Auth::user()->username));
         }
         catch(\Exception $e){
-            Log::channel('mailers')->error("File '".$filename."' to ".$department->name.": ".$e->getMessage());
-            return redirect()->back()->with('error', 'Mail not sent.');
+            Log::channel('mailers')->error("File '".$filename."' to ".$department->name." not queued: ".$e->getMessage());
+            return redirect()->back()->with('error', 'Mail not queued.');
         }
-        Log::channel('mailers')->info("File '".$filename."' to ".$department->name.": Mail sent successfully.");
-        return redirect()->back()->with('success', 'Mail sent successfully.');
+        Log::channel('mailers')->info("File '".$filename."' to ".$department->name.": Mail queued successfully.");
+        return redirect()->back()->with('success', 'Mail queued successfully.');
     }
 
     public function send_all(Mailer $mailer){
@@ -261,16 +261,16 @@ class MailerController extends Controller
             $filename = $file['filename'];
             $department = $file['to'];
             $path = "/mailers/$mailer->id/$filename";
-            $error = ['success' => 'Valid mails sent successfully.'];
+            $error = ['success' => 'Valid mails queued successfully.'];
             try{
-                Mail::to($department->email)->send(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path]));
+                Mail::to($department->email)->queue(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path], Auth::user()->username));
             }
             catch(\Exception $e){
-                Log::channel('mailers')->error("File '".$filename."' to ".$department->name.": ".$e->getMessage());
-                $error = ['warning' => 'Mails sent with errors. Check today\'s mailers log for more information.'];
+                Log::channel('mailers')->error("File '".$filename."' to ".$department->name." not queued: ".$e->getMessage());
+                $error = ['warning' => 'Mails queued with errors. Check today\'s mailers log for more information.'];
                 continue;
             }
-            Log::channel('mailers')->info("File '".$filename."' to ".$department->name.": Mail sent successfully.");
+            Log::channel('mailers')->info("File '".$filename."' to ".$department->name.": Mails queued successfully.");
         }
         return redirect()->back()->with($error);
     }
