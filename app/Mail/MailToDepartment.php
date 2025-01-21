@@ -10,10 +10,11 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use romanzipp\QueueMonitor\Traits\IsMonitored;
 
-class MailToDepartment extends Mailable
+class MailToDepartment extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels;
+    use SerializesModels, isMonitored;
     public $subject;
     public $signature;
     public $body;

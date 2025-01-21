@@ -87,9 +87,8 @@ Route::group(['prefix' => 'items', 'middleware'=>'auth'], function(){
 });
 Route::get('/extract_items', [ItemController::class, 'extract'])->name('items.extract');
 
-Route::get('failed_jobs', function () {
-    $failedJobs = DB::table('failed_jobs')->get();
-    return view('failed_jobs.index', compact('failedJobs'));
-})->middleware('auth')->name('failed_jobs.index');
+Route::get('/jobs', function () {
+    return view('queue-monitor::dashboard');
+})->middleware('auth')->name('jobs');
 
 require __DIR__.'/auth.php';

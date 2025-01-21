@@ -10,10 +10,11 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use App\Models\Sheetmailer;
+use romanzipp\QueueMonitor\Traits\IsMonitored;
 
-class MailSheetMailer extends Mailable
+class MailSheetMailer extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels;
+    use SerializesModels, isMonitored;
     public $sheetmailer;
     public $additionalData;
     /**
@@ -59,4 +60,10 @@ class MailSheetMailer extends Mailable
     {
         return [];
     }
+
+    // If you want to keep monitoring only for failure, you can override this method
+    // public static function keepMonitorOnSuccess(): bool
+    // {
+    //     return false;
+    // }
 }

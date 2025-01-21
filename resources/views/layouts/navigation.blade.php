@@ -19,7 +19,11 @@
                         <x-nav-link :href="route('menus.index')" :active="request()->routeIs('menus')">
                             {{ __('Menus') }}
                         </x-nav-link>
+                        <x-nav-link :href="url('/jobs')" :active="request()->routeIs('jobs')">
+                            {{ __('Jobs') }}
+                        </x-nav-link>
                     @endif
+                    
                     @foreach(App\Models\Menu::all() as $menu)
                         <x-nav-link :href="route($menu->route )" :active="request()->routeIs($menu->route_is)">
                             {{ $menu->title }}
