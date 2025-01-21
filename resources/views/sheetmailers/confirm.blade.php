@@ -30,31 +30,6 @@
         </table>
     </div>
     @endif
-    <div class="py-12 overflow-x-auto">
-        <div class="bg-green-100 border border-green-400 px-4 py-3 rounded relative" role="alert">
-            <strong class="font-bold">Έγκυρες διευθύνσεις email ({{ session('emailCount')}})</strong>
-            <br>
-            <table class="my-2 w-full divide-y divide-gray-200 border border-gray-300">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>#</b></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>email</b></th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>Additional Data</b></th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    @foreach (session('emails',[]) as $correspondent)
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $loop->iteration }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $correspondent['email'] }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $correspondent['additionalData'] }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
-
     @if(session('emailCount') > 0)
     <div class="mt-4">
         <form action="{{ route('sheetmailers.send', $sheetmailer) }}" method="POST">
@@ -82,5 +57,31 @@
             Go Back
         </a>
     </div>
+    <div class="py-12 overflow-x-auto">
+        <div class="bg-green-100 border border-green-400 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">Έγκυρες διευθύνσεις email ({{ session('emailCount')}})</strong>
+            <br>
+            <table class="my-2 w-full divide-y divide-gray-200 border border-gray-300">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>#</b></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>email</b></th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>Additional Data</b></th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach (session('emails',[]) as $correspondent)
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $loop->iteration }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $correspondent['email'] }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $correspondent['additionalData'] }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    
 </div>
 </x-app-layout>

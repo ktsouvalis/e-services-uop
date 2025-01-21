@@ -64,6 +64,14 @@
                           </svg>                          
                           {{ __('Update') }}
                         </x-primary-button>
+                        @if($sheetmailer->subject or $sheetmailer->body or $sheetmailer->signature)
+                        <a href="{{ route('sheetmailers.preview', $sheetmailer) }}" target="_blank" class="inline-flex items-center mx-2 px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-500 focus:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 mr-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 mx-1">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            Preview Mail
+                        </a>
+                        @endif
                     </div>
                 </form>
                 <hr class=my-2>
