@@ -4,7 +4,7 @@
 php artisan queue:work &
 
 # Start npm dev server
-npm run dev &
+npm run build &
 
 # Start Reverb
 php artisan reverb:start &
