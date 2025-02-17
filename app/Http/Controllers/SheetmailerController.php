@@ -167,8 +167,7 @@ class SheetmailerController extends Controller
     public function preview(Request $request, Sheetmailer $sheetmailer){
         Gate::authorize('view', $sheetmailer);
 
-        $emails = session('emails');
-        return new MailSheetMailer($sheetmailer, $emails[0]['additionalData'], 'preview');
+        return new MailSheetMailer($sheetmailer, '', 'preview');
     }
 
     public function send(Request $request, Sheetmailer $sheetmailer){
