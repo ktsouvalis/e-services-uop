@@ -87,8 +87,8 @@ Route::group(['prefix' => 'items', 'middleware'=>'auth'], function(){
 });
 Route::get('/extract_items', [ItemController::class, 'extract'])->name('items.extract');
 
-Route::get('/jobs', function () {
-    return view('queue-monitor::dashboard');
-})->middleware('auth')->name('jobs');
+// Route::get('/jobs', function () {
+//     return view('queue-monitor::dashboard');
+// })->middleware('auth')->name('jobs');
 
 require __DIR__.'/auth.php';
