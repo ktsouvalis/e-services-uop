@@ -50,7 +50,7 @@ class ItemController extends Controller
             'source_of_funding' => 'nullable|string|',
             'user_id' => 'nullable|string|max:255',
             'comments' => 'nullable|string',
-            'file_path' => 'nullable|file|',
+            'file_path' => 'nullable|file|mimeTypes:application/pdf',
         ]);
         $incoming = $request->input();
 
@@ -110,7 +110,7 @@ class ItemController extends Controller
             'source_of_funding' => 'nullable|string|',
             'user_id' => 'nullable|string|max:255',
             'comments' => 'nullable|string',
-            'file_path' => 'nullable|file|',
+            'file_path' => 'nullable|file|mimeTypes:application/pdf',
         ]);
 
         $incoming = $request->all();
