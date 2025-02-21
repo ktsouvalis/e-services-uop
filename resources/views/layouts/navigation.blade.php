@@ -12,15 +12,9 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
-                    @if(Auth::check() and Auth::user()->admin)
-                        <x-nav-link :href="route('menus.index')" :active="request()->routeIs('menus')">
-                            {{ __('Menus') }}
-                        </x-nav-link>
-                        <x-nav-link :href="url('/jobs')" :active="request()->routeIs('jobs')">
-                            {{ __('Jobs') }}
+                    @if(!request()->routeIs('dashboard'))
+                        <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                            {{ __('Dashboard') }}
                         </x-nav-link>
                     @endif
                     
