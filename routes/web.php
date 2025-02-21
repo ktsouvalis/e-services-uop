@@ -12,7 +12,7 @@ use App\Http\Controllers\MailerController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogReaderController;
 use App\Http\Controllers\SheetmailerController;
-
+use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -87,8 +87,6 @@ Route::group(['prefix' => 'items', 'middleware'=>'auth'], function(){
 });
 Route::get('/extract_items', [ItemController::class, 'extract'])->name('items.extract');
 
-// Route::get('/jobs', function () {
-//     return view('queue-monitor::dashboard');
-// })->middleware('auth')->name('jobs');
+Route::resource('users', UserController::class)->middleware('auth');
 
 require __DIR__.'/auth.php';

@@ -84,9 +84,9 @@
                 <h3 class="text-lg font-semibold mb-4">{{ __('Create New Menu') }}</h3>
                 <form action="{{ route('menus.store') }}" method="POST">
                     @csrf
-
+                    <div class="flex flex-wrap -mx-3 mb-6">
                     <!-- Title Field -->
-                    <div class="mb-4">
+                    <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
                         <label for="title" class="block text-sm font-medium text-gray-700">{{ __('Title') }}</label>
                         <input type="text" name="title" id="title" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('title') }}">
                         @error('title')
@@ -95,23 +95,25 @@
                     </div>
 
                     <!-- Route Field -->
-                    <div class="mb-4">
+                    <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
                         <label for="route" class="block text-sm font-medium text-gray-700">{{ __('Route') }}</label>
                         <input type="text" name="route" id="route" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('route') }}">
                         @error('route')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
+                    </div>
 
+                    <div class="flex flex-wrap -mx-3 mb-6">
                     <!-- RouteIs Field -->
-                    <div class="mb-4">
+                    <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
                         <label for="route_is" class="block text-sm font-medium text-gray-700">{{ __('RouteIs') }}</label>
                         <input type="text" name="route_is" id="route_is" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('route_is') }}">
                         @error('route_is')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
-
+                    </div>
 
                     <!-- Submit Button -->
                     

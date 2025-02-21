@@ -28,26 +28,34 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        // $request->authenticate();
-        // dd($request->all());
+        
         $username = $request->input('username');
         $password = $request->input('password');
 
+        // check if user exists in the database
+        $app_user = \App\Models\User::where('username', $username)->first();
+        if (!$app_user) {
+            return redirect()->back()->with('error', 'Invalid credentials');
+        }
+
         // Connect to the LDAP server
         $ldap = Container::getDefaultConnection();
-        $ldap->connect();
-               
+        try{
+            $ldap->connect();
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Could not connect to LDAP server');
+        }
+        
         // Search for the user
-        $user = User::where('uid', '=', $username)->first();
-
-        if (!$user) {
+        $ldap_user = User::where('uid', '=', $username)->first();
+        if (!$ldap_user) {
             return redirect()->back()->with('error', 'Invalid credentials');
         }
         
         // Attempt to bind with the user's credentials
         $isAuthenticated = $ldap->auth()->attempt($user, $password);
         if($isAuthenticated){
-            auth()->login(\App\Models\User::where('username', $username)->firstOrFail());
+            auth()->login($app_user);
             session()->regenerate();
         }
         else{
