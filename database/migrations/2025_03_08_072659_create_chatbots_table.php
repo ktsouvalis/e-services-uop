@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('ai_model_id')->constrained()->onDelete('cascade');
             $table->string('title');
-            $table->string('api_key');
+            $table->string('api_key', 1024); // Increase the size of the api_key column
             $table->json('history')->nullable();
             $table->string('reasoning_effort')->nullable();
             $table->timestamps();

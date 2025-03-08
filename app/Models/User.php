@@ -53,4 +53,8 @@ class User extends Authenticatable
     public function sheetmailers(){
         return $this->hasMany(Sheetmailer::class);
     }
+
+    public function chatbots(){
+        return $this->hasMany(Chatbot::class);
+    }
 }

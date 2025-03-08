@@ -14,6 +14,7 @@ use App\Http\Controllers\LogReaderController;
 use App\Http\Controllers\SheetmailerController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AImodelController;
+use App\Http\Controllers\ChatbotController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -91,5 +92,9 @@ Route::get('/extract_items', [ItemController::class, 'extract'])->name('items.ex
 Route::resource('users', UserController::class)->middleware('auth');
 
 Route::resource('aimodels', AImodelController::class);
+
+Route::resource('chatbots', ChatbotController::class);
+
+Route::post('/chatbots/{chatbot}/update-history', [ChatbotController::class, 'updateHistory'])->name('chatbots.update-history');
 
 require __DIR__.'/auth.php';
