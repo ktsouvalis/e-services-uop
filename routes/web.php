@@ -13,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogReaderController;
 use App\Http\Controllers\SheetmailerController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AImodelController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -88,5 +89,7 @@ Route::group(['prefix' => 'items', 'middleware'=>'auth'], function(){
 Route::get('/extract_items', [ItemController::class, 'extract'])->name('items.extract');
 
 Route::resource('users', UserController::class)->middleware('auth');
+
+Route::resource('aimodels', AImodelController::class);
 
 require __DIR__.'/auth.php';

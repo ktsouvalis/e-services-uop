@@ -22,6 +22,9 @@
                         <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-green-600/20 ring-inset">
                             <a href="{{ url('/jobs') }}">Jobs</a>
                         </span>
+                        <span class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-700 ring-1 ring-yellow-600/20 ring-inset">
+                            <a href="{{ route('aimodels.index') }}">AI Models</a>
+                        </span>
                     </div>
                     @else
                         Καλωσήρθατε {{Auth::user()->name }}
