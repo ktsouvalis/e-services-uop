@@ -55,6 +55,10 @@
                                 <input type="checkbox" name="properties[]" value="accepts_audio" id="accepts_audio" class="rounded text-blue-600" {{ $aimodel->accepts_audio ? 'checked' : '' }}>
                                 <label for="accepts_audio" class="ml-2 text-sm text-gray-700"> Accepts Audio </label>
                             </div>
+                            <div class="flex items-start">
+                                <input type="checkbox" name="properties[]" value="accepts_chat" id="accepts_chat" class="rounded text-blue-600" {{ $aimodel->accepts_chat ? 'checked' : '' }}>
+                                <label for="accepts_chat" class="ml-2 text-sm text-gray-700"> Accepts Chat </label>
+                            </div>
                         </div>
                     </div>
 

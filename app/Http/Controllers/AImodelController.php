@@ -48,7 +48,7 @@ class AImodelController extends Controller
      */
     public function update(Request $request, AImodel $aimodel)
     {
-        $properties = ['accepts_developer_messages','accepts_system_messages', 'reasoning_effort', 'accepts_audio'];
+        $properties = ['accepts_developer_messages','accepts_system_messages', 'reasoning_effort', 'accepts_audio', 'accepts_chat'];
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
