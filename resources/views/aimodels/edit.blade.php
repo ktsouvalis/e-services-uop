@@ -35,6 +35,29 @@
                         @enderror
                     </div>
 
+                    <!-- Properties checkboxes -->
+                    <div class="mb-4">
+                        <label for="properties" class="text-sm font-medium text-gray-700">{{ __('Properties') }}</label>
+                        <div class="mt-1 grid grid-cols-1 gap-y-4">
+                            <div class="flex items-start">
+                                <input type="checkbox" name="properties[]" value="accepts_developer_messages" id="accepts_developer_messages" class="rounded text-blue-600" {{ $aimodel->accepts_developer_messages ? 'checked' : '' }}>
+                                <label for="accepts_developer_messages" class="ml-2 text-sm text-gray-700"> Accepts Developer Messages </label>
+                            </div>
+                            <div class="flex items-start">
+                                <input type="checkbox" name="properties[]" value="accepts_system_messages" id="accepts_system_messages" class="rounded text-blue-600" {{ $aimodel->accepts_system_messages ? 'checked' : '' }}>
+                                <label for="accepts_system_messages" class="ml-2 text-sm text-gray-700"> Accepts System Messages </label>
+                            </div>
+                            <div class="flex items-start">
+                                <input type="checkbox" name="properties[]" value="reasoning_effort" id="reasoning_effort" class="rounded text-blue-600" {{ $aimodel->reasoning_effort ? 'checked' : '' }}>
+                                <label for="reasoning_effort" class="ml-2 text-sm text-gray-700"> Accepts Reasoning Effort </label>
+                            </div>
+                            <div class="flex items-start">
+                                <input type="checkbox" name="properties[]" value="accepts_audio" id="accepts_audio" class="rounded text-blue-600" {{ $aimodel->accepts_audio ? 'checked' : '' }}>
+                                <label for="accepts_audio" class="ml-2 text-sm text-gray-700"> Accepts Audio </label>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex items-center justify-between">
                         <a href="{{ route('aimodels.index') }}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                             {{ __('Back') }}
