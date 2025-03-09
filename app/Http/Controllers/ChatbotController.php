@@ -79,26 +79,36 @@ class ChatbotController extends Controller
         $chatbot->history = json_encode($history);
         $chatbot->save();
 
-        // Decrypt the API key
-        $apiKey = Crypt::decryptString($chatbot->api_key);
+        try {
+            // Decrypt the API key
+            $apiKey = Crypt::decryptString($chatbot->api_key);
 
-        // Send the API request to OpenAI
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
-            'Content-Type' => 'application/json',
-         ])->withoutVerifying()->post('https://api.openai.com/v1/chat/completions', [
-            'model' => $chatbot->aiModel->name,
-            'messages' => $history,
-        ]);
+            // Send the API request to OpenAI
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Content-Type' => 'application/json',
+            ])->withoutVerifying()->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $chatbot->aiModel->name,
+                'messages' => $history,
+            ]);
 
-        $assistantMessage = $response->json()['choices'][0]['message'];
+            if ($response->successful()) {
+                $assistantMessage = $response->json()['choices'][0]['message'];
 
-        // Update the history with the assistant's response
-        $newHistory = array_merge($history, [$assistantMessage]);
-        $chatbot->history = json_encode($newHistory);
-        $chatbot->save();
+                // Update the history with the assistant's response
+                $newHistory = array_merge($history, [$assistantMessage]);
+                $chatbot->history = json_encode($newHistory);
+                $chatbot->save();
 
-        return response()->json(['assistantMessage' => $assistantMessage]);
+                return response()->json(['assistantMessage' => $assistantMessage]);
+            } else {
+                // Handle unsuccessful response
+                return response()->json(['error' => 'Failed to get a response from OpenAI'], $response->status());
+            }
+        } catch (\Exception $e) {
+            // Handle exceptions
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

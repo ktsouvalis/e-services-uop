@@ -94,13 +94,21 @@
             })
             .then(response => response.json())
             .then(data => {
-                // Replace loading message with assistant's message
-                replaceMessage(loadingMessageId, data.assistantMessage.content);
+                if (data.error) {
+                    // Handle error response from OpenAI
+                    replaceMessage(loadingMessageId, `Error: ${data.error}`);
+                } else {
+                    // Replace loading message with assistant's message
+                    replaceMessage(loadingMessageId, data.assistantMessage.content);
 
-                // Update the history with the assistant's response
-                const updatedHistory = [...newHistory, { role: 'assistant', content: data.assistantMessage.content }];
+                    // Update the history with the assistant's response
+                    const updatedHistory = [...newHistory, { role: 'assistant', content: data.assistantMessage.content }];
+                }
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error:', error);
+                replaceMessage(loadingMessageId, 'An error occurred while communicating with the server.');
+            });
         }
 
         function appendMessage(role, content) {
