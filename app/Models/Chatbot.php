@@ -18,11 +18,4 @@ class Chatbot extends Model
     {
         return $this->belongsTo(AImodel::class);
     }
-
-    // protected function casts()
-    // {
-    //     return [
-    //         'history' => 'array'
-    //     ];
-    // }    
 }

@@ -6,6 +6,7 @@ use App\Models\Chatbot;
 use App\Models\AiModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
 
 class ChatbotController extends Controller
 {
@@ -72,13 +73,32 @@ class ChatbotController extends Controller
         return redirect()->route('chatbots.index');
     }
 
-    public function updateHistory(Request $request, Chatbot $chatbot)
+    public function userUpdateHistory(Request $request, Chatbot $chatbot)
     {
         $history = $request->input('history');
         $chatbot->history = json_encode($history);
         $chatbot->save();
 
-        return response()->json(['success' => true]);
+        // Decrypt the API key
+        $apiKey = Crypt::decryptString($chatbot->api_key);
+
+        // Send the API request to OpenAI
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+            'Content-Type' => 'application/json',
+         ])->withoutVerifying()->post('https://api.openai.com/v1/chat/completions', [
+            'model' => $chatbot->aiModel->name,
+            'messages' => $history,
+        ]);
+
+        $assistantMessage = $response->json()['choices'][0]['message'];
+
+        // Update the history with the assistant's response
+        $newHistory = array_merge($history, [$assistantMessage]);
+        $chatbot->history = json_encode($newHistory);
+        $chatbot->save();
+
+        return response()->json(['assistantMessage' => $assistantMessage]);
     }
 
     /**

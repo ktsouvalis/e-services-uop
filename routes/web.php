@@ -95,6 +95,6 @@ Route::resource('aimodels', AImodelController::class);
 
 Route::resource('chatbots', ChatbotController::class);
 
-Route::post('/chatbots/{chatbot}/update-history', [ChatbotController::class, 'updateHistory'])->name('chatbots.update-history');
+Route::post('/chatbots/{chatbot}/user-update-history', [ChatbotController::class, 'userUpdateHistory'])->name('chatbots.update-history');
 
 require __DIR__.'/auth.php';
