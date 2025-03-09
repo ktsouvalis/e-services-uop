@@ -88,6 +88,22 @@
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror
                 </div>
+
+                <!-- Properties checkboxes -->
+                <div class="w-full md:w-1/2 px-3">
+                    <label for="properties" class="block text-sm font-medium text-gray-700">{{ __('Properties') }}</label>
+                    <div class="mt-1 grid grid-cols-1 gap-y-4">
+                        <div class="flex items">
+                            <input type="checkbox" name="properties[]" value="accepts_developer_messages" id="accepts_developer_messages" class="rounded text-blue-600">
+                            <label for="accepts_developer_messages" class="ml-2 text-sm text-gray-700"> Accepts Developer Messages </label>
+                            <input type="checkbox" name="properties[]" value="accepts_system_messages" id="accepts_system_messages" class="rounded text-blue-600">
+                            <label for="accepts_system_messages" class="ml-2 text-sm text-gray-700"> Accepts System Messages </label>
+                            <input type="checkbox" name="properties[]" value="reasoning_effort" id="reasoning_effort" class="rounded text-blue-600">
+                            <label for="reasoning_effort" class="ml-2 text-sm text-gray-700"> Accepts Reasoning Effort </label>
+                            <input type="checkbox" name="properties[]" value="accepts_audio" id="accepts_audio" class="rounded text-blue-600">
+                            <label for="accepts_audio" class="ml-2 text-sm text-gray-700"> Accepts Audio </label>
+                        </div>
+                    </div>
             </div>
 
             <!-- Submit Button -->

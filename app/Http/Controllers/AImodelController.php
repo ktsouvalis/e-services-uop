@@ -25,7 +25,11 @@ class AImodelController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
-
+        if($request->has('properties')){
+            foreach($request->properties as $key => $value){
+                $request[$value] = true;
+            }
+        }
         AImodel::create($request->all());
 
         return redirect()->route('aimodels.index')->with('success', 'AI Model created successfully.');

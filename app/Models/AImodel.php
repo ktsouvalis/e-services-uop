@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class AImodel extends Model
 {
     protected $table = 'ai_models';
-    protected $fillable = ['name', 'description'];
+    protected $guarded = ['id'];
 
     public function chatbots()
     {

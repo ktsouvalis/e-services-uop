@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('title');
             $table->string('api_key', 1024); // Increase the size of the api_key column
             $table->json('history')->nullable();
-            $table->string('reasoning_effort')->nullable();
             $table->timestamps();
         });
     }
