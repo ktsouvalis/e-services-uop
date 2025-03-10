@@ -11,6 +11,7 @@
         "laravel/framework": "^11.9",
         "laravel/reverb": "^1.0",
         "laravel/tinker": "^2.9",
+        "openai-php/client": "^0.10.3",
         "phpoffice/phpspreadsheet": "^3.3",
         "romanzipp/laravel-queue-monitor": "^5.3"
     },
