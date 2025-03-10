@@ -6,6 +6,7 @@ use OpenAI;
 use App\Models\AiModel;
 use App\Models\Chatbot;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Crypt;
 
@@ -44,6 +45,7 @@ class ChatbotController extends Controller
      */
     public function show(Chatbot $chatbot)
     {
+        Gate::authorize('view', $chatbot);
         if($chatbot->aiModel->accepts_chat){
             return view('chatbots.show-chat', compact('chatbot'));
         }
@@ -54,17 +56,9 @@ class ChatbotController extends Controller
         }
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Chatbot $chatbot)
-    {
-        $aiModels = AiModel::all();
-        return view('chatbots.edit', compact('chatbot', 'aiModels'));
-    }
-
     public function userUpdateHistory(Request $request, Chatbot $chatbot)
     {
+        Gate::authorize('view', $chatbot);
         $history = $request->input('history');
         $chatbot->history = json_encode($history);
         $chatbot->save();
@@ -104,6 +98,7 @@ class ChatbotController extends Controller
     }
 
     public function storeDeveloperMessages(Request $request, Chatbot $chatbot){
+        Gate::authorize('view', $chatbot);
         $developerMessages = explode(",", $request->input('developer_messages'));
         $currentHistory = $chatbot->history ? json_decode($chatbot->history, true) : [];
 
@@ -118,6 +113,7 @@ class ChatbotController extends Controller
     }
 
     public function storeSystemMessages(Request $request, Chatbot $chatbot){
+        Gate::authorize('view', $chatbot);
         $systemMessages = explode(",", $request->input('system_messages'));
         $currentHistory = $chatbot->history ? json_decode($chatbot->history, true) : [];
 
@@ -132,6 +128,7 @@ class ChatbotController extends Controller
     }
 
     public function submitAudio(Request $request, Chatbot $chatbot){
+        Gate::authorize('view', $chatbot);
         $request->validate([
             'audio_file' => 'required|file|mimes:mp3,wav',
         ]);
@@ -148,6 +145,7 @@ class ChatbotController extends Controller
     }  
     
     public function transcribeAudio(Request $request, Chatbot $chatbot){
+        Gate::authorize('view', $chatbot);
         $file_name = json_decode($chatbot->history)->file;
         $file_path = storage_path("/app/private/whisper".$chatbot->id."/".$file_name);
         $file_to_request = fopen($file_path, 'r');
