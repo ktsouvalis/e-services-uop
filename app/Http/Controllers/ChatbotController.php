@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Chatbot;
+use OpenAI;
 use App\Models\AiModel;
+use App\Models\Chatbot;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Crypt;
 
 class ChatbotController extends Controller
 {
@@ -128,6 +129,52 @@ class ChatbotController extends Controller
         $chatbot->save();
 
         return back()->with(['success' => 'Developer messages saved successfully']);
+    }
+
+    public function submitAudio(Request $request, Chatbot $chatbot){
+        $request->validate([
+            'audio_file' => 'required|file|mimes:mp3,wav',
+        ]);
+
+        $audio = $request->file('audio_file');
+        $path = $audio->storeAs('whisper'.$chatbot->id, $audio->getClientOriginalName());
+
+        // Save the filename in the chatbot's history
+        $filename = basename($path);
+        $chatbot->history = json_encode(["file"=>$filename, "transcription"=>null]);
+        $chatbot->save();
+
+        return back()->with(['success' => 'Audio file uploaded successfully']);
+    }  
+    
+    public function transcribeAudio(Request $request, Chatbot $chatbot){
+        $filename = json_decode($chatbot->history)->file;
+        $file_path = storage_path("/app/private/whisper".$chatbot->id."/".$filename);
+        $file = fopen($file_path, 'r');
+        $parameters = ['file'=>$file, 'model' => 'whisper-1', 'language' => 'el', 'temperature' => 0.1];
+        if($request->input('transcript_with_speaker_diarization')){
+            $parameters['response_format'] = "verbose_json";
+            $parameters['timestamp_granularities'] = ["segment"];
+        }
+        // Prepare the request to OpenAI
+        $apiKey = Crypt::decryptString($chatbot->api_key);
+        // $response = Http::withHeaders([
+        //     'Authorization' => 'Bearer ' . $apiKey,
+        //     'Content-Type' => 'multipart/form-data',
+        // ])->post(
+        //     'https://api.openai.com/v1/audio/transcriptions', $parameters);
+            
+        $client = OpenAI::client($apiKey);
+        $response = $client->audio()->transcribe($parameters);
+        
+        if ($response->text) {
+            $chatbot->history = $chatbot->history = json_encode(["file"=>$filename, "transcription"=>$response->text]);
+            $chatbot->save();
+
+            return back()->with(['success' => 'Audio file uploaded and transcribed successfully']);
+        } else {
+            return back()->with(['error' => 'Failed to transcribe audio file']);
+        }
     }
 
     /**

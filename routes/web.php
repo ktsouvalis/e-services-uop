@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\City;
+use App\Models\Chatbot;
 use App\Models\Department;
 use App\Events\MessageSent;
 use App\Models\Sheetmailer;
@@ -8,13 +9,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\MailerController;
+use App\Http\Controllers\AImodelController;
+use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogReaderController;
 use App\Http\Controllers\SheetmailerController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\AImodelController;
-use App\Http\Controllers\ChatbotController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -102,6 +103,14 @@ Route::group(['prefix' => 'chatbots', 'middleware'=>'auth'], function(){
     Route::post('/{chatbot}/store-developer-messages', [ChatbotController::class, 'storeDeveloperMessages'])->name('chatbots.store-developer-messages');
 
     Route::post('/{chatbot}/store-system-messages', [ChatbotController::class, 'storeSystemMessages'])->name('chatbots.store-system-messages');
-});
 
+    Route::post('/{chatbot}/submit-audio', [ChatbotController::class, 'submitAudio'])->name('chatbots.submit-audio');
+
+    Route::post('/{chatbot}/transcribe-audio', [ChatbotController::class, 'transcribeAudio'])->name('chatbots.transcribe-audio');
+
+    Route::get('/{chatbot}/download-audio', function(Chatbot $chatbot){
+        $path = storage_path("/app/private/whisper".$chatbot->id."/".json_decode($chatbot->history)->file);
+        return response()->download($path);
+    })->name('chatbots.download-audio');
+});
 require __DIR__.'/auth.php';
