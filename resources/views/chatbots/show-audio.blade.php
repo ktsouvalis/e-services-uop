@@ -36,8 +36,8 @@
                 <form action={{route('chatbots.transcribe-audio', $chatbot)}} method="POST">
                     @csrf
                     <div class="mt-6">
-                        <label for="speaker_diarization" class="block text-sm font-medium text-gray-700">{{ __('Speaker Diarization') }}</label>
-                        <input type="checkbox" name="speaker_diarization" id="speaker_diarization" class="mt-1 block">
+                        <label for="segments" class="block text-sm font-medium text-gray-700">{{ __('With Timestamps') }}</label>
+                        <input type="checkbox" name="segments" id="segments" class="mt-1 block">
                     </div>
                     <div class="mt-3">
                         <x-primary-button>
@@ -45,9 +45,21 @@
                         </x-primary-button>
                     </div>
                 </form>
-                @if(json_decode($chatbot->history)->transcription)
+                <hr class="mt-2">
+                @if(isset($history['transcription']))
                 <div class="mt-6">
-                    {{json_decode($chatbot->history)->transcription}}
+
+                    <h3 class="text-lg font-semibold mb-2">{{ __('Text') }}</h3>
+                    <p>{{ $history['transcription']['text'] }}</p>
+                    @if(isset($history['transcription']['segments']))
+                        <h4 class="text-lg font-semibold mb-2 mt-6">{{ __('Segments') }}</h4>
+                        @foreach($history['transcription']['segments'] as $segment)
+                            <p><strong>{{ __('Start:') }}</strong> {{ $segment['start'] }} </p>
+                            <p>{{ $segment['text'] }}</p>
+                            
+                            <hr class="my-2">
+                        @endforeach
+                    @endif
                 </div>
                 @endif
 

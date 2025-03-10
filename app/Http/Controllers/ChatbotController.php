@@ -148,29 +148,39 @@ class ChatbotController extends Controller
     }  
     
     public function transcribeAudio(Request $request, Chatbot $chatbot){
-        $filename = json_decode($chatbot->history)->file;
-        $file_path = storage_path("/app/private/whisper".$chatbot->id."/".$filename);
-        $file = fopen($file_path, 'r');
-        $parameters = ['file'=>$file, 'model' => 'whisper-1', 'language' => 'el', 'temperature' => 0.1];
-        if($request->input('transcript_with_speaker_diarization')){
+        $file_name = json_decode($chatbot->history)->file;
+        $file_path = storage_path("/app/private/whisper".$chatbot->id."/".$file_name);
+        $file_to_request = fopen($file_path, 'r');
+
+        $parameters = ['file'=>$file_to_request, 'model' => 'whisper-1', 'language' => 'el', 'temperature' => 0.1];
+        if($request->input('segments')){
             $parameters['response_format'] = "verbose_json";
             $parameters['timestamp_granularities'] = ["segment"];
         }
-        // Prepare the request to OpenAI
-        $apiKey = Crypt::decryptString($chatbot->api_key);
-        // $response = Http::withHeaders([
-        //     'Authorization' => 'Bearer ' . $apiKey,
-        //     'Content-Type' => 'multipart/form-data',
-        // ])->post(
-        //     'https://api.openai.com/v1/audio/transcriptions', $parameters);
-            
+        
+        $apiKey = Crypt::decryptString($chatbot->api_key);   
         $client = OpenAI::client($apiKey);
         $response = $client->audio()->transcribe($parameters);
         
         if ($response->text) {
-            $chatbot->history = $chatbot->history = json_encode(["file"=>$filename, "transcription"=>$response->text]);
+            $transcription = ["text" => $response->text];
+            if ($request->input('segments')) {
+                $segments = [];
+                foreach ($response->segments as $segment) {
+                    $segments[] = [
+                        "start" => $segment->start,
+                        "end" => $segment->end,
+                        "text" => $segment->text
+                    ];
+                }
+                $transcription["segments"] = $segments;
+            }
+    
+            $chatbot->history = json_encode([
+                "file" => $file_name,
+                "transcription" => $transcription
+            ]);
             $chatbot->save();
-
             return back()->with(['success' => 'Audio file uploaded and transcribed successfully']);
         } else {
             return back()->with(['error' => 'Failed to transcribe audio file']);
