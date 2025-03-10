@@ -48,29 +48,26 @@ class AImodelController extends Controller
      */
     public function update(Request $request, AImodel $aimodel)
     {
-        $properties = ['accepts_developer_messages','accepts_system_messages', 'reasoning_effort', 'accepts_audio', 'accepts_chat'];
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
-        if($request->has('properties')){
-            foreach($request->properties as $key => $value){
-                $request[$value] = true;
-            }
-            foreach($properties as $property){
-                if(!$request[$property]){
-                    $request[$property] = false;
-                }
-            }
-        }
-        else{
-            foreach($properties as $property){
-                $request[$property] = false;
-            }
-        }
-        $aimodel->update($request->all());
 
-        return redirect()->route('aimodels.index')->with('success', 'AI Model updated successfully.');
+        $aimodel->fill($request->all());
+
+        if ($request->has('properties')) {
+            foreach ($aimodel->properties() as $propertyName => $propertyValue) {
+                $aimodel->$propertyName = in_array($propertyName, $request->properties);
+            }
+        } else {
+            foreach ($aimodel->properties() as $propertyName => $propertyValue) {
+                $aimodel->$propertyName = false;
+            }
+        }
+
+        $aimodel->save();
+
+        return back()->with('success', 'AI Model updated successfully.');
     }
 
     /**

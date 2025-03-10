@@ -93,8 +93,15 @@ Route::resource('users', UserController::class)->middleware('auth');
 
 Route::resource('aimodels', AImodelController::class);
 
-Route::resource('chatbots', ChatbotController::class);
+Route::resource('/chatbots', ChatbotController::class)->middleware('auth');
 
-Route::post('/chatbots/{chatbot}/user-update-history', [ChatbotController::class, 'userUpdateHistory'])->name('chatbots.update-history');
+Route::group(['prefix' => 'chatbots', 'middleware'=>'auth'], function(){
+    
+    Route::post('/{chatbot}/user-update-history', [ChatbotController::class, 'userUpdateHistory'])->name('chatbots.update-history');
+
+    Route::post('/{chatbot}/store-developer-messages', [ChatbotController::class, 'storeDeveloperMessages'])->name('chatbots.store-developer-messages');
+
+    Route::post('/{chatbot}/store-system-messages', [ChatbotController::class, 'storeSystemMessages'])->name('chatbots.store-system-messages');
+});
 
 require __DIR__.'/auth.php';

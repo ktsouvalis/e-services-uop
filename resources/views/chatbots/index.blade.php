@@ -91,7 +91,7 @@
                     <label for="ai_model_id" class="block text-sm font-medium text-gray-700">{{ __('AI Model') }}</label>
                     <select name="ai_model_id" id="ai_model_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                         @foreach ($ai_models as $model)
-                            <option value="{{ $model->id }}">{{ $model->name }}</option>
+                            <option value="{{ $model->id }}" title="{{$model->description}}">{{ $model->name }}</option>
                         @endforeach
                     </select>
                     @error('ai_model_id')
