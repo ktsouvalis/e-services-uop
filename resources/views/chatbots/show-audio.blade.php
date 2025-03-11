@@ -12,6 +12,11 @@
                     <div class="mt-4">
                         <label for="audio_file" class="block text-sm font-medium text-gray-700">{{ __('Audio File') }}</label>
                         <input required type="file" name="audio_file" id="audio_file" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        @error('audio_file')
+                            <span class="mt-2 text-red-500 text-sm">
+                                {{ $message }}
+                            </span>
+                        @enderror
                     </div>
                     
                     <div class="mt-6">
