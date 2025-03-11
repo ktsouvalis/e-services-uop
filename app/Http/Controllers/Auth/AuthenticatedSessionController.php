@@ -53,7 +53,7 @@ class AuthenticatedSessionController extends Controller
         }
         
         // Attempt to bind with the user's credentials
-        $isAuthenticated = $ldap->auth()->attempt($user, $password);
+        $isAuthenticated = $ldap->auth()->attempt($ldap_user, $password);
         if($isAuthenticated){
             auth()->login($app_user);
             session()->regenerate();
