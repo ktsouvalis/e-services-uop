@@ -123,10 +123,8 @@
             const newHistory = [...getHistory(), { role: 'user', content: message }];
 
             // Get the reasoning effort value
-            const reasoningEffort = null;
-            if(document.getElementById('reasoning_effort')){
-                 reasoningEffort = rdocument.getElementById('reasoning_effort').value;
-            }
+            const reasoningEffortElement = document.getElementById('reasoning_effort');
+            const reasoningEffort = reasoningEffortElement ? reasoningEffortElement.value : null;
 
             // Append loading message
             const loadingMessageId = appendMessage('assistant', '. . .');
@@ -157,6 +155,7 @@
 
                     // Update the history with the assistant's response
                     const updatedHistory = [...newHistory, { role: 'assistant', content: data.assistantMessage.content }];
+                    saveHistory(updatedHistory);
                 }
             })
             .catch(error => {
@@ -194,6 +193,17 @@
         function getHistory() {
             // This function should return the current chat history
             return @json($history) || [];
+        }
+
+        function saveHistory(history) {
+            fetch(`/chatbots/{{ $chatbot->id }}/user-update-history`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ history })
+            });
         }
     </script>
     @endif

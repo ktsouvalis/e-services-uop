@@ -62,37 +62,24 @@ class ChatbotController extends Controller
         $history = $request->input('history');
         $chatbot->history = json_encode($history);
         $chatbot->save();
-        $parameters=['messages'=>$history, 'model'=>$chatbot->aiModel->name];
-        if($request->input('reasoning_effort')){
-            $parameters['reasoning_effort']=$request->input('reasoning_effort');
+
+        $parameters = ['messages' => $history, 'model' => $chatbot->aiModel->name];
+        if ($request->input('reasoning_effort')) {
+            $parameters['reasoning_effort'] = $request->input('reasoning_effort');
         }
+
         try {
             // Decrypt the API key
             $apiKey = Crypt::decryptString($chatbot->api_key);
-
-            // Send the API request to OpenAI
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json',
-            ])->withoutVerifying()->post('https://api.openai.com/v1/chat/completions', 
-                $parameters
-            );
-
-            if ($response->successful()) {
-                $assistantMessage = $response->json()['choices'][0]['message'];
-
-                // Update the history with the assistant's response
-                $newHistory = array_merge($history, [$assistantMessage]);
-                $chatbot->history = json_encode($newHistory);
-                $chatbot->save();
-
+            $client = OpenAI::client($apiKey);
+            $response = $client->chat()->create($parameters);
+            if ($response->choices) {
+                $assistantMessage = $response->choices[0]->message;
                 return response()->json(['assistantMessage' => $assistantMessage]);
             } else {
-                // Handle unsuccessful response
                 return response()->json(['error' => 'Failed to get a response from OpenAI'], $response->status());
             }
         } catch (\Exception $e) {
-            // Handle exceptions
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
