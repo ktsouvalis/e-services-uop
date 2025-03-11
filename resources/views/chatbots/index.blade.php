@@ -83,7 +83,7 @@
                 </div>
             </div>
             @php
-                $ai_models = App\Models\AIModel::all();
+                $ai_models = App\Models\AImodel::all();
             @endphp
             <div class="flex flex-wrap -mx-3 mb-6">
                 <!-- AI Model Field -->
