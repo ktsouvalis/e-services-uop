@@ -196,7 +196,7 @@
         }
 
         function saveHistory(history) {
-            fetch(`/chatbots/{{ $chatbot->id }}/user-update-history`, {
+            fetch(`/chatbots/{{ $chatbot->id }}/assistant-update-history`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

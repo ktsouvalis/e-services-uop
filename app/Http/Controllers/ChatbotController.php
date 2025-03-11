@@ -61,7 +61,12 @@ class ChatbotController extends Controller
         Gate::authorize('view', $chatbot);
         $history = $request->input('history');
         $chatbot->history = json_encode($history);
-        $chatbot->save();
+        try{
+            $chatbot->save();
+        }
+        catch(\Exception $e){
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+        }
 
         $parameters = ['messages' => $history, 'model' => $chatbot->aiModel->name];
         if ($request->input('reasoning_effort')) {
@@ -76,12 +81,24 @@ class ChatbotController extends Controller
             if ($response->choices) {
                 $assistantMessage = $response->choices[0]->message;
                 return response()->json(['assistantMessage' => $assistantMessage]);
-            } else {
+            } 
+            else{
                 return response()->json(['error' => 'Failed to get a response from OpenAI'], $response->status());
             }
-        } catch (\Exception $e) {
+        } 
+        catch (\Exception $e){
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function assistantUpdateHistory(Request $request, Chatbot $chatbot)
+    {
+        Gate::authorize('view', $chatbot);
+        $history = $request->input('history');
+        $chatbot->history = json_encode($history);
+        $chatbot->save();
+
+        return response()->json(['success' => 'History updated successfully']);
     }
 
     public function storeDeveloperMessages(Request $request, Chatbot $chatbot){

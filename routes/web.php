@@ -98,7 +98,9 @@ Route::resource('/chatbots', ChatbotController::class)->middleware('auth');
 
 Route::group(['prefix' => 'chatbots', 'middleware'=>'auth'], function(){
     
-    Route::post('/{chatbot}/user-update-history', [ChatbotController::class, 'userUpdateHistory'])->name('chatbots.update-history');
+    Route::post('/{chatbot}/user-update-history', [ChatbotController::class, 'userUpdateHistory'])->name('chatbots.user-update-history');
+
+    Route::post('/{chatbot}/assistant-update-history', [ChatbotController::class, 'assistantUpdateHistory'])->name('chatbots.assistant-update-history');
 
     Route::post('/{chatbot}/store-developer-messages', [ChatbotController::class, 'storeDeveloperMessages'])->name('chatbots.store-developer-messages');
 
