@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use Illuminate\View\View;
 use LdapRecord\Container;
+use App\Events\MessageSent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
@@ -62,7 +63,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->back()->with('error', 'Invalid credentials');
         }
         
-
+        MessageSent::dispatch("$app_user->username logged in", 'system');
         Log::info('User logged in.');
 
         return redirect()->intended(route('dashboard', absolute: false));
@@ -73,6 +74,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        MessageSent::dispatch(auth()->user()->username." logged out", 'system');
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
