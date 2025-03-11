@@ -35,9 +35,9 @@ class ChatbotController extends Controller
         $request['user_id'] = auth()->id();
         $request['api_key'] = Crypt::encryptString($request->api_key);
 
-        Chatbot::create($request->all());
+        $chatbot = Chatbot::create($request->all());
 
-        return redirect()->route('chatbots.index');
+        return redirect()->route('chatbots.show', $chatbot);
     }
 
     /**
@@ -195,6 +195,10 @@ class ChatbotController extends Controller
     public function destroy(Chatbot $chatbot)
     {
         $chatbot->delete();
+        if($chatbot->aiModel->accepts_audio){
+            $path = unlink(storage_path("/app/private/whisper".$chatbot->id."/".json_decode($chatbot->history)->file));
+            rmdir(storage_path("/app/private/whisper".$chatbot->id));
+        }
 
         return redirect()->route('chatbots.index');
     }

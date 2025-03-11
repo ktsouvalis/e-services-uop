@@ -6,6 +6,7 @@
             <table class="text-center w-full divide-y divide-gray-200">
                 <thead>
                     <tr>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                         <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                         <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">AI Model</th>
                         <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -14,6 +15,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach($chatbots as $chatbot)
                         <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ $chatbot->id }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">{{ $chatbot->title }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">{{ $chatbot->aiModel->name }}</td>
                             <td class="px-6 py-4 flex justify-center">
