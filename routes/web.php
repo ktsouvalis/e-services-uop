@@ -97,7 +97,8 @@ Route::resource('aimodels', AImodelController::class);
 Route::resource('/chatbots', ChatbotController::class)->middleware('auth');
 
 Route::group(['prefix' => 'chatbots', 'middleware'=>'auth'], function(){
-    
+    Route::get('/{chatbot}/get-history', [ChatbotController::class, 'getHistory'])->name('chatbots.get-history');
+
     Route::post('/{chatbot}/user-update-history', [ChatbotController::class, 'userUpdateHistory'])->name('chatbots.user-update-history');
 
     Route::post('/{chatbot}/assistant-update-history', [ChatbotController::class, 'assistantUpdateHistory'])->name('chatbots.assistant-update-history');

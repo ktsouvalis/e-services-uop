@@ -1,6 +1,3 @@
-@php
-    $history = json_decode($chatbot->history, true);
-@endphp
 <x-app-layout>
     @if($chatbot->aimodel->properties()['accepts_chat'])
     <style>
@@ -94,10 +91,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        let chatHistory = [];
+        document.addEventListener('DOMContentLoaded', async function() {
             // Load chat history into the chat container
-            const history = @json($history) || [];
-            history.forEach(message => appendMessage(message.role, message.content));
+            chatHistory = await getHistory();
+            if(chatHistory){
+                chatHistory.forEach(message => appendMessage(message.role, message.content));
+            }
+            else{
+                appendMessage('assistant', 'Hello! How can I help you today?');
+            }
         });
 
         document.getElementById('send-button').addEventListener('click', sendMessage);
@@ -108,7 +111,7 @@
             }
         });
 
-        function sendMessage() {
+        async function sendMessage() {
             const messageInput = document.getElementById('message-input');
             const message = messageInput.value.trim();
             if (message === '') return;
@@ -119,8 +122,8 @@
             // Clear the input field
             messageInput.value = '';
 
-            // Prepare the new history
-            const newHistory = [...getHistory(), { role: 'user', content: message }];
+            // Update the chat history in the frontend
+            chatHistory.push({ role: 'user', content: message });
 
             // Get the reasoning effort value
             const reasoningEffortElement = document.getElementById('reasoning_effort');
@@ -130,7 +133,7 @@
             const loadingMessageId = appendMessage('assistant', '. . .');
 
             // Prepare the request payload
-            const payload = { history: newHistory };
+            const payload = { history: chatHistory };
             if (reasoningEffort !== null) {
                 payload.reasoning_effort = reasoningEffort;
             }
@@ -154,8 +157,8 @@
                     replaceMessage(loadingMessageId, data.assistantMessage.content);
 
                     // Update the history with the assistant's response
-                    const updatedHistory = [...newHistory, { role: 'assistant', content: data.assistantMessage.content }];
-                    saveHistory(updatedHistory);
+                    chatHistory.push({ role: 'assistant', content: data.assistantMessage.content });
+                    saveHistory(chatHistory);
                 }
             })
             .catch(error => {
@@ -190,10 +193,18 @@
             messageWrapper.querySelector('div').innerHTML = marked.parse(content); // Use marked to render markup
         }
 
-        function getHistory() {
+        async function getHistory() {
             // This function should return the current chat history
-            return @json($history) || [];
+            
+            const response = await fetch(`/chatbots/{{ $chatbot->id }}/get-history`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            return response.json();
         }
+        
 
         function saveHistory(history) {
             fetch(`/chatbots/{{ $chatbot->id }}/assistant-update-history`, {

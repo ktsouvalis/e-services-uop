@@ -56,6 +56,15 @@ class ChatbotController extends Controller
         }
     }
 
+    public function getHistory(Chatbot $chatbot)
+    {
+        Gate::authorize('view', $chatbot);
+        if($chatbot->history)
+            return response()->json(json_decode($chatbot->history));
+        else
+            return response()->json([]);
+    }
+
     public function userUpdateHistory(Request $request, Chatbot $chatbot)
     {
         Gate::authorize('view', $chatbot);
