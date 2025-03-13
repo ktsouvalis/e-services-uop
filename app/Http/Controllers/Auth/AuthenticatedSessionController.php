@@ -62,8 +62,11 @@ class AuthenticatedSessionController extends Controller
         else{
             return redirect()->back()->with('error', 'Invalid credentials');
         }
-        
-        MessageSent::dispatch("$app_user->username logged in", 'system');
+        try{
+            MessageSent::dispatch("$app_user->username logged in", 'system');
+        } catch (\Exception $e) {
+            
+        }
         Log::info('User logged in.');
 
         return redirect()->intended(route('dashboard', absolute: false));
@@ -74,7 +77,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        MessageSent::dispatch(auth()->user()->username." logged out", 'system');
+        try{
+            MessageSent::dispatch(auth()->user()->username." logged out", 'system');
+        } catch (\Exception $e) {
+            
+        }
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
