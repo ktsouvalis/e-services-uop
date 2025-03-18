@@ -29,7 +29,6 @@ class ChatbotController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'api_key' => 'required|string|max:255',
             'ai_model_id' => 'required|exists:ai_models,id',
         ]);
         $request['user_id'] = auth()->id();
@@ -68,6 +67,8 @@ class ChatbotController extends Controller
     public function userUpdateHistory(Request $request, Chatbot $chatbot)
     {
         Gate::authorize('view', $chatbot);
+
+        ini_set('max_execution_time', 600);
         $history = $request->input('history');
         $chatbot->history = json_encode($history);
         try{
@@ -83,16 +84,29 @@ class ChatbotController extends Controller
         }
 
         try {
-            // Decrypt the API key
-            $apiKey = Crypt::decryptString($chatbot->api_key);
-            $client = OpenAI::client($apiKey);
-            $response = $client->chat()->create($parameters);
-            if ($response->choices) {
-                $assistantMessage = $response->choices[0]->message;
-                return response()->json(['assistantMessage' => $assistantMessage]);
-            } 
+            if($chatbot->aiModel->source =="openai"){
+                // Decrypt the API key
+                $apiKey = Crypt::decryptString($chatbot->api_key);
+                $client = OpenAI::client($apiKey);
+                $response = $client->chat()->create($parameters);
+                if ($response->choices) {
+                    $assistantMessage = $response->choices[0]->message;
+                    return response()->json(['assistantMessage' => $assistantMessage]);
+                } 
+                else{
+                    return response()->json(['error' => 'Failed to get a response from OpenAI'], $response->status());
+                }
+            }
             else{
-                return response()->json(['error' => 'Failed to get a response from OpenAI'], $response->status());
+                $parameters['stream'] = false;
+                $response = Http::timeout(600)->post('http://195.251.13.131/api/chat', $parameters);
+                if ($response->ok()) {
+                    $assistantMessage = $response->json()['message'];
+                    return response()->json(['assistantMessage' => $assistantMessage]);
+                } 
+                else{
+                    return response()->json(['error' => 'Failed to get a response from the AI model'], $response->status());
+                }
             }
         } 
         catch (\Exception $e){
@@ -137,7 +151,7 @@ class ChatbotController extends Controller
         $chatbot->history = json_encode($currentHistory);
         $chatbot->save();
 
-        return back()->with(['success' => 'Developer messages saved successfully']);
+        return back()->with(['success' => 'System messages saved successfully']);
     }
 
     public function submitAudio(Request $request, Chatbot $chatbot){

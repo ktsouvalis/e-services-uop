@@ -79,6 +79,7 @@
                 <div class="w-full md:w-1/2 px-3">
                     <label for="api_key" class="block text-sm font-medium text-gray-700">{{ __('API Key') }}</label>
                     <input type="text" name="api_key" id="api_key" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('api_key') }}">
+                    <span class="text-black-500 text-sm">Not Required for local models</span>
                     @error('api_key')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror
@@ -93,7 +94,7 @@
                     <label for="ai_model_id" class="block text-sm font-medium text-gray-700">{{ __('AI Model') }}</label>
                     <select name="ai_model_id" id="ai_model_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                         @foreach ($ai_models as $model)
-                            <option value="{{ $model->id }}" title="{{$model->description}}">{{ $model->name }}</option>
+                            <option value="{{ $model->id }}" title="{{$model->description}}">{{ $model->name }} ({{$model->source}})</option>
                         @endforeach
                     </select>
                     @error('ai_model_id')

@@ -145,7 +145,8 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                timeout: 600
             })
             .then(response => response.json())
             .then(data => {
