@@ -8,6 +8,7 @@
                     <tr>
                         <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                         <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                         <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                         <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -17,6 +18,7 @@
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap">{{ $aimodel->id }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">{{ $aimodel->name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ $aimodel->source }}</td>
                             <td class="px-6 py-4 whitespace-wrap">{{ $aimodel->description }}</td>
                             <td class="px-6 py-4 flex justify-center">
                                 
@@ -74,8 +76,17 @@
                 <!-- Name Field -->
                 <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
                     <label for="name" class="block text-sm font-medium text-gray-700">{{ __('Name') }}</label>
-                    <input type="text" name="name" id="name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('name') }}">
+                    <input type="text" name="name" id="name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Study your api to be sure" value="{{ old('name') }}">
                     @error('name')
+                        <span class="text-red-500 text-sm">{{ $message }}</span>
+                    @enderror
+                </div>
+
+                <!-- Source Field -->
+                <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
+                    <label for="source" class="block text-sm font-medium text-gray-700">{{ __('Source') }}</label>
+                    <input type="text" name="source" id="source" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="openai or local" value="{{ old('source') }}">
+                    @error('source')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror
                 </div>
