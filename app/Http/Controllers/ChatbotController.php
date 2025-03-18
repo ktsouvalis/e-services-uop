@@ -98,8 +98,9 @@ class ChatbotController extends Controller
                 }
             }
             else{
+                $url = env('OLLAMA_API_URL');
                 $parameters['stream'] = false;
-                $response = Http::timeout(600)->post('http://195.251.13.131/api/chat', $parameters);
+                $response = Http::timeout(600)->post($url.'/chat', $parameters);
                 if ($response->ok()) {
                     $assistantMessage = $response->json()['message'];
                     return response()->json(['assistantMessage' => $assistantMessage]);
