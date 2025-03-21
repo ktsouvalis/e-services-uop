@@ -85,7 +85,7 @@
                 <!-- Source Field -->
                 <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
                     <label for="source" class="block text-sm font-medium text-gray-700">{{ __('Source') }}</label>
-                    <input type="text" name="source" id="source" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="openai or local" value="{{ old('source') }}">
+                    <input type="text" name="source" id="source" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="openai or deepseek" value="{{ old('source') }}">
                     @error('source')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror
@@ -94,7 +94,7 @@
                 <!-- Description Field -->
                 <div class="w-full md:w-1/2 px-3">
                     <label for="description" class="block text-sm font-medium text-gray-700">{{ __('Description') }}</label>
-                    <textarea name="description" id="description" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('description') }}</textarea>
+                    <textarea name="description" id="description" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>{{ old('description') }}</textarea>
                     @error('description')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror

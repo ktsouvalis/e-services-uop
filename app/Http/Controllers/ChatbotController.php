@@ -106,11 +106,18 @@ class ChatbotController extends Controller
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                     'Authorization' => 'Bearer '.$apiKey
-                ])->post($url, $parameters);
-                ;
+                ])->timeout(600)
+                ->post($url, $parameters);
+                
                 if ($response->ok()) {
-                    dd($response->json());
-                    $assistantMessage = $response->json()["choices"][0]["message"];
+                    if (isset($response->json()["choices"][0]["message"])) {
+                        $assistantMessage = $response->json()["choices"][0]["message"];
+                        if (isset($assistantMessage["reasoning_content"])) {
+                            $assistantMessage["content"] .= "\n\n(Reasoning:" . $assistantMessage["reasoning_content"].")";
+                            unset($assistantMessage["reasoning_content"]);
+                        }
+                    }
+                    
                     return response()->json(['assistantMessage' => $assistantMessage]);
                 } 
                 else{

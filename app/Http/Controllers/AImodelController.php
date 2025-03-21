@@ -23,7 +23,7 @@ class AImodelController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'description' => 'required|string',
         ]);
         if($request->has('properties')){
             foreach($request->properties as $key => $value){
