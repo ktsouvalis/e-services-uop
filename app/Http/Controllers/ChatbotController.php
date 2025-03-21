@@ -84,9 +84,9 @@ class ChatbotController extends Controller
         }
 
         try {
+            $apiKey = Crypt::decryptString($chatbot->api_key);
             if($chatbot->aiModel->source =="openai"){
                 // Decrypt the API key
-                $apiKey = Crypt::decryptString($chatbot->api_key);
                 $client = OpenAI::client($apiKey);
                 $response = $client->chat()->create($parameters);
                 if ($response->choices) {
@@ -97,18 +97,27 @@ class ChatbotController extends Controller
                     return response()->json(['error' => 'Failed to get a response from OpenAI'], $response->status());
                 }
             }
-            else{
-                $url = env('OLLAMA_API_URL');
+            else if ($chatbot->aiModel->source == "deepseek") {
+                $url = "https://api.deepseek.com/chat/completions";
                 $parameters['stream'] = false;
-                $response = Http::timeout(600)->post($url.'/chat', $parameters);
+                $parameters['temperature'] = 0.2;
+                
+                $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer '.$apiKey
+                ])->post($url, $parameters);
+                ;
                 if ($response->ok()) {
-                    $assistantMessage = $response->json()['message'];
+                    dd($response->json());
+                    $assistantMessage = $response->json()["choices"][0]["message"];
                     return response()->json(['assistantMessage' => $assistantMessage]);
                 } 
                 else{
-                    return response()->json(['error' => 'Failed to get a response from the AI model'], $response->status());
+                    return response()->json(['error' => 'Failed to get a response from '. $chatbot->aiModel->source], $response->status());
                 }
             }
+            
         } 
         catch (\Exception $e){
             return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
