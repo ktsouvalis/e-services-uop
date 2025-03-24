@@ -32,6 +32,27 @@
         .chat-container strong {
             font-weight: bold;
         }
+
+        
+
+        .legend-container {
+            margin-top: 1rem;
+            text-align: center; /* Center the legend */
+        }
+
+        .legend-wrapper {
+            display: inline-block; /* Make the table compact */
+            max-width: 400px; /* Limit the width of the table */
+        }
+
+        .legend-table th {
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .legend-table td {
+            font-size: 0.875rem; /* Smaller font size for a legend-like appearance */
+        }
     </style>
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
         @if($chatbot->aimodel->properties()['accepts_developer_messages'])
@@ -81,7 +102,45 @@
                 <!-- Messages will be appended here -->
             </div>   
             <div class="mt-6">
+                @if($chatbot->aimodel->name == 'deepseek-chat')
+                <div class="mt-3">
+                    <label for="temperature" class="text-sm font-medium text-gray-700">{{ __('Temperature') }}</label>
+                    <select name="temperature" id="temperature" class="my-3 mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        <option value="0">0.0</option>
+                        <option value="1" selected>1.0</option>
+                        <option value="1.3">1.3</option>
+                        <option value="1.5">1.5</option>
+                    </select>
+                <div>
+                @endif
                 <textarea id="message-input" class="w-full border-gray-300 rounded-md shadow-sm" rows="3" placeholder="Type your message..."></textarea>
+                @if($chatbot->aimodel->name == 'deepseek-chat')
+                <div class="legend-container mt-4">
+                <a href="https://api-docs.deepseek.com/quick_start/parameter_settings" target="_blank"><h5 class="text-sm font-semibold mb-2">Temperature Suggested by DeepSeek</h5></a>
+                    <div class="legend-wrapper mx-auto">
+                        <table class="legend-table border-collapse border border-gray-300 text-sm">
+                            <tbody>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Coding / Math</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.0</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Data Cleaning / Data Analysis</td>
+                                    <td class="border border-gray-300 px-4 py-2">1.0</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">General Conversation / Translation</td>
+                                    <td class="border border-gray-300 px-4 py-2">1.3</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Creative Writing / Poetry</td>
+                                    <td class="border border-gray-300 px-4 py-2">1.5</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
                 <x-primary-button id="send-button" class="mt-2" style="display: none;">
                     {{ __('Send') }}
                 </x-primary-button>
@@ -129,6 +188,10 @@
             const reasoningEffortElement = document.getElementById('reasoning_effort');
             const reasoningEffort = reasoningEffortElement ? reasoningEffortElement.value : null;
 
+            // Get the temperature value
+            const temperatureElement = document.getElementById('temperature');
+            const temperature = temperatureElement.value;
+
             // Append loading message
             const loadingMessageId = appendMessage('assistant', '. . .');
 
@@ -137,6 +200,7 @@
             if (reasoningEffort !== null) {
                 payload.reasoning_effort = reasoningEffort;
             }
+            payload.temperature = temperature;
 
             // Send AJAX request to update the history
             fetch(`/chatbots/{{ $chatbot->id }}/user-update-history`, {
