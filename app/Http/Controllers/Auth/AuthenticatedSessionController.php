@@ -6,6 +6,7 @@ use Illuminate\View\View;
 use LdapRecord\Container;
 use App\Events\MessageSent;
 use Illuminate\Http\Request;
+use LdapRecord\Auth\BindException;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -41,11 +42,13 @@ class AuthenticatedSessionController extends Controller
 
         // Connect to the LDAP server
         $ldap = Container::getDefaultConnection();
-        try{
+        try {
             $ldap->connect();
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Could not connect to LDAP server');
-        }
+        } 
+        catch (BindException $e) {
+            Log::error('LDAP Bind Exception: ' . $e->getMessage());
+            return back()->with('error', 'Could not connect to LDAP server. Please check your credentials or server configuration.');
+        } 
         
         // Search for the user
         $ldap_user = User::where('uid', '=', $username)->first();
