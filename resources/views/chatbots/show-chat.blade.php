@@ -190,7 +190,7 @@
 
             // Get the temperature value
             const temperatureElement = document.getElementById('temperature');
-            const temperature = temperatureElement.value;
+            const temperature = temperatureElement ? temperatureElement.value : null;
 
             // Append loading message
             const loadingMessageId = appendMessage('assistant', '. . .');
