@@ -145,6 +145,11 @@
                     {{ __('Send') }}
                 </x-primary-button>
             </div>
+            @if($chatbot->aimodel->name == 'deepseek-reasoner')
+            <p class="text-sm text-gray-500">
+                *Για λόγους οικονομίας το reasoning φαίνεται μόνο κατά τη διάρκεια του διαλόγου και δεν αποθηκεύεται. Δηλαδή, αν η σελίδα φορτωθεί ξανά, το reasoning δεν θα είναι διαθέσιμο.
+            </p>
+            @endif
         </div>
     </div>
 
@@ -156,9 +161,6 @@
             chatHistory = await getHistory();
             if(chatHistory){
                 chatHistory.forEach(message => appendMessage(message.role, message.content));
-            }
-            else{
-                appendMessage('assistant', 'Hello! How can I help you today?');
             }
         });
 
@@ -220,7 +222,9 @@
                 } else {
                     // Replace loading message with assistant's message
                     replaceMessage(loadingMessageId, data.assistantMessage.content);
-
+                    if(data.assistantMessage.reasoning_content) {
+                        appendReasoning(data.assistantMessage.reasoning_content);
+                    }
                     // Update the history with the assistant's response
                     chatHistory.push({ role: 'assistant', content: data.assistantMessage.content });
                     saveHistory(chatHistory);
@@ -252,6 +256,19 @@
             chatContainer.appendChild(messageWrapper);
 
             return messageWrapper;
+        }
+
+        function appendReasoning(content){
+            const chatContainer = document.getElementById('chat-container');
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('flex', 'w-full');
+            const messageBox = document.createElement('div');
+            messageBox.classList.add('p-4', 'rounded-lg', 'shadow-sm', 'w-auto', 'my-2', 'text-left', 'break-words');
+            messageWrapper.classList.add('justify-start');
+            messageBox.classList.add('bg-blue-200');
+            messageBox.innerHTML = marked.parse(content); // Use marked to render markup
+            messageWrapper.appendChild(messageBox);
+            chatContainer.appendChild(messageWrapper);
         }
 
         function replaceMessage(messageWrapper, content) {

@@ -102,7 +102,7 @@ class ChatbotController extends Controller
                 $parameters['stream'] = false;
                 if($chatbot->aiModel->name == "deepseek-chat")
                     $parameters['temperature'] = (float) $request->input('temperature');
-                // dd($parameters);
+
                 $response = Http::withHeaders([
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
@@ -113,10 +113,6 @@ class ChatbotController extends Controller
                 if ($response->ok()) {
                     if (isset($response->json()["choices"][0]["message"])) {
                         $assistantMessage = $response->json()["choices"][0]["message"];
-                        if (isset($assistantMessage["reasoning_content"])) {
-                            $assistantMessage["content"] .= "<br><br><b>Reasoning:</b> " . $assistantMessage["reasoning_content"];
-                            unset($assistantMessage["reasoning_content"]);
-                        }
                     }
                     
                     return response()->json(['assistantMessage' => $assistantMessage]);
