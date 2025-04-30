@@ -70,7 +70,7 @@ class SheetmailerController extends Controller
         Gate::authorize('update', $sheetmailer);
 
         $data_to_update = $request->input();
-        $data_to_update['body'] = strip_tags($request->input('body'), '<p><a><strong><span><i><em><b><u><ul><ol><li>'); //allow only these tags
+        $data_to_update['body'] = strip_tags($request->input('body'), '<p><a><strong><span><i><em><b><u><ul><ol><li><br>'); //allow only these tags
         try{
             $sheetmailer->update($data_to_update);
         }

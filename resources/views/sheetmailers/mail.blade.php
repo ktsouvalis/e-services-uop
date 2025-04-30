@@ -4,10 +4,10 @@
 
 @if($additionalData)
 <div>
-<p><i>{{$additionalData}}</i></p>
+    <p>{!! strip_tags($additionalData,'<p><a><strong><span><i><em><b><u><ul><ol><li><br>') !!}</p>
 </div>
 @endif
 
 <div>
-<p><i>{{$sheetmailer->signature}}</i></p>
+<p>{{$sheetmailer->signature}}</p>
 </div>
