@@ -57,6 +57,11 @@ class SheetmailerController extends Controller
     {
         Gate::authorize('update', $sheetmailer);
 
+        // Clear session data
+        session()->forget('emails');
+        session()->forget('non_emails');
+        session()->forget('emailCount');
+
         return view('sheetmailers.edit', [
             'sheetmailer' => $sheetmailer,
         ]);
@@ -100,8 +105,14 @@ class SheetmailerController extends Controller
         return redirect()->route('sheetmailers.index')->with('success', 'Sheetmailer deleted successfully.');
     }
 
-    public function upload_file(Request $request, Sheetmailer $sheetmailer){
-        //validate the input
+    public function upload_file(Request $request, Sheetmailer $sheetmailer)
+    {
+        // Clear session data
+        session()->forget('emails');
+        session()->forget('non_emails');
+        session()->forget('emailCount');
+
+        // Validate the input
         $request->validate([
             'file' => 'required|mimetypes:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:2048', // max 2MB file
         ]);
@@ -141,6 +152,10 @@ class SheetmailerController extends Controller
     }
 
     public function comma_mails(Request $request, Sheetmailer $sheetmailer){
+        // Clear session data
+        session()->forget('emails');
+        session()->forget('non_emails');
+        session()->forget('emailCount');
         $emails = explode(',', $request->comma_mails);
         $eligible_emails = [];
         $non_emails = [];

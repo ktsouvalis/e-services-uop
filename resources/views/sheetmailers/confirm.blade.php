@@ -64,7 +64,7 @@
             <table class="my-2 w-full divide-y divide-gray-200 border border-gray-300">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>#</b></th>
+                        <th style="width: auto;" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>#</b></th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>email</b></th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300"><b>Additional Data</b></th>
                     </tr>
@@ -72,9 +72,9 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach (session('emails',[]) as $correspondent)
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $loop->iteration }}</td>
+                        <td style="width: auto;" class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $loop->iteration }}</td>
                         <td class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $correspondent['email'] }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap border border-gray-300">{{ $correspondent['additionalData'] }}</td>
+                        <td class="px-6 py-4 border border-gray-300">{{ $correspondent['additionalData'] }}</td>
                     </tr>
                     @endforeach
                 </tbody>
