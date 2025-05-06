@@ -47,6 +47,7 @@ class MailSheetMailer extends Mailable implements ShouldQueue
         return new Content(
             view: 'sheetmailers.mail',
             with: [
+                'user' => $this->username,
                 'sheetmailer' => $this->sheetmailer,
                 'additionalData' => $this->additionalData,
             ],
