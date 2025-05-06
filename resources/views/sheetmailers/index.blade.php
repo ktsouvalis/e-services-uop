@@ -30,7 +30,7 @@
                             @foreach($sheetmailers as $sheetmailer)
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $sheetmailer->id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">{{ $sheetmailer->name }}</td>
+                                    <td class="px-6 py-4 ">{{ $sheetmailer->name }}</td>
                                     <td class="px-6 py-4 flex justify-center">
                                         {{-- <a href="{{ route('sheetmailers.edit', $sheetmailer->id) }}" class="text-blue-600 hover:text-blue-900">{{ __('Edit') }}</a> --}}
                                         
