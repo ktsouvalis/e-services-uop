@@ -45,10 +45,10 @@ class MailerController extends Controller
             $mailer = Mailer::create($validated);;
         }
         catch(Exception $e){
-            Log::channel('mailers')->error($e->getMessage());
+            Log::channel('mailers_actions')->error($e->getMessage());
             return redirect()->back()->with('error', 'Mailer not created. Check today\'s mailers log for more information.');
         }
-
+        Log::channel('mailers_actions')->info('Mailer created successfully by user: '.Auth::user()->username);
         return redirect()->route('mailers.edit', $mailer->id)->with('success', 'Mailer created successfully.');
     }
 
@@ -77,10 +77,10 @@ class MailerController extends Controller
             $mailer->update($data_to_update);
         }
         catch(\Exception $e){
-            Log::channel('mailers')->error($e->getMessage());
+            Log::channel('mailers_actions')->error($e->getMessage());
             return redirect()->back()->with('error', 'Mailer not updated. Check today\'s mailers log for more information.');
         }
-
+        Log::channel('mailers_actions')->info('Mailer updated successfully by user: '.Auth::user()->username);
         return redirect()->back()->with('success', 'Mailer updated successfully.');
     }
 
@@ -94,10 +94,10 @@ class MailerController extends Controller
             $mailer->delete();
         }
         catch(\Exception $e){
-            Log::channel('mailers')->error($e->getMessage());
+            Log::channel('mailers_actions')->error($e->getMessage());
             return redirect()->back()->with('error', 'Mailer not deleted. Check today\'s mailers log for more information.');
         }
-
+        Log::channel('mailers_actions')->info('Mailer deleted successfully by user: '.Auth::user()->username);
         return redirect()->route('mailers.index')->with('success', 'Mailer deleted successfully.');
     }
 
@@ -113,7 +113,7 @@ class MailerController extends Controller
             return Storage::download($path);
         }
         catch(\Exception $e){
-            Log::channel('mailers')->error($e->getMessage());
+            Log::channel('mailers_actions')->error($e->getMessage());
             return redirect()->back()->with('error', 'File error. Check today\'s mailers log for more information.');
         }
     }
@@ -147,9 +147,10 @@ class MailerController extends Controller
         }
         catch(\Exception $e){
             DB::rollBack();
-            Log::channel('mailers')->error($e->getMessage());
+            Log::channel('mailers_actions')->error($e->getMessage());
             return response()->json(['error' => 'File not deleted. Check today\'s mailers log for more information.'], 500);
         }
+        Log::channel('mailers_actions')->info("File '".$filename."' deleted successfully by user: ".Auth::user()->username);
         return response()->json(['success' => 'File deleted successfully.'], 200);
     }
 
@@ -190,11 +191,10 @@ class MailerController extends Controller
                 $file->storeAs("/mailers/$mailer->id", $filename);
             }
             catch(\Exception $e){
-                Log::error($e->getMessage());
+                Log::channel('mailers_actions')->error($e->getMessage());
                 $error=true;
                 continue;
             }
-            $file->storeAs("/mailers/$mailer->id", $filename);
             $existingFiles[] = ['index' => $index++, 'filename' => $filename];
         }
         $mailer->files = $existingFiles;
@@ -202,6 +202,7 @@ class MailerController extends Controller
         if ($error) {
             return redirect()->back()->with('error', 'Files uploaded with errors. Check today\'s mailers log for more information.');
         }
+        Log::channel('mailers_actions')->info('Files uploaded successfully by user: '.Auth::user()->username);
         return redirect()->back()->with('success', 'Files Uploaded Successfully');
     }
 

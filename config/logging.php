@@ -93,6 +93,15 @@ return [
             'encoding'=> 'utf-8',
         ],
 
+        'mailers_actions' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sheetmailers_actions.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'encoding'=> 'utf-8',
+        ],
+
         'mailers' => [
             'driver' => 'daily',
             'path' => storage_path('logs/mailers.log'),
@@ -111,17 +120,9 @@ return [
             'encoding'=> 'utf-8',
         ],
 
-        'sheetmailers_success' => [
+        'sheetmailers' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/sheetmailers_success.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
-            'encoding'=> 'utf-8',
-        ],
-        'sheetmailers_failure' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/sheetmailers_failure.log'),
+            'path' => storage_path('logs/sheetmailers.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
@@ -133,6 +134,15 @@ return [
             'path' => storage_path('logs/log-reader.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'encoding'=> 'utf-8',
+        ],
+        
+        'mails_delivery' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/mails_delivery.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 365),
             'replace_placeholders' => true,
             'encoding'=> 'utf-8',
         ],

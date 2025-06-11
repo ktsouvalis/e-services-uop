@@ -197,11 +197,11 @@ class SheetmailerController extends Controller
                 Mail::to($email['email'])->queue(new MailSheetMailer($sheetmailer, $email['additionalData'], Auth::user()->username));
             }
             catch(\Exception $e){
-                Log::channel('sheetmailers_failure')->error("Sheetmailer #$sheetmailer->id: mail not queued to ".$email['email']. '. Reason: '.$e->getMessage());
+                Log::channel('sheetmailers')->error("Sheetmailer #$sheetmailer->id: mail not queued to ".$email['email']. '. Reason: '.$e->getMessage());
                 $error = 1;
                 $errors= 1;
             }
-            if(!$error)Log::channel('sheetmailers_success')->info("Sheetmailer #$sheetmailer->id: mail queued to ".$email['email']);        
+            if(!$error)Log::channel('sheetmailers')->info("Sheetmailer #$sheetmailer->id: mail queued to ".$email['email']);        
         }
         session()->forget('emails');
         session()->forget('emailCount');
@@ -209,6 +209,6 @@ class SheetmailerController extends Controller
         if(!$errors)
             return redirect()->route("sheetmailers.edit", ['sheetmailer' => $sheetmailer->id])->with('success', 'Τα email προστέθηκαν στην ουρά προς αποστολή');
         else
-            return redirect()->route("sheetmailers.edit", ['sheetmailer' => $sheetmailer->id])->with('warning', 'Η προσθήκη των email στην ουρά προς αποστολή ολοκληρώθηκε με λάθη που καταγράφηκαν στο log sheetmailers_failure');
+            return redirect()->route("sheetmailers.edit", ['sheetmailer' => $sheetmailer->id])->with('warning', 'Η προσθήκη των email στην ουρά προς αποστολή ολοκληρώθηκε με λάθη που καταγράφηκαν στο log sheetmailers');
     }
 }
