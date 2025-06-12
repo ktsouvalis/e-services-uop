@@ -3,17 +3,22 @@
 namespace App\Policies;
 
 use App\Models\Item;
+use App\Models\Menu;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
 class ItemPolicy
 {
     /**
+     * The menu identifier for this policy.
+     */
+    private $menu = 'items';
+    /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return auth()->check();
+        return Menu::where('route_is', $this->menu)->first()->enabled && auth()->check();
     }
 
     /**
@@ -30,7 +35,7 @@ class ItemPolicy
      */
     public function create(User $user): bool
     {
-        return auth()->check();
+        return Menu::where('route_is', $this->menu)->first()->enabled && auth()->check();
     }
 
     /**

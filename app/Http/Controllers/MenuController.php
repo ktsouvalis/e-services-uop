@@ -14,6 +14,14 @@ class MenuController extends Controller
     {
         $this->middleware('auth');
     }
+
+    public function toggleEnabled(Request $request, Menu $menu)
+    {
+        Gate::authorize('update', $menu);
+        $menu->enabled = $request->input('enabled') ? true : false;
+        $menu->save();
+        return response()->json(['success' => true]);
+    }
     /**
      * Display a listing of the resource.
      */

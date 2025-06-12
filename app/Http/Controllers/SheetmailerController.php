@@ -20,6 +20,7 @@ class SheetmailerController extends Controller
      */
     public function index()
     {
+        Gate::authorize('viewAny', Sheetmailer::class);
         if(Auth::user()->admin){
             $sheetmailers = Sheetmailer::all();
         }

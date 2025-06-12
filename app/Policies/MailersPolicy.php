@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Menu;
 use App\Models\User;
 use App\Models\Mailer;
 use Illuminate\Auth\Access\Response;
@@ -9,11 +10,15 @@ use Illuminate\Auth\Access\Response;
 class MailersPolicy
 {
     /**
+     * The menu identifier for this policy.
+     */
+    private $menu = 'mailers';
+    /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        //
+        return Menu::where('route_is', $this->menu)->first()->enabled && auth()->check();
     }
 
     /**
@@ -21,8 +26,8 @@ class MailersPolicy
      */
     public function view(User $user, Mailer $mailer): bool
     {
-        //
-        // dd($mailer);
+        if(!Menu::where('route_is', $this->menu)->first()->enabled)
+            return false;
         if($user->admin){
             return true;
         }
@@ -34,7 +39,7 @@ class MailersPolicy
      */
     public function create(User $user): bool
     {
-        return auth()->check();
+        return Menu::where('route_is', $this->menu)->first()->enabled && auth()->check();
     }
 
     /**

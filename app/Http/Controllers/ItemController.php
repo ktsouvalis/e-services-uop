@@ -20,6 +20,7 @@ class ItemController extends Controller
      */
     public function index()
     {
+        Gate::authorize('viewAny', Item::class);
         $items = Item::all();
         return view('items.index')->with('items', $items);
     }

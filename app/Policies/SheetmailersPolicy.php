@@ -2,18 +2,24 @@
 
 namespace App\Policies;
 
-use App\Models\Sheetmailer;
+use App\Models\Menu;
 use App\Models\User;
+use App\Models\Sheetmailer;
 use Illuminate\Auth\Access\Response;
 
 class SheetmailersPolicy
 {
+    /**
+     * The menu identifier for this policy.
+     */
+    private $menu = 'sheetmailers';
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
         //
+        return Menu::where('route_is', $this->menu)->first()->enabled && auth()->check();
     }
 
     /**
@@ -21,6 +27,8 @@ class SheetmailersPolicy
      */
     public function view(User $user, Sheetmailer $sheetmailer): bool
     {
+        if(!Menu::where('route_is', $this->menu)->first()->enabled)
+            return false;
         if($user->admin){
             return true;
         }
@@ -32,6 +40,8 @@ class SheetmailersPolicy
      */
     public function create(User $user): bool
     {
+        if(!Menu::where('route_is', $this->menu)->first()->enabled)
+            return false;
         return auth()->check(); 
     }
 

@@ -22,6 +22,7 @@ class MailerController extends Controller
      */
     public function index()
     {
+        Gate::authorize('viewAny', Mailer::class);
         if(Auth::user()->admin){
             $mailers = Mailer::all();
         }

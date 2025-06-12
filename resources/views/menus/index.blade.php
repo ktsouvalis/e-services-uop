@@ -2,6 +2,49 @@
 @push('title')
     <title>Menus</title>
 @endpush
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('toggle-enabled')) {
+            const toggle = e.target;
+            const menuId = toggle.dataset.id;
+            const enabled = toggle.checked ? 1 : 0;
+            const url = "{{ url('menus/toggle-enabled') }}/" + menuId;
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ enabled })
+            })
+            .then(async response => {
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    await response.text();
+                }
+                return data;
+            })
+            .then(data => {
+                if(data.success) {
+                    toggle.nextElementSibling.textContent = enabled ? 'On' : 'Off';
+                } else {
+                    alert('Failed to update status');
+                    toggle.checked = !enabled;
+                }
+            })
+            .catch(() => {
+                alert('Failed to update status');
+                toggle.checked = !enabled;
+            });
+        }
+    });
+});
+</script>
+@endpush
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -21,9 +64,10 @@
                     <table class="text-center w-full divide-y divide-gray-200">
                         <thead>
                             <tr>
-                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Enabled</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -31,6 +75,12 @@
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $menu->id }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $menu->title }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <label class="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" class="toggle-enabled" data-id="{{ $menu->id }}" {{ $menu->enabled ? 'checked' : '' }}>
+                                            <span class="ml-2">{{ $menu->enabled ? 'On' : 'Off' }}</span>
+                                        </label>
+                                    </td>
                                     <td class="px-6 py-4 flex justify-center">
                                         {{-- <a href="{{ route('menus.edit', $menu->id) }}" class="text-blue-600 hover:text-blue-900">{{ __('Edit') }}</a> --}}
                                         

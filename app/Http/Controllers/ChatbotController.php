@@ -17,6 +17,7 @@ class ChatbotController extends Controller
      */
     public function index()
     {
+        Gate::authorize('viewAny', Chatbot::class);
         $chatbots = auth()->user()->chatbots;
         return view('chatbots.index', compact('chatbots'));
     }

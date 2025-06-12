@@ -19,6 +19,9 @@
                     @endif
                     
                     @foreach(App\Models\Menu::all() as $menu)
+                        @if($menu->enabled == false)
+                            @continue
+                        @endif
                         <x-nav-link :href="route($menu->route )" :active="request()->routeIs($menu->route_is)">
                             {{ $menu->title }}
                         </x-nav-link>

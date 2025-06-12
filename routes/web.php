@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\City;
+use App\Models\Menu;
 use App\Models\Chatbot;
 use App\Models\Department;
 use App\Events\MessageSent;
@@ -40,6 +41,9 @@ Route::post('/chat/send-message', function (Request $request) {
 
 Route::resource('/menus', MenuController::class);
 
+Route::post('menus/toggle-enabled/{menu}', [MenuController::class, 'toggleEnabled'])->name('menus.toggle-enabled');
+
+
 Route::resource('/mailers', MailerController::class)->middleware('auth');
 
 Route::group(['prefix' => 'mailers','middleware'=>'auth'], function(){
@@ -75,9 +79,15 @@ Route::group(['prefix' => 'sheetmailers','middleware'=>'auth'], function(){
 });
 
 Route::group(['prefix' => 'log-reader', 'middleware'=>'auth'], function(){
-    Route::view('/', 'log-reader.main')->name('log-reader');
-
-    Route::post('/read_logs', [LogReaderController::class, 'read'])->name('log-reader.read-logs');
+    // Only abort for log-reader routes, not globally
+    if (!Menu::where('route_is', 'log-reader')->where('enabled', true)->exists()) {
+        Route::any('/{any?}', function () {
+            abort(403, 'Unauthorized.');
+        })->where('any', '.*');
+    } else {
+        Route::view('/', 'log-reader.main')->name('log-reader');
+        Route::post('/read_logs', [LogReaderController::class, 'read'])->name('log-reader.read-logs');
+    }
 });
 
 Route::resource('/items', ItemController::class)->middleware('auth');
