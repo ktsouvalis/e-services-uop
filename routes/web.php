@@ -16,6 +16,7 @@ use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogReaderController;
 use App\Http\Controllers\SheetmailerController;
+use App\Http\Controllers\NotificationController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -116,4 +117,16 @@ Route::group(['prefix' => 'chatbots', 'middleware'=>'auth'], function(){
         return response()->download($path);
     })->name('chatbots.download-audio');
 });
+
+Route::resource('notifications', NotificationController::class)->middleware('auth');
+
+Route::group(['prefix' => 'notifications'], function(){
+    Route::post('/mark_as_read/{notification}', [NotificationController::class, 'markNotificationAsRead'])->name('notifications.mark_as_read');
+
+    Route::post('/mark_all_as_read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark_all_as_read');
+
+    Route::post('/delete_all/{user}', [NotificationController::class, 'deleteAll'])->name('notifications.delete_all');
+});
+
+
 require __DIR__.'/auth.php';

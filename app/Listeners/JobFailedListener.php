@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Queue\Events\JobFailed;
+use App\Notifications\UserNotification;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -34,6 +35,8 @@ class JobFailedListener
             $email = $command->mailable->to[0]['address'];
             $username = $command->mailable->username; //this is the username of the user that triggered the job. it is a public property of all mailable classes
             Log::channel('mails_delivery')->error("$jobName by $username failed: " . $email. ". ERROR: " . $event->exception->getMessage());
+            $user = User::where('username', $username)->first();
+            $user->notify(new UserNotification($event->exception->getMessage(), "Αποτυχία email στο $email"));
         }
     }
 }
