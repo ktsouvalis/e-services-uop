@@ -78,17 +78,11 @@ Route::group(['prefix' => 'sheetmailers','middleware'=>'auth'], function(){
     Route::post('/{sheetmailer}/send', [SheetmailerController::class, 'send'])->name('sheetmailers.send');
 });
 
-Route::group(['prefix' => 'log-reader', 'middleware'=>'auth'], function(){
-    // Only abort for log-reader routes, not globally
-    if (!Menu::where('route_is', 'log-reader')->where('enabled', true)->exists()) {
-        Route::any('/{any?}', function () {
-            abort(403, 'Unauthorized.');
-        })->where('any', '.*');
-    } else {
-        Route::view('/', 'log-reader.main')->name('log-reader');
-        Route::post('/read_logs', [LogReaderController::class, 'read'])->name('log-reader.read-logs');
-    }
+Route::group(['prefix' => 'log-reader', 'middleware' => ['auth', 'logreader.enabled']], function () {
+    Route::view('/', 'log-reader.main')->name('log-reader');
+    Route::post('/read_logs', [LogReaderController::class, 'read'])->name('log-reader.read-logs');
 });
+
 
 Route::resource('/items', ItemController::class)->middleware('auth');
 
