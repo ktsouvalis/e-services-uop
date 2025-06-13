@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\LogReaderEnabled;
 use App\Http\Controllers\MailerController;
 use App\Http\Controllers\AImodelController;
 use App\Http\Controllers\ChatbotController;
@@ -78,7 +79,7 @@ Route::group(['prefix' => 'sheetmailers','middleware'=>'auth'], function(){
     Route::post('/{sheetmailer}/send', [SheetmailerController::class, 'send'])->name('sheetmailers.send');
 });
 
-Route::group(['prefix' => 'log-reader', 'middleware' => ['auth', 'logreader.enabled']], function () {
+Route::group(['prefix' => 'log-reader', 'middleware' => ['auth', LogReaderEnabled::class]], function () {
     Route::view('/', 'log-reader.main')->name('log-reader');
     Route::post('/read_logs', [LogReaderController::class, 'read'])->name('log-reader.read-logs');
 });
