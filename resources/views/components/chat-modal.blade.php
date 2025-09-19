@@ -9,7 +9,7 @@
     <hr>
     <form id="chat-form" action="{{ route('chat.send-message') }}" method="POST">
         @csrf
-        <input type="text" id="chat-input" placeholder="Type a message..." required>
+        <input type="text" id="chat-input" placeholder="Type a message..." required style="width: 100%; box-sizing: border-box;">
         <button type="submit" id="send-message" style="display: none">Send</button>
         {{-- <button type="submit" id="send-message">Send</button> --}}
     </form>
