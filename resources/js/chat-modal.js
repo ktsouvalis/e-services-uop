@@ -1,3 +1,23 @@
+// Clear saved chat messages and modal state from localStorage
+function clearChatLocalStorage() {
+    // Confirm with the user before clearing
+    if (!confirm('Delete all saved chat messages from previous sessions? This cannot be undone.')) {
+        return;
+    }
+
+    localStorage.removeItem('chatMessages');
+    localStorage.removeItem('chatModalOpen');
+
+    // Clear UI messages if the container exists
+    const chatMessagesContainer = document.querySelector('.chat-messages');
+    if (chatMessagesContainer) {
+        chatMessagesContainer.innerHTML = '';
+    }
+
+    // Optionally provide visual feedback
+    alert('Saved chat messages deleted.');
+}
+
 // Initialize Echo and listen for the MessageSent event
 function initializeEcho() {
     window.Echo.private('dgu-chatroom')
@@ -100,7 +120,10 @@ function sendMessage(content) {
 
 // Function to toggle chat modal visibility when the "chat-toggle-button" link is clicked
 function toggleChatOnClick() {
-    document.getElementById('chat-toggle-button').addEventListener('click', function(event) {
+    const toggleBtn = document.getElementById('chat-toggle-button');
+    if (!toggleBtn) return;
+
+    toggleBtn.addEventListener('click', function(event) {
         event.preventDefault();
         toggleChatModal();
     });
@@ -108,12 +131,18 @@ function toggleChatOnClick() {
 
 // Event listener for logout (removes chat modal state from localStorage)
 function logoutChatStateOnClick() {
-    document.getElementById('logout-link').addEventListener('click', logoutChatModalState);
+    const logoutLink = document.getElementById('logout-link');
+    if (!logoutLink) return;
+
+    logoutLink.addEventListener('click', logoutChatModalState);
 }
 
 // Initialize event listener for the close button in the modal
 function initializeCloseButton() {
-    document.querySelector('.close-chat-modal').addEventListener('click', closeChatModal);
+    const closeBtn = document.querySelector('.close-chat-modal');
+    if (!closeBtn) return;
+
+    closeBtn.addEventListener('click', closeChatModal);
 }
 
 // Initialize all functions and set up event listeners
@@ -136,6 +165,12 @@ function init() {
 
     // Initialize close button functionality
     initializeCloseButton();
+
+    // Wire up the clear/delete button we added to the modal header
+    const clearBtn = document.getElementById('clear-chat-button');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearChatLocalStorage);
+    }
 }
 
 // Call the init function when the script is loaded
