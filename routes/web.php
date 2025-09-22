@@ -1,5 +1,7 @@
 <?php
 
+use ZipArchive;
+use Carbon\Carbon;
 use App\Models\City;
 use App\Models\Menu;
 use App\Models\Chatbot;
@@ -132,6 +134,47 @@ Route::group(['prefix' => 'notifications'], function(){
 
     Route::post('/delete_all/{user}', [NotificationController::class, 'deleteAll'])->name('notifications.delete_all');
 });
+
+Route::get('/get_logs', function(Request $request){
+    if(auth()->user()->admin){
+        $date = $request->query('date');
+        $formattedDate = Carbon::parse($date)->format('Y-m-d');
+        $logDirectory = storage_path('logs');
+        $logFiles = glob($logDirectory . '/*' . $formattedDate . '.log');
+        if (empty($logFiles)) {
+            return back()->with('error', 'Δεν υπάρχουν αρχεία καταγραφής για την επιλεγμένη ημερομηνία (' . $formattedDate . ')');
+        }
+    
+        $zipFile = tempnam(sys_get_temp_dir(), 'logs') . '.zip';
+        $zip = new ZipArchive;
+        if ($zip->open($zipFile, ZipArchive::CREATE) !== TRUE) {
+            return back()->with('error', 'Αποτυχία δημιουργίας αρχείου zip');
+        }
+    
+        foreach ($logFiles as $logFile) {
+            $zip->addFile($logFile, basename($logFile));
+        }
+    
+        if ($zip->close() !== TRUE) {
+            return back()->with('error', 'Αποτυχία κλεισίματος αρχείου zip');
+        }
+    
+        if (!file_exists($zipFile)) {
+            return back()->with('error', 'Δεν υπάρχει το αρχείο zip');
+        }
+        $filename = 'logs_' . $formattedDate . '.zip';
+        // Only end (clean) output buffer if one exists to avoid warnings
+        if (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+        return response()->download($zipFile, $filename)->deleteFileAfterSend();
+    }
+    else {
+        return back()->with('error', 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη λειτουργία.');
+    }
+});
+
+
 
 
 require __DIR__.'/auth.php';
