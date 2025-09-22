@@ -1,6 +1,5 @@
 <?php
 
-use ZipArchive;
 use Carbon\Carbon;
 use App\Models\City;
 use App\Models\Menu;
