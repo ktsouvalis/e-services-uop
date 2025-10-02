@@ -41,7 +41,10 @@ cp docker/apache/vhost.conf.example docker/apache/vhost.conf
 ```
 Edit `docker/apache/vhost.conf` (ignored by Git).
 
-### 6. Review `docker/docker-compose.yml`
+### 6. Review `docker/docker-compose.example.yml` and create your own
+```bash
+cp docker/docker-compose.example.yml docker/docker-compose.yml
+```
 Services:
 - `database` (MariaDB)
 - `application` (Apache + PHP)
@@ -59,7 +62,7 @@ Common adjustments:
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-### 8. (First-Time Optional) Run Bootstrap
+### 8. Run Bootstrap Script
 ```bash
 docker exec -it dgu-app bash -lc 'bash docker/scripts/artisan_bootstrap.sh'
 ```
@@ -75,6 +78,7 @@ Re-run if caches are stale or after env changes.
 type dump.sql | docker exec -i dgu-db mariadb -u root -p%DB_PASSWORD% e-services-2
 ```
 (Use `cat` instead of `type` on Linux/macOS.)
+- Restart the Containers
 
 ### 10. Access the App
 - Web: http://localhost:8000

@@ -20,5 +20,6 @@ yarn-error.log
 /.idea
 /.vscode
 /.zed
-# Docker Apache real vhost (example is tracked)
+# Docker (examples are tracked)
 docker/apache/vhost.conf
+docker/docker-compose.yml

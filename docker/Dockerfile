@@ -12,7 +12,6 @@ RUN npm run build || (echo "Frontend build failed" && exit 1)
 # ---------- Stage: Composer (PHP dependencies) ----------
 FROM php:8.2-cli AS composer_deps
 WORKDIR /var/www/html/dgu-services
-ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     git unzip libicu-dev libzip-dev libxml2-dev libldap2-dev libonig-dev \
     libjpeg-dev libpng-dev libfreetype6-dev zlib1g-dev libssl-dev \
@@ -43,7 +42,6 @@ RUN composer dump-autoload --optimize \
 # ---------- Stage: Final runtime (Apache + PHP) ----------
 FROM php:8.2-apache AS app
 ARG APP_WORKDIR=/var/www/html/dgu-services
-ENV APP_WORKDIR=${APP_WORKDIR} TZ=Europe/Athens DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     git curl tzdata unzip \
     libicu-dev libzip-dev libxml2-dev libldap2-dev libonig-dev \
@@ -61,14 +59,12 @@ RUN set -e; a2enmod rewrite; \
 # Copy application code
 COPY .. ${APP_WORKDIR}/
 # Copy vendor & composer manifests from the correct path inside composer_deps stage
-COPY --from=composer_deps /var/www/html/dgu-services/vendor ${APP_WORKDIR}/vendor
-COPY --from=composer_deps /var/www/html/dgu-services/composer.* ${APP_WORKDIR}/
+COPY --from=composer_deps ${APP_WORKDIR}/vendor ${APP_WORKDIR}/vendor
+COPY --from=composer_deps ${APP_WORKDIR}/composer.* ${APP_WORKDIR}/
 
 # Ensure full Laravel runtime directory skeleton & permissions (avoid runtime permission issues)
-RUN chown -R www-data:www-data ${APP_WORKDIR}/storage; \
-    chmod -R 755 ${APP_WORKDIR}/storage
-COPY --from=node_build /build/public/build ${APP_WORKDIR}/public/build
 WORKDIR ${APP_WORKDIR}
+COPY --from=node_build /build/public/build public/build
 EXPOSE 80
 CMD ["apache2-foreground"]
 
