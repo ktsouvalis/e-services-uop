@@ -1,0 +1,87 @@
+services:
+  database:
+    image: mariadb:11.4
+    container_name: dgu-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  application:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: app
+    image: dgu-services:latest
+    container_name: dgu-app
+    restart: unless-stopped
+    volumes:
+      - ../.env:/var/www/html/dgu-services/.env:ro
+      - app_data:/var/www/html/dgu-services/storage/app
+      - app_logs:/var/www/html/dgu-services/storage/logs
+      - assets_build:/var/www/html/dgu-services/public/build
+    ports:
+      - "8000:80"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  queue-worker:
+    image: dgu-services:latest
+    container_name: dgu-q
+    command: bash -lc "php artisan queue:work --verbose --tries=3 --timeout=90"
+    restart: unless-stopped
+    volumes:
+      - ../.env:/var/www/html/dgu-services/.env:ro
+      - app_data:/var/www/html/dgu-services/storage/app
+      - app_logs:/var/www/html/dgu-services/storage/logs
+      - assets_build:/var/www/html/dgu-services/public/build
+    depends_on:
+      application:
+        condition: service_started
+      database:
+        condition: service_healthy
+
+  reverb-server:
+    image: dgu-services:latest
+    container_name: dgu-ws
+    command: bash -lc "php artisan reverb:start --host=0.0.0.0 --port=8080"
+    restart: unless-stopped
+    volumes:
+      - ../.env:/var/www/html/dgu-services/.env:ro
+      - app_data:/var/www/html/dgu-services/storage/app
+      - app_logs:/var/www/html/dgu-services/storage/logs
+      - assets_build:/var/www/html/dgu-services/public/build
+    ports:
+      - "8080:8080"
+    depends_on:
+      application:
+        condition: service_started
+
+  assets:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: assets-builder
+    image: dgu-services-assets
+    container_name: dgu-assets
+    command: sh -c "npm run build"
+    restart: "no"
+    volumes:
+      - ../.env:/var/www/html/dgu-services/.env:ro
+      - assets_build:/var/www/html/dgu-services/public/build
+
+volumes:
+  db_data:
+  app_data:
+  app_logs:
+  assets_build:
