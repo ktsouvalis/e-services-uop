@@ -62,17 +62,7 @@ Common adjustments:
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-### 8. Run Bootstrap Script
-```bash
-docker exec -it dgu-app bash -lc 'bash docker/scripts/artisan_bootstrap.sh'
-```
-What it does:
-- Clears & rebuilds caches (config/route/view/event)
-
-
-Re-run if caches are stale or after env changes.
-
-### 9. Import Database (if database volume is brand new and starting from a dump)
+### 8. Import Database (if database volume is brand new and starting from a dump)
 ```bash
 # Example: dump.sql in project root
 type dump.sql | docker exec -i dgu-db mariadb -u root -p%DB_PASSWORD% e-services-2
@@ -80,16 +70,16 @@ type dump.sql | docker exec -i dgu-db mariadb -u root -p%DB_PASSWORD% e-services
 (Use `cat` instead of `type` on Linux/macOS.)
 - Restart the Containers
 
-### 10. Access the App
+### 9. Access the App
 - Web: http://localhost:8000
 
-### 11. Rebuild Frontend Assets
+### 10. Rebuild Frontend Assets
 On demand:
 ```bash
 docker compose -f docker/docker-compose.yml run --rm assets
 ```
 
-### 12. Update Dependencies
+### 11. Update Dependencies
 Composer:
 ```bash
 docker exec -it dgu-app bash -lc 'composer install --no-dev --optimize-autoloader'

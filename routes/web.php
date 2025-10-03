@@ -173,6 +173,9 @@ Route::get('/get_logs', function(Request $request){
     }
 });
 
+Route::get('/health', function() {
+    return response()->json(['status' => 'OK'], 200);
+});
 
 
 

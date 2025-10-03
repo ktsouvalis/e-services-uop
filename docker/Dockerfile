@@ -62,10 +62,15 @@ COPY .. ${APP_WORKDIR}/
 COPY --from=composer_deps ${APP_WORKDIR}/vendor ${APP_WORKDIR}/vendor
 COPY --from=composer_deps ${APP_WORKDIR}/composer.* ${APP_WORKDIR}/
 
-# Ensure full Laravel runtime directory skeleton & permissions (avoid runtime permission issues)
+# Provide entrypoint scripts
+COPY docker/scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN /usr/local/bin/entrypoint.sh
+
 WORKDIR ${APP_WORKDIR}
 COPY --from=node_build /build/public/build public/build
 EXPOSE 80
+ENTRYPOINT ["entrypoint.sh"]
 CMD ["apache2-foreground"]
 
 # ---------- Stage: Assets builder runtime (separate container) ----------
