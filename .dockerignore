@@ -1,7 +1,8 @@
-# VCS
-.git
-.gitignore
-.gitattributes
+# For Developing, comment these lines out
+# # VCS
+# .git
+# .gitignore
+# .gitattributes
 
 # Node (installed inside image)
 node_modules
@@ -26,7 +27,8 @@ public/hot
 coverage
 *.log
 
-# Docker meta (don’t send local rename experiments)
-Dockerfile
-Dockerfile.*
-.dockerignore
+# For Developing, comment these lines out
+# # Docker meta (don’t send local rename experiments)
+# Dockerfile
+# Dockerfile.*
+# .dockerignore

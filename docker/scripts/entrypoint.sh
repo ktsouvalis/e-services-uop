@@ -19,6 +19,10 @@ if [ "${BOOTSTRAP:-0}" = "1" ]; then
     php artisan migrate --force || true
     echo "[bootstrap] Migrations applied."
 
+    echo "[bootstrap] Seeding database..."
+    php artisan db:seed --force || true
+    echo "[bootstrap] Database seeded."
+
     echo "[bootstrap] Building Laravel caches..."
     php artisan config:clear || true
     php artisan route:clear || true

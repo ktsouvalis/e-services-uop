@@ -22,6 +22,9 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             CategorySeeder::class,
+            MenuSeeder::class,
+            UserSeeder::class,
+            AiModelSeeder::class,
         ]);
     }
 }
