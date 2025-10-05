@@ -4,6 +4,7 @@ services:
     container_name: dgu-db2
     restart: always
     environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
       MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     ports:
