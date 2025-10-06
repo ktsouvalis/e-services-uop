@@ -7,7 +7,7 @@
 /vendor
 # .env.example is tracked
 .env
-.env.backup
+.env.docker
 .env.production
 .phpactor.json
 .phpunit.result.cache
@@ -21,5 +21,5 @@ yarn-error.log
 /.vscode
 /.zed
 # Docker (examples are tracked)
-docker/apache/vhost.conf
-docker/docker-compose.yml
+vhost.conf
+docker-compose.yml
