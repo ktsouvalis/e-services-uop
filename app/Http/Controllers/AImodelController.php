@@ -12,7 +12,7 @@ class AImodelController extends Controller
      */
     public function index()
     {
-        $aimodels = AImodel::all();
+        $aimodels = AImodel::all()->sortBy('name');
         return view('aimodels.index', compact('aimodels'));
     }
 

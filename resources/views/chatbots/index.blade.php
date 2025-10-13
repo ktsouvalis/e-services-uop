@@ -64,7 +64,7 @@
     <!-- Section 2: Create Form -->
     <div class="max-w-5xl mx-auto bg-white shadow-sm sm:rounded-lg p-6">
         <h3 class="text-lg font-semibold mb-4">{{ __('Create New Chatbot') }}</h3>
-        <form action="{{ route('chatbots.store') }}" method="POST">
+        <form action="{{ route('chatbots.store') }}" method="POST" class="mb-3">
             @csrf
             <div class="flex flex-wrap -mx-3 mb-6">
                 <!-- Title Field -->
@@ -77,7 +77,7 @@
                 </div>
                 <!-- API Key Field -->
                 <div class="w-full md:w-1/2 px-3">
-                    <label for="api_key" class="block text-sm font-medium text-gray-700">{{ __('API Key') }}</label>
+                    <label for="api_key" class="block text-sm font-medium text-gray-700">{{ __('API Key') }}*</label>
                     <input type="text" name="api_key" id="api_key" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('api_key') }}">
                     <span class="text-black-500 text-sm">Not Required for local models</span>
                     @error('api_key')
@@ -86,12 +86,12 @@
                 </div>
             </div>
             @php
-                $ai_models = App\Models\AImodel::all();
+                $ai_models = App\Models\AImodel::all()->sortBy('name');
             @endphp
             <div class="flex flex-wrap -mx-3 mb-6">
                 <!-- AI Model Field -->
                 <div class="w-full px-3">
-                    <label for="ai_model_id" class="block text-sm font-medium text-gray-700">{{ __('AI Model') }}</label>
+                    <label for="ai_model_id" class="block text-sm font-medium text-gray-700">{{ __('AI Model') }}**</label>
                     <select name="ai_model_id" id="ai_model_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                         @foreach ($ai_models as $model)
                             <option value="{{ $model->id }}" title="{{$model->description}}">{{ $model->name }} ({{$model->source}})</option>
@@ -109,5 +109,9 @@
                 </x-primary-button>
             </div>
         </form>
+        <div class="text-xs">
+            *Πρέπει να έχετε δημιουργήσει API Keys στο OpenAI ή στο DeepSeek για να χρησιμοποιήσετε τα μοντέλα τους. <br>
+            **Αν δεν βλέπετε το μοντέλο που θέλετε, επικοινωνήστε με τον διαχειριστή.
+        </div>
     </div>
 </x-app-layout>
