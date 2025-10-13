@@ -22,7 +22,7 @@ use App\Http\Controllers\SheetmailerController;
 use App\Http\Controllers\NotificationController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/dashboard');
 });
 
 Route::get('/dashboard', function () {

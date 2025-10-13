@@ -12,17 +12,17 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    @if(!request()->routeIs('dashboard'))
+                    {{-- @if(!request()->routeIs('dashboard'))
                         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                             {{ __('Dashboard') }}
                         </x-nav-link>
                     @endif
-                    
+                     --}}
                     @foreach(App\Models\Menu::all() as $menu)
                         @if($menu->enabled == false)
                             @continue
                         @endif
-                        <x-nav-link :href="route($menu->route )" :active="request()->routeIs($menu->route_is)">
+                        <x-nav-link :href="route($menu->route )" :active="request()->routeIs($menu->route_is) or request()->routeIs($menu->route)">
                             {{ $menu->title }}
                         </x-nav-link>
                     @endforeach
