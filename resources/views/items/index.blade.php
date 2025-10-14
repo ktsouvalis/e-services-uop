@@ -50,7 +50,7 @@
                                 <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Πηγή Χρηματοδότησης</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Σχόλια</th>
                                 <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Χρέωση</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Χρεωστικό</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Αρχεία</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Ενέργειες</th>
                             </tr>
                         </thead>
@@ -69,13 +69,25 @@
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $item->comments }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ optional($item->user)->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @can('view', $item)
-                                            <a href="{{ route('items.download_file', ['item' => $item->id]) }}" class="text-blue-600">
-                                                {{ $item->file_path }}
-                                            </a>
-                                        @else
-                                            {{ $item->file_path }}
-                                        @endcan
+                                        @php
+                                            $displayName = null;
+                                            $storedName = null;
+                                            $files = $item->files ?? [];
+                                            if (!empty($files)) {
+                                                $last = end($files);
+                                                $storedName = is_array($last) ? ($last['stored'] ?? $last['original'] ?? null) : $last;
+                                                $displayName = is_array($last) ? ($last['original'] ?? $storedName) : $storedName;
+                                            }
+                                        @endphp
+                                        @if($displayName)
+                                            @can('view', $item)
+                                                <a href="{{ route('items.download_file', ['item' => $item->id]) }}?filename={{ urlencode($storedName) }}" class="text-blue-600">
+                                                    {{ $displayName }}
+                                                </a>
+                                            @else
+                                                {{ $displayName }}
+                                            @endcan
+                                        @endif
                                     <td class="px-6 py-4 flex justify-center">
                                         @can('update', $item)
                                         <a href="{{ route('items.edit', $item->id) }}" class="text-blue-600">

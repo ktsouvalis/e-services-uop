@@ -4,7 +4,7 @@
 @php
     $categories = App\Models\Category::all();
 @endphp
-<x-app_layout>
+<x-app-layout>
      <!-- Section 2: Create Form -->
      <div class="max-w-5xl mx-auto bg-white shadow-sm sm:rounded-lg p-6">
         <h3 class="text-lg font-semibold mb-4">{{ __('Create New Item') }}</h3>
@@ -127,11 +127,14 @@
             </div>
 
             <div class="flex flex-wrap -mx-3 mb-6">
-                <!-- File Path Field -->
+                <!-- File Upload Field (multiple) -->
                 <div class="w-full px-3">
-                    <label for="file_path" class="block text-sm font-medium text-gray-700">{{ __('File Path') }}</label>
-                    <input type="file" name="file_path" id="file_path" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="{{ old('file_path') }}">
+                    <label for="file_path" class="block text-sm font-medium text-gray-700">{{ __('Files') }}</label>
+                    <input type="file" name="file_path[]" id="file_path" multiple class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                     @error('file_path')
+                        <span class="text-red-500 text-sm">{{ $message }}</span>
+                    @enderror
+                    @error('file_path.*')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror
                 </div>
@@ -148,4 +151,4 @@
             </div>
         </form>
     </div>
-</x-app_layout>
+</x-app-layout>

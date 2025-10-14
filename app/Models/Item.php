@@ -11,6 +11,26 @@ class Item extends Model
     protected $table = 'items';
     protected $guarded = ['id'];
 
+    /**
+     * Accessor to always get an array of files from file_path TEXT/JSON.
+     * Each element is either a string (legacy) or an array with keys: original, stored, uploaded_at
+     */
+    public function getFilesAttribute(): array
+    {
+        $raw = $this->attributes['file_path'] ?? null;
+        if (!$raw) return [];
+        // If it's already an array in memory (e.g., set during request lifecycle), normalize
+        if (is_array($raw)) return $raw;
+
+        // Try to decode JSON
+        $decoded = json_decode($raw, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+        // Fallback: treat as single filename string
+        return [$raw];
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);

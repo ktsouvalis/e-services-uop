@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -51,9 +52,10 @@ class ItemController extends Controller
             'source_of_funding' => 'nullable|string|',
             'user_id' => 'nullable|string|max:255',
             'comments' => 'nullable|string',
-            'file_path' => 'nullable|file|mimeTypes:application/pdf',
+            'file_path' => 'nullable|array',
+            'file_path.*' => 'file|mimes:pdf',
         ]);
-        $incoming = $request->input();
+    $incoming = $request->except('file_path');
 
         if($request->input('user_id') == 99){
             $incoming['user_id'] = null;
@@ -61,11 +63,25 @@ class ItemController extends Controller
         else{
             $incoming['user_id'] = $request->input('user_id');
         }
-        if($request->has('file_path')){
-            $file = $request->file('file_path');
-            $filename = $file->getClientOriginalName();
-            $file->move(storage_path('app/private/items'), $filename);
-            $incoming['file_path'] = $filename;
+        // Handle multiple file uploads
+        $filesMeta = [];
+        if ($request->hasFile('file_path')) {
+            foreach ($request->file('file_path') as $file) {
+                if (!$file) continue;
+                $original = $file->getClientOriginalName();
+                $unique = uniqid(date('YmdHis').'_');
+                $ext = $file->getClientOriginalExtension();
+                $storedName = $unique . ($ext ? ('.' . $ext) : '');
+                $file->move(storage_path('app/private/items'), $storedName);
+                $filesMeta[] = [
+                    'original' => $original,
+                    'stored' => $storedName,
+                    'uploaded_at' => now()->toDateTimeString(),
+                ];
+            }
+        }
+        if (!empty($filesMeta)) {
+            $incoming['file_path'] = json_encode($filesMeta, JSON_UNESCAPED_UNICODE);
         }
         try{
             $new_item = Item::create($incoming);
@@ -84,7 +100,42 @@ class ItemController extends Controller
         if (ob_get_level() > 0) {
             ob_end_clean();
         }
-        return response()->download(storage_path('app/private/items/'.$item->file_path));
+        $requestedStored = $request->query('filename');
+        $files = $item->files;
+        $storedName = null;
+        $originalName = null;
+
+        if ($requestedStored) {
+            // Find the requested file in metadata
+            foreach ($files as $file) {
+                $stored = is_array($file) ? ($file['stored'] ?? $file['original'] ?? null) : $file;
+                if ($stored && $stored === $requestedStored) {
+                    $storedName = $stored;
+                    $originalName = is_array($file) ? ($file['original'] ?? $stored) : $stored;
+                    break;
+                }
+            }
+        }
+
+        // If not provided or not found, fallback to last uploaded
+        if (!$storedName) {
+            if (!empty($files)) {
+                $last = end($files);
+                $storedName = is_array($last) ? ($last['stored'] ?? $last['original'] ?? null) : $last;
+                $originalName = is_array($last) ? ($last['original'] ?? $storedName) : $storedName;
+            }
+        }
+
+        if (!$storedName) {
+            abort(404);
+        }
+
+        $path = storage_path('app/private/items/' . $storedName);
+        if (!file_exists($path)) {
+            abort(404);
+        }
+        // Force download as the original filename (displayed to the user)
+        return response()->download($path, $originalName ?: $storedName);
     }
 
     /**
@@ -114,21 +165,34 @@ class ItemController extends Controller
             'source_of_funding' => 'nullable|string|',
             'user_id' => 'nullable|string|max:255',
             'comments' => 'nullable|string',
-            'file_path' => 'nullable|file|mimeTypes:application/pdf',
+            'file_path' => 'nullable|array',
+            'file_path.*' => 'file|mimes:pdf',
         ]);
 
-        $incoming = $request->all();
+    $incoming = $request->except('file_path');
         if($incoming['user_id'] == 99){
             $incoming['user_id'] = null;
         }
-        if($request->has('file_path')){
+        // Handle newly uploaded files: append to existing list
+        // Start with existing files array from accessor
+        $existing = $item->files;
 
-            $file = $request->file('file_path');
-            $filename = $file->getClientOriginalName();
-            $file->move(storage_path('app/private/items'), $filename);
-            $incoming['file_path'] = $filename;
-            Storage::delete('app/private/items/'.$item->file_path);
+        if ($request->hasFile('file_path')) {
+            foreach ($request->file('file_path') as $file) {
+                if (!$file) continue;
+                $original = $file->getClientOriginalName();
+                $unique = uniqid(date('YmdHis').'_');
+                $ext = $file->getClientOriginalExtension();
+                $storedName = $unique . ($ext ? ('.' . $ext) : '');
+                $file->move(storage_path('app/private/items'), $storedName);
+                $existing[] = [
+                    'original' => $original,
+                    'stored' => $storedName,
+                    'uploaded_at' => now()->toDateTimeString(),
+                ];
+            }
         }
+        $incoming['file_path'] = !empty($existing) ? json_encode($existing, JSON_UNESCAPED_UNICODE) : null;
         DB::beginTransaction();
         try{
             $item->lockForUpdate();
@@ -161,7 +225,13 @@ class ItemController extends Controller
             Log::channel('items')->error('User '.auth()->user()->name.' failed to delete item with id '.$item->id.'. Error: '.$e->getMessage());
             return response()->json(['status'=>'error', 'message' => 'Κάποιο σφάλμα συνέβη. Ελέγξτε το αρχείο log/items για περισσότερες πληροφορίες.']);
         }
-        Storage::delete('app/private/items/'.$item->file_path);
+        // Delete all associated files
+        foreach ($item->files as $file) {
+            $stored = is_array($file) ? ($file['stored'] ?? $file['original'] ?? null) : $file;
+            if ($stored) {
+                File::delete(storage_path('app/private/items/'.$stored));
+            }
+        }
         Log::channel('items')->info('User '.auth()->user()->name.' deleted item with id '.$item->id);
         return response()->json(['status'=>'success','message' => 'Το αντικείμενο διαγράφηκε επιτυχώς.']);
     }
@@ -232,7 +302,7 @@ class ItemController extends Controller
             $sheet->setCellValue('P' . $row, $item->source_of_funding);
 
 
-//            $sheet->setCellValue('L' . $row, $item->file_path);
+//            $sheet->setCellValue('L' . $row, is_array($item->file_path) ? json_encode($item->file_path) : $item->file_path);
             $row++;
         }
         $timestamp = now()->format('Y-m-d');
@@ -253,10 +323,19 @@ class ItemController extends Controller
 
     public function delete_file(Request $request, Item $item){
         Gate::authorize('update', $item);
-        Storage::delete('app/private/items/'.$item->file_path);
-        $item->file_path = null;
+        $filename = $request->input('filename');
+        $updated = [];
+        foreach ($item->files as $file) {
+            $stored = is_array($file) ? ($file['stored'] ?? $file['original'] ?? null) : $file;
+            if ($stored && $stored === $filename) {
+                File::delete(storage_path('app/private/items/'.$stored));
+                continue;
+            }
+            $updated[] = $file;
+        }
+        $item->file_path = empty($updated) ? null : json_encode($updated, JSON_UNESCAPED_UNICODE);
         $item->save();
-        Log::channel('items')->info('User '.auth()->user()->name.' deleted file of item with id '.$item->id);
+        Log::channel('items')->info('User '.auth()->user()->name.' deleted file '.$filename.' of item with id '.$item->id);
         return redirect()->back()->with('success', 'Το αρχείο διαγράφηκε επιτυχώς.');
     }
 
@@ -269,14 +348,13 @@ class ItemController extends Controller
         else
             $item->given_away = 0;
         try{
-            $item->save;
+            $item->save();
         }
         catch(\Exception $e){
             Log::channel('items')->error('User '.auth()->user()->name.' failed to change item\'s with id '.$item->id.' given status. Error: '.$e->getMessage());
             return response()->json(['status'=>'error','message' => 'Κάποιο σφάλμα συνέβη. Ελέγξτε το αρχείο log/items.log για περισσότερες πληροφορίες.']);
         }
-        $item->save();
-        Log::channel('items')->info('User '.auth()->user()->name.' changed item\'s with id '.$item->id).' given status.';
+        Log::channel('items')->info('User '.auth()->user()->name.' changed item\'s with id '.$item->id.' given status.');
         return response()->json(['status'=>'success','message' => 'Το αντικείμενο ενημερώθηκε επιτυχώς.']);  
     }
 }
