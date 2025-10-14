@@ -122,9 +122,16 @@
                     </form>
                     <hr class="my-3">
                     <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center">
-                            <input type="checkbox" id="given" class="given-checkbox" data-item-id="{{ $item->id }}" data-given-url="{{ route('items.given', ['item' => $item->id]) }}" {{ $item->given_away ? 'checked' : '' }}>
-                            <label for="given" class="ml-2"> Δόθηκε εκτός ΜΨΔ </label>
+                        <div class="flex items-center gap-6">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="given" class="given-checkbox" data-item-id="{{ $item->id }}" data-given-url="{{ route('items.given', ['item' => $item->id]) }}" {{ $item->given_away ? 'checked' : '' }}>
+                                <label for="given" class="ml-2"> Δόθηκε εκτός ΜΨΔ </label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="hidden" name="in_local_storage" value="0">
+                                <input type="checkbox" id="in_local_storage" name="in_local_storage" value="1" class="in-local-storage-checkbox" data-item-id="{{ $item->id }}" data-toggle-url="{{ route('items.in-local-storage', ['item' => $item->id]) }}" {{ $item->in_local_storage ? 'checked' : '' }}>
+                                <label for="in_local_storage" class="ml-2"> Αποθήκη ΜΨΔ </label>
+                            </div>
                         </div>
                         @if($item->files && count($item->files))
                         <div class="flex flex-col gap-2">

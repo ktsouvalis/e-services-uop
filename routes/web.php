@@ -93,6 +93,8 @@ Route::group(['prefix' => 'items', 'middleware'=>'auth'], function(){
 
     Route::post('/{item}/given', [ItemController::class, 'given'])->name('items.given');
 
+    Route::post('/{item}/in-local-storage', [ItemController::class, 'inLocalStorage'])->name('items.in-local-storage');
+
     Route::delete('/{item}/delete_f', [ItemController::class, 'delete_file'])->name('items.delete_file');
 });
 Route::get('/extract_items', [ItemController::class, 'extract'])->name('items.extract');

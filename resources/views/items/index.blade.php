@@ -23,6 +23,17 @@
             </a>
             @endif
         </h2>
+        <!-- Legend -->
+        <div class="mt-4 flex space-x-8">
+            <div class="flex items-center">
+                <span class="inline-block w-4 h-4 border border-gray-300" style="background-color: #fff3cd;"></span>
+                <span class="ml-2 text-sm text-gray-600">{{ __('Χρεωμένα εκτός ΜΨΔ') }}</span>
+            </div>
+            <div class="flex items-center">
+                <span class="inline-block w-4 h-4 border border-gray-300" style="background-color: #e7f3ff;"></span>
+                <span class="ml-2 text-sm text-gray-600">{{ __('Στην αποθήκη ΜΨΔ') }}</span>
+            </div>
+        </div>
     </x-slot>
 
     <div class="py-12">
@@ -50,13 +61,14 @@
                                 <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Πηγή Χρηματοδότησης</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Σχόλια</th>
                                 <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Χρέωση</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Αποθήκη ΜΨΔ</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Αρχεία</th>
                                 <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Ενέργειες</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($items as $item)
-                                <tr id="item-{{$item->id}}" @if($item->given_away) style="background-color: #fff3cd;" @endif>
+                                <tr id="item-{{$item->id}}" @if($item->given_away) style="background-color: #fff3cd;" @else @if ($item->in_local_storage) style="background-color: #e7f3ff;" @endif @endif>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $item->id }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $item->category->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $item->description }}</td>
@@ -68,6 +80,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $item->source_of_funding }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $item->comments }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">{{ optional($item->user)->name }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">{{ $item->in_local_storage ? 'Ναι' : 'Όχι' }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @php
                                             $displayName = null;

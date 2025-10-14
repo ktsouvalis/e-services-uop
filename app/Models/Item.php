@@ -10,6 +10,10 @@ class Item extends Model
     //
     protected $table = 'items';
     protected $guarded = ['id'];
+    protected $casts = [
+        'in_local_storage' => 'boolean',
+        'given_away' => 'boolean',
+    ];
 
     /**
      * Accessor to always get an array of files from file_path TEXT/JSON.

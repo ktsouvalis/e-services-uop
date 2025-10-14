@@ -123,6 +123,11 @@
                     @error('user_id')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror
+                    <div class="mt-4 flex items-center">
+                        <input type="hidden" name="in_local_storage" value="0">
+                        <input type="checkbox" id="in_local_storage" name="in_local_storage" value="1" class="mr-2" checked>
+                        <label for="in_local_storage"> Αποθήκη ΜΨΔ </label>
+                    </div>
                 </div>
             </div>
 

@@ -1,6 +1,5 @@
 $(function () {
     function syncMutualExclusion(givenChecked, localChecked) {
-        // Keep mutual exclusivity: if given is true, local must be false and disabled; if local is true, given must be false and disabled
         const $given = $('.given-checkbox');
         const $local = $('.in-local-storage-checkbox');
 
@@ -9,39 +8,30 @@ $(function () {
             $local.prop('checked', false).prop('disabled', true);
         } else {
             $given.prop('checked', false);
-            // Only enable local if given is false
             $local.prop('disabled', false);
         }
         if (localChecked) {
             $local.prop('checked', true);
             $given.prop('checked', false).prop('disabled', true);
         } else if (!givenChecked) {
-            // Only enable given if local is false, too
             $given.prop('disabled', false);
         }
     }
-    function updateItemGivenMessage(isChecked) {
-        if (isChecked) {
-            $('#item-given-message').removeClass('hidden').addClass('block');
-        } else {
-            $('#item-given-message').addClass('hidden').removeClass('block');
-        }
-    }
 
-    // Initial state: enforce rules based on current checkbox values
+    // Initial state
     (function init() {
         const givenChecked = $('.given-checkbox').is(':checked');
         const localChecked = $('.in-local-storage-checkbox').is(':checked');
         syncMutualExclusion(givenChecked, localChecked);
     })();
 
-    $('body').on('change', '.given-checkbox', function () {
+    $('body').on('change', '.in-local-storage-checkbox', function () {
         var isChecked = $(this).is(':checked');
         var csrfToken = $('meta[name="csrf-token"]').attr('content');
-        var itemGivenUrl = $(this).data('given-url');
+        var toggleUrl = $(this).data('toggle-url');
 
         $.ajax({
-            url: itemGivenUrl,
+            url: toggleUrl,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -52,24 +42,21 @@ $(function () {
             }),
             success: function (response) {
                 const data = (response && response.data) || {};
-                const given = typeof data.given_away === 'boolean' ? data.given_away : isChecked;
-                const local = typeof data.in_local_storage === 'boolean' ? data.in_local_storage : !isChecked;
+                const given = typeof data.given_away === 'boolean' ? data.given_away : !isChecked;
+                const local = typeof data.in_local_storage === 'boolean' ? data.in_local_storage : isChecked;
                 syncMutualExclusion(given, local);
                 $('#message')
                     .removeClass('hidden text-red-700 bg-red-100')
                     .addClass('block text-green-700 bg-green-100')
                     .text(response.message);
-
-                // Update the #item-given-message based on the state of the checkbox
-                updateItemGivenMessage(given);
             },
             error: function (response) {
                 $('#message')
                     .removeClass('hidden text-green-700 bg-green-100')
                     .addClass('block text-red-700 bg-red-100')
-                    .text(response.message);
-                console.error("An error occurred: ", response);
-                // Revert UI to consistent state
+                    .text(response.message || 'Σφάλμα ενημέρωσης κατάστασης.');
+                console.error('An error occurred: ', response);
+                // Revert UI
                 const givenChecked = $('.given-checkbox').is(':checked');
                 const localChecked = $('.in-local-storage-checkbox').is(':checked');
                 syncMutualExclusion(givenChecked, localChecked);

@@ -57,6 +57,11 @@ class ItemController extends Controller
         ]);
     $incoming = $request->except('file_path');
 
+        // Normalize boolean checkbox (if present in create form)
+        if ($request->has('in_local_storage')) {
+            $incoming['in_local_storage'] = (bool)$request->input('in_local_storage');
+        }
+
         if($request->input('user_id') == 99){
             $incoming['user_id'] = null;
         }
@@ -169,7 +174,11 @@ class ItemController extends Controller
             'file_path.*' => 'file|mimes:pdf',
         ]);
 
-    $incoming = $request->except('file_path');
+        $incoming = $request->except('file_path');
+        // Normalize boolean checkbox (if present in edit form submission)
+        if ($request->has('in_local_storage')) {
+            $incoming['in_local_storage'] = (bool)$request->input('in_local_storage');
+        }
         if($incoming['user_id'] == 99){
             $incoming['user_id'] = null;
         }
@@ -344,6 +353,8 @@ class ItemController extends Controller
         if($request->input('checked')=='true'){
             $item->given_away = 1;
             $item->user_id = null;
+            // Automatically uncheck in_local_storage when item is given
+            $item->in_local_storage = 0;
         }
         else
             $item->given_away = 0;
@@ -355,6 +366,39 @@ class ItemController extends Controller
             return response()->json(['status'=>'error','message' => 'Κάποιο σφάλμα συνέβη. Ελέγξτε το αρχείο log/items.log για περισσότερες πληροφορίες.']);
         }
         Log::channel('items')->info('User '.auth()->user()->name.' changed item\'s with id '.$item->id.' given status.');
-        return response()->json(['status'=>'success','message' => 'Το αντικείμενο ενημερώθηκε επιτυχώς.']);  
+        return response()->json([
+            'status'=>'success',
+            'message' => 'Το αντικείμενο ενημερώθηκε επιτυχώς.',
+            'data' => [
+                'given_away' => (bool)$item->given_away,
+                'in_local_storage' => (bool)$item->in_local_storage,
+            ],
+        ]);  
+    }
+
+    public function inLocalStorage(Request $request, Item $item){
+        Gate::authorize('update', $item);
+        $checked = filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN);
+        $item->in_local_storage = $checked ? 1 : 0;
+        if ($item->in_local_storage) {
+            // If now in local storage, it cannot be marked as given
+            $item->given_away = 0;
+        }
+        try{
+            $item->save();
+        }
+        catch(\Exception $e){
+            Log::channel('items')->error('User '.auth()->user()->name.' failed to change item\'s with id '.$item->id.' in_local_storage. Error: '.$e->getMessage());
+            return response()->json(['status'=>'error','message' => 'Κάποιο σφάλμα συνέβη. Ελέγξτε το αρχείο log/items.log για περισσότερες πληροφορίες.']);
+        }
+        Log::channel('items')->info('User '.auth()->user()->name.' changed item\'s with id '.$item->id.' in_local_storage.');
+        return response()->json([
+            'status'=>'success',
+            'message' => 'Η κατάσταση "Αποθήκη ΜΨΔ" ενημερώθηκε επιτυχώς.',
+            'data' => [
+                'given_away' => (bool)$item->given_away,
+                'in_local_storage' => (bool)$item->in_local_storage,
+            ],
+        ]);
     }
 }
