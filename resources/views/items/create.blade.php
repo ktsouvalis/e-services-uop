@@ -115,12 +115,12 @@
 
                 <!-- Assigned To Field -->
                 <div class="w-full md:w-1/2 px-3">
-                    <label for="assigned_to" class="block text-sm font-medium text-gray-700">{{ __('Assigned To') }}</label>
-                    <select name="assigned_to" id="assigned_to" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <label for="user_id" class="block text-sm font-medium text-gray-700">{{ __('Assigned To') }}</label>
+                    <select name="user_id" id="user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                         <option value="99">-</option>
                         <option value="{{ auth()->user()->id }}">{{ auth()->user()->name }}</option>
                     </select>
-                    @error('assigned_to')
+                    @error('user_id')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror
                 </div>

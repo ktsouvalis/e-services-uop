@@ -39,19 +39,19 @@
                     <table id="DataTable" class="text-center w-full divide-y divide-gray-200">
                         <thead>
                             <tr>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Κατηγορία</th>
-                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Περιγραφή</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">S/N</th>
-                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Μάρκα/Μοντέλο</th>
-                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Φυσική Κατάσταση</th>
-                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Έτος κτήσης</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Αξία</th>
-                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Πηγή Χρηματοδότησης</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Σχόλια</th>
-                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Χρέωση</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Χρεωστικό</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Ενέργειες</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">ID</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Κατηγορία</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Περιγραφή</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">S/N</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Μάρκα/Μοντέλο</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Φυσική Κατάσταση</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Έτος κτήσης</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Αξία</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Πηγή Χρηματοδότησης</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Σχόλια</th>
+                                <th id="search" class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Χρέωση</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Χρεωστικό</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 tracking-wider">Ενέργειες</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">

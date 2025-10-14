@@ -72,7 +72,7 @@ class AuthenticatedSessionController extends Controller
         }
         Log::info('User logged in.');
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(route('dashboard', absolute: false))->with('success', "Welcome ".$app_user->username);
     }
 
     /**

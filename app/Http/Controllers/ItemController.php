@@ -81,7 +81,9 @@ class ItemController extends Controller
 
     public function download_file(Request $request, Item $item){
         Gate::authorize('view', $item);
-        ob_end_clean();
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
         return response()->download(storage_path('app/private/items/'.$item->file_path));
     }
 
@@ -100,6 +102,7 @@ class ItemController extends Controller
     public function update(Request $request, Item $item)
     {
         Gate::authorize('update', $item);
+
         $request->validate([
             'category_id' => 'required|exists:categories,id',
             'description' => 'required|string|max:255',
@@ -234,11 +237,17 @@ class ItemController extends Controller
         }
         $timestamp = now()->format('Y-m-d');
         $filename = "items_$timestamp.xlsx";
-        $path = storage_path('app/private/items/' . $filename);
+        $directory = storage_path('app/private/items');
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+        $path = $directory . '/' . $filename;
         $writer = new Xlsx($spreadsheet);
         $writer->save($path);
-
-        ob_end_clean();
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        // ob_end_clean();
         return response()->download($path);
     }
 

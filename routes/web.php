@@ -21,11 +21,11 @@ use App\Http\Controllers\LogReaderController;
 use App\Http\Controllers\SheetmailerController;
 use App\Http\Controllers\NotificationController;
 
-Route::get('/', function () {
-    return redirect('/dashboard');
-});
+// Route::get('/', function () {
+//     return redirect('/dashboard');
+// });
 
-Route::get('/dashboard', function () {
+Route::get('/', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
