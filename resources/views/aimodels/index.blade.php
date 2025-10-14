@@ -85,7 +85,7 @@
                 <!-- Source Field -->
                 <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
                     <label for="source" class="block text-sm font-medium text-gray-700">{{ __('Source') }}</label>
-                    <input type="text" name="source" id="source" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="openai or deepseek" value="{{ old('source') }}">
+                    <input type="text" name="source" id="source" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="openai/deepseek/zenmux" value="{{ old('source') }}">
                     @error('source')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
                     @enderror

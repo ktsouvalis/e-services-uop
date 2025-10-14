@@ -102,7 +102,7 @@
                 <!-- Messages will be appended here -->
             </div>   
             <div class="mt-6">
-                @if($chatbot->aimodel->name == 'deepseek-chat')
+                @if(in_array($chatbot->aimodel->name, ['deepseek-chat', 'inclusionai/ling-1t', 'inclusionai/ring-1t']))
                 <div class="mt-3">
                     <label for="temperature" class="text-sm font-medium text-gray-700">{{ __('Temperature') }}</label>
                     <select name="temperature" id="temperature" class="my-3 mt-1 block w-full border-gray-300 rounded-md shadow-sm">
@@ -114,7 +114,7 @@
                 <div>
                 @endif
                 <textarea id="message-input" class="w-full border-gray-300 rounded-md shadow-sm" rows="3" placeholder="Type your message..."></textarea>
-                @if($chatbot->aimodel->name == 'deepseek-chat')
+                @if(in_array($chatbot->aimodel->name, ['deepseek-chat', 'inclusionai/ling-1t', 'inclusionai/ring-1t']))
                 <div class="legend-container mt-4">
                 <a href="https://api-docs.deepseek.com/quick_start/parameter_settings" target="_blank"><h5 class="text-sm font-semibold mb-2">Temperature Suggested by DeepSeek</h5></a>
                     <div class="legend-wrapper mx-auto">
@@ -145,7 +145,7 @@
                     {{ __('Send') }}
                 </x-primary-button>
             </div>
-            @if($chatbot->aimodel->name == 'deepseek-reasoner')
+            @if(in_array($chatbot->aimodel->name, ['deepseek-reasoner', 'inclusionai/ring-1t']))
             <p class="text-sm text-gray-500">
                 *Για λόγους οικονομίας το reasoning φαίνεται μόνο κατά τη διάρκεια του διαλόγου και δεν αποθηκεύεται. Δηλαδή, αν η σελίδα φορτωθεί ξανά, το reasoning δεν θα είναι διαθέσιμο.
             </p>
@@ -221,9 +221,13 @@
                     replaceMessage(loadingMessageId, `Error: ${data.error}`);
                 } else {
                     // Replace loading message with assistant's message
+                    console.log(data);
                     replaceMessage(loadingMessageId, data.assistantMessage.content);
                     if(data.assistantMessage.reasoning_content) {
                         appendReasoning(data.assistantMessage.reasoning_content);
+                    }
+                    if(data.assistantMessage.reasoning) {
+                        appendReasoning(data.assistantMessage.reasoning);
                     }
                     // Update the history with the assistant's response
                     chatHistory.push({ role: 'assistant', content: data.assistantMessage.content });

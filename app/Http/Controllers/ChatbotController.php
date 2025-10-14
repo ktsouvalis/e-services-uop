@@ -122,6 +122,26 @@ class ChatbotController extends Controller
                     return response()->json(['error' => 'Failed to get a response from '. $chatbot->aiModel->source], $response->status());
                 }
             }
+            else if ($chatbot->aiModel->source == "zenmux"){
+                $url = "https://zenmux.ai/api/v1/chat/completions";
+                $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer '.$apiKey
+                ])->timeout(600)
+                ->post($url, $parameters);
+                // return $response->json();
+                if ($response->ok()) {
+                    if (isset($response->json()["choices"][0]["message"])) {
+                        $assistantMessage = $response->json()["choices"][0]["message"];
+                    }
+                    
+                    return response()->json(['assistantMessage' => $assistantMessage]);
+                } 
+                else{
+                    return response()->json(['error' => 'Failed to get a response from '. $chatbot->aiModel->source], $response->status());
+                }
+            }
             
         } 
         catch (\Exception $e){
