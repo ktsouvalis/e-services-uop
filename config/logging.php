@@ -94,10 +94,9 @@ return [
         ],
 
         'mailers_actions' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/sheetmailers_actions.log'),
+            'driver' => 'single',
+            'path' => storage_path('logs/mailers_actions.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
             'encoding'=> 'utf-8',
         ],
@@ -112,10 +111,9 @@ return [
         ],
 
         'sheetmailers_actions' => [
-            'driver' => 'daily',
+            'driver' => 'single',
             'path' => storage_path('logs/sheetmailers_actions.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
             'encoding'=> 'utf-8',
         ],

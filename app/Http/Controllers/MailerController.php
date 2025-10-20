@@ -23,13 +23,14 @@ class MailerController extends Controller
     public function index()
     {
         Gate::authorize('viewAny', Mailer::class);
-        if(Auth::user()->admin){
-            $mailers = Mailer::all();
-        }
-        else{
-            $mailers = Mailer::where('user_id',Auth::user()->id)->get();
-        }
-    
+        $userId = Auth::id();
+        $mailers = Mailer::with('user')
+            ->where(function($q) use ($userId) {
+                $q->where('is_public', true)
+                  ->orWhere('user_id', $userId);
+            })
+            ->get();
+
         return view('mailers.index', compact('mailers'));
     }
 
@@ -40,6 +41,7 @@ class MailerController extends Controller
     {
         Gate::authorize('create', Mailer::class);
         $validated = $request->validated();
+        $validated['is_public'] = $request->boolean('is_public');
 
         $validated['user_id'] = auth()->user()->id;
         try{
@@ -49,7 +51,7 @@ class MailerController extends Controller
             Log::channel('mailers_actions')->error($e->getMessage());
             return redirect()->back()->with('error', 'Mailer not created. Check today\'s mailers log for more information.');
         }
-        Log::channel('mailers_actions')->info('Mailer created successfully by user: '.Auth::user()->username);
+        Log::channel('mailers_actions')->info("Mailer $mailer->id created successfully by user: ".Auth::user()->username);
         return redirect()->route('mailers.edit', $mailer->id)->with('success', 'Mailer created successfully.');
     }
 
@@ -73,6 +75,16 @@ class MailerController extends Controller
         Gate::authorize('update', $mailer);
 
         $data_to_update = $request->validated();
+        // Only the creator can change public/private status
+        $originalPublic = $mailer->is_public;
+        $willCheckVisibility = false;
+        if (Auth::id() === $mailer->user_id) {
+            // Checkbox not sent when unchecked; boolean() returns false in that case
+            $data_to_update['is_public'] = $request->boolean('is_public');
+            $willCheckVisibility = true;
+        } else {
+            unset($data_to_update['is_public']);
+        }
         $data_to_update['body'] = strip_tags($request->validated('body'), '<p><a><strong><i><em><b><u><ul><ol><li>');
         try{
             $mailer->update($data_to_update);
@@ -81,7 +93,10 @@ class MailerController extends Controller
             Log::channel('mailers_actions')->error($e->getMessage());
             return redirect()->back()->with('error', 'Mailer not updated. Check today\'s mailers log for more information.');
         }
-        Log::channel('mailers_actions')->info('Mailer updated successfully by user: '.Auth::user()->username);
+        if ($willCheckVisibility && $originalPublic !== $mailer->is_public) {
+            Log::channel('mailers_actions')->info("Mailer $mailer->id visibility changed by creator ".Auth::user()->username." to ".($mailer->is_public ? 'public' : 'private'));
+        }
+        Log::channel('mailers_actions')->info("Mailer $mailer->id updated by user: ".Auth::user()->username);
         return redirect()->back()->with('success', 'Mailer updated successfully.');
     }
 
@@ -98,7 +113,7 @@ class MailerController extends Controller
             Log::channel('mailers_actions')->error($e->getMessage());
             return redirect()->back()->with('error', 'Mailer not deleted. Check today\'s mailers log for more information.');
         }
-        Log::channel('mailers_actions')->info('Mailer deleted successfully by user: '.Auth::user()->username);
+        Log::channel('mailers_actions')->info("Mailer $mailer->id deleted by user: ".Auth::user()->username);
         return redirect()->route('mailers.index')->with('success', 'Mailer deleted successfully.');
     }
 
@@ -111,6 +126,7 @@ class MailerController extends Controller
         $path = "/mailers/$mailer->id/$filename";
         ob_end_clean();
         try{
+            Log::channel('mailers_actions')->info("File '".$filename."' downloaded by user: ".Auth::user()->username." (mailer_id=".$mailer->id.")");
             return Storage::download($path);
         }
         catch(\Exception $e){
@@ -174,6 +190,7 @@ class MailerController extends Controller
                 return redirect()->back()->with('error', 'Storage not cleaned. Check today\'s mailers log for more information.');
             }
         }
+        Log::channel('mailers_actions')->info("Mailer $mailer->id storage cleaned by user: ".Auth::user()->username);
         return redirect()->back()->with('success', 'Storage cleaned successfully.');
     }
 
@@ -192,7 +209,6 @@ class MailerController extends Controller
                 $file->storeAs("/mailers/$mailer->id", $filename);
             }
             catch(\Exception $e){
-                Log::channel('mailers_actions')->error($e->getMessage());
                 $error=true;
                 continue;
             }
@@ -203,7 +219,7 @@ class MailerController extends Controller
         if ($error) {
             return redirect()->back()->with('error', 'Files uploaded with errors. Check today\'s mailers log for more information.');
         }
-        Log::channel('mailers_actions')->info('Files uploaded successfully by user: '.Auth::user()->username);
+        Log::channel('mailers_actions')->info("Mailer $mailer->id files uploaded successfully by user: ".Auth::user()->username." (count=".count($uploaded_files).")");
         return redirect()->back()->with('success', 'Files Uploaded Successfully');
     }
 
@@ -245,10 +261,10 @@ class MailerController extends Controller
             Mail::to($department->email)->queue(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path], Auth::user()->username));
         }
         catch(\Exception $e){
-            Log::channel('mailers')->error("File '".$filename."' to ".$department->name." not queued: ".$e->getMessage());
+            Log::channel('mailers')->error("Mailer $mailer->id file '$filename' to $department->name NOT queued: ".$e->getMessage()." by user: ".Auth::user()->username);
             return redirect()->back()->with('error', 'Mail not queued.');
         }
-        Log::channel('mailers')->info("File '".$filename."' to ".$department->name.": Mail queued successfully.");
+        Log::channel('mailers')->info("Mailer $mailer->id file '$filename' to $department->name: queued successfully by user: ".Auth::user()->username);
         return redirect()->back()->with('success', 'Mail queued successfully.');
     }
 
@@ -268,11 +284,11 @@ class MailerController extends Controller
                 Mail::to($department->email)->queue(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path], Auth::user()->username));
             }
             catch(\Exception $e){
-                Log::channel('mailers')->error("File '".$filename."' to ".$department->name." not queued: ".$e->getMessage());
+                Log::channel('mailers')->error("Mailer $mailer->id file '$filename' to $department->name NOT queued: ".$e->getMessage()." by user: ".Auth::user()->username);
                 $error = ['warning' => 'Mails queued with errors. Check today\'s mailers log for more information.'];
                 continue;
             }
-            Log::channel('mailers')->info("File '".$filename."' to ".$department->name.": Mails queued successfully.");
+            Log::channel('mailers')->info("Mailer $mailer->id file '$filename' to $department->name: queued successfully by user: ".Auth::user()->username);
         }
         return redirect()->back()->with($error);
     }

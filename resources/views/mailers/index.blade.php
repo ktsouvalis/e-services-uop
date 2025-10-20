@@ -23,17 +23,27 @@
                             <tr>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Creator</th>
+                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Visibility</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($mailers as $mailer)
                                 <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap">{{ $mailer->id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">{{ $mailer->name }}</td>
+                                    <td class="px-6 py-4 whitespace-normal text-center">{{ $mailer->id }}</td>
+                                    <td class="px-6 py-4 whitespace-normal text-center">{{ $mailer->name }}</td>
+                                    <td class="px-6 py-4 wwhitespace-normal text-center">{{ optional($mailer->user)->name ?? '-' }}</td>
+                                    <td class="px-6 py-4 whitespace-normal text-center">
+                                        @if($mailer->is_public)
+                                            <span class="text-green-700">Public</span>
+                                        @else
+                                            <span class="text-gray-600">Private</span>
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4 flex justify-center">
                                         {{-- <a href="{{ route('mailers.edit', $mailer->id) }}" class="text-blue-600 hover:text-blue-900">{{ __('Edit') }}</a> --}}
-                                        
+                                        @can('update', $mailer)
                                         <a href="{{ route('mailers.edit', $mailer->id) }}" class="text-blue-600" >
                                             <svg 
                                                 xmlns="http://www.w3.org/2000/svg" 
@@ -50,7 +60,8 @@
                                             </svg>
                                                 
                                         </a>
-                                        
+                                        @endcan
+                                        @can('delete', $mailer)
                                         <form action="{{ route('mailers.destroy', $mailer->id) }}" method="POST" class="inline-block">
                                             @csrf
                                             @method('DELETE')
@@ -71,6 +82,7 @@
                                                 </svg>
                                             </button>
                                         </form>
+                                        @endcan
                                     </td>
                                 </tr>
                             @endforeach

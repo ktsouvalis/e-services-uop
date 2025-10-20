@@ -54,6 +54,25 @@
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
+                    
+                    <!-- Visibility: only creator can change -->
+                    @if(auth()->id() === $mailer->user_id)
+                        <div class="mb-4">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="is_public" value="1" class="rounded" {{ old('is_public', $mailer->is_public) ? 'checked' : '' }}>
+                                <span class="ml-2">Public (everyone can view/update)</span>
+                            </label>
+                        </div>
+                    @else
+                        <div class="mb-4 text-sm text-gray-600">
+                            <span>Visibility: {{ $mailer->is_public ? 'Public' : 'Private' }} (only the creator can change this)</span>
+                        </div>
+                    @endif
+                   
+                    <!-- Creator info -->
+                    <div class="mb-4 text-sm text-gray-600">
+                        <span>Created by: {{ optional($mailer->user)->name ?? '-' }}</span>
+                    </div>
                     <div class="flex items-center justify-end mt-4">
                         <x-primary-button>
                             {{ __('Update') }}

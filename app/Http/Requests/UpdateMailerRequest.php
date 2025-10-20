@@ -30,6 +30,7 @@ class UpdateMailerRequest extends FormRequest
                 'subject' => 'required|string|max:255',      // Subject can be nullable, but if present, it must be a string with a max length of 255
                 'body' => 'nullable|string',                 // Body can be nullable, and must be a string if present
                 'signature' => 'nullable|string|max:255',    // Signature is nullable, string, and has a max length of 255 characters
+                'is_public' => 'sometimes|boolean',          // Public flag
                 // 'files' => 'array',                          // Files can be nullable but must be a valid array
                 // 'files.*' => 'file|max:10240',               // Each file inside the files array must be an actual file and not larger than 10MB (10240 KB)
             ];

@@ -28,10 +28,12 @@ class MailersPolicy
     {
         if(!Menu::where('route_is', $this->menu)->first()->enabled)
             return false;
-        if($user->admin){
-            return true;
+        // Public mailers are viewable by any authenticated user
+        if ($mailer->is_public) {
+            return auth()->check();
         }
-        return $mailer->user->id===$user->id;
+        // Private mailers are viewable only by their creator
+        return $mailer->user && $mailer->user->id === $user->id;
     }
 
     /**
@@ -47,7 +49,13 @@ class MailersPolicy
      */
     public function update(User $user, Mailer $mailer): bool
     {
-        return $this->view($user, $mailer);
+        // Everyone can update if public; otherwise only the creator
+        if(!Menu::where('route_is', $this->menu)->first()->enabled)
+            return false;
+        if ($mailer->is_public) {
+            return auth()->check();
+        }
+        return $mailer->user && $mailer->user->id === $user->id;
     }
 
     /**
@@ -55,7 +63,10 @@ class MailersPolicy
      */
     public function delete(User $user, Mailer $mailer): bool
     {
-        return $this->view($user, $mailer);
+        // Delete is allowed only to the creator, even if public
+        if(!Menu::where('route_is', $this->menu)->first()->enabled)
+            return false;
+        return $mailer->user && $mailer->user->id === $user->id;
     }
 
     /**
@@ -63,6 +74,9 @@ class MailersPolicy
      */
     public function restore(User $user, Mailer $mailer): bool
     {
-        return $this->view($user, $mailer);
+        // Restore follows delete rule: only creator
+        if(!Menu::where('route_is', $this->menu)->first()->enabled)
+            return false;
+        return $mailer->user && $mailer->user->id === $user->id;
     }
 }
