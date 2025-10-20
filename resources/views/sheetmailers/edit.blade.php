@@ -40,7 +40,7 @@
                         </div>
                     @else
                         <div class="mb-4 text-sm text-gray-600">
-                            <span>Visibility: {{ $mailer->is_public ? 'Public' : 'Private' }} (only the creator can change this)</span>
+                            <span>Visibility: {{ $sheetmailer->is_public ? 'Public' : 'Private' }} (only the creator can change this)</span>
                         </div>
                     @endif
 
