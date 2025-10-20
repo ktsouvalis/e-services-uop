@@ -36,37 +36,37 @@ class AuthenticatedSessionController extends Controller
 
         // check if user exists in the database
         $app_user = \App\Models\User::where('username', $username)->first();
-        // if (!$app_user) {
-        //     return redirect()->back()->with('error', 'Invalid credentials');
-        // }
+        if (!$app_user) {
+            return redirect()->back()->with('error', 'Invalid credentials');
+        }
 
-        // // Connect to the LDAP server
-        // $ldap = Container::getDefaultConnection();
-        // try {
-        //     $ldap->connect();
-        // } 
-        // catch (BindException $e) {
-        //     Log::error('LDAP Bind Exception: ' . $e->getMessage());
-        //     return back()->with('error', 'Could not connect to LDAP server. Please check your credentials or server configuration.');
-        // } 
+        // Connect to the LDAP server
+        $ldap = Container::getDefaultConnection();
+        try {
+            $ldap->connect();
+        } 
+        catch (BindException $e) {
+            Log::error('LDAP Bind Exception: ' . $e->getMessage());
+            return back()->with('error', 'Could not connect to LDAP server. Please check your credentials or server configuration.');
+        } 
         
-        // // Search for the user
-        // $ldap_user = User::where('uid', '=', $username)->first();
-        // if (!$ldap_user) {
-        //     return redirect()->back()->with('error', 'Invalid credentials');
-        // }
+        // Search for the user
+        $ldap_user = User::where('uid', '=', $username)->first();
+        if (!$ldap_user) {
+            return redirect()->back()->with('error', 'Invalid credentials');
+        }
         
-        // // Attempt to bind with the user's credentials
-        // $isAuthenticated = $ldap->auth()->attempt($ldap_user, $password);
-        // if($isAuthenticated){
-        //     auth()->login($app_user);
-        //     session()->regenerate();
-        // }
-        // else{
-        //     return redirect()->back()->with('error', 'Invalid credentials');
-        // }
-        auth()->login($app_user);
-        session()->regenerate();
+        // Attempt to bind with the user's credentials
+        $isAuthenticated = $ldap->auth()->attempt($ldap_user, $password);
+        if($isAuthenticated){
+            auth()->login($app_user);
+            session()->regenerate();
+        }
+        else{
+            return redirect()->back()->with('error', 'Invalid credentials');
+        }
+        // auth()->login($app_user);
+        // session()->regenerate();
         try{
             MessageSent::dispatch("$app_user->username logged in", 'system');
         } catch (\Exception $e) {

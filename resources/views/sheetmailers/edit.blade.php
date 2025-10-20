@@ -7,12 +7,14 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Edit Sheetmailer') }}
         </h2>
+        <div class="text-sm text-gray-600">{{ __('Creator:') }} {{ optional($sheetmailer->user)->name ?? '-' }}</div>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                <h3 class="text-lg font-semibold mb-4">{{ __('Edit Sheetmailer') }}</h3>
+                <h3 class="text-lg font-semibold mb-2">{{ __('Edit Sheetmailer') }}</h3>
+                <p class="text-xs text-gray-500 mb-4">{{ __('Creator:') }} {{ optional($sheetmailer->user)->name ?? '-' }}</p>
 
                 <form id="sheetmailer-form" action="{{ route('sheetmailers.update', $sheetmailer->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
@@ -26,6 +28,21 @@
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
+
+                    <!-- Visibility Toggle (creator only) -->
+                    <!-- Visibility: only creator can change -->
+                    @if(auth()->id() === $sheetmailer->user_id)
+                        <div class="mb-4">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="is_public" value="1" class="rounded" {{ old('is_public', $sheetmailer->is_public) ? 'checked' : '' }}>
+                                <span class="ml-2">Public (everyone can view/update)</span>
+                            </label>
+                        </div>
+                    @else
+                        <div class="mb-4 text-sm text-gray-600">
+                            <span>Visibility: {{ $mailer->is_public ? 'Public' : 'Private' }} (only the creator can change this)</span>
+                        </div>
+                    @endif
 
                     <!-- Subject Field -->
                     <div class="mb-4">

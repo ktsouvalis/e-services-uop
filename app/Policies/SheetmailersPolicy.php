@@ -29,10 +29,15 @@ class SheetmailersPolicy
     {
         if(!Menu::where('route_is', $this->menu)->first()->enabled)
             return false;
-        if($user->admin){
-            return true;
+        // if($user->admin){
+        //     return true;
+        // }
+        // Public sheetmailers visible to all authenticated users when enabled
+        if ($sheetmailer->is_public) {
+            return auth()->check();
         }
-        return $sheetmailer->user->id===$user->id;
+        // Private: only creator
+        return $sheetmailer->user && $sheetmailer->user->id === $user->id;
     }
 
     /**
@@ -50,7 +55,12 @@ class SheetmailersPolicy
      */
     public function update(User $user, Sheetmailer $sheetmailer): bool
     {
-        return $this->view($user, $sheetmailer);
+        // Admin or creator can always update
+        // if ($user->admin) return true;
+        if ($sheetmailer->user && $sheetmailer->user->id === $user->id) return true;
+        // If public, allow authenticated users to update (creator-only rules for sensitive fields handled elsewhere)
+        if ($sheetmailer->is_public) return true;
+        return false;
     }
 
     /**
@@ -58,6 +68,7 @@ class SheetmailersPolicy
      */
     public function delete(User $user, Sheetmailer $sheetmailer): bool
     {
-        return $this->view($user, $sheetmailer);
+        // Only creator can delete, even if admin
+        return $sheetmailer->user && $sheetmailer->user->id === $user->id;
     }
 }

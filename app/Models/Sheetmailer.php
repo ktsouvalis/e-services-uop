@@ -17,4 +17,8 @@ class Sheetmailer extends Model
     public function user(){
         return $this->belongsTo(User::class);
     }
+
+    protected $casts = [
+        'is_public' => 'boolean',
+    ];
 }

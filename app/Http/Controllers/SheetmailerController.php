@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use App\Http\Requests\UpdateSheetmailerRequest;
 
 class SheetmailerController extends Controller
 {
@@ -22,10 +23,17 @@ class SheetmailerController extends Controller
     {
         Gate::authorize('viewAny', Sheetmailer::class);
         if(Auth::user()->admin){
-            $sheetmailers = Sheetmailer::all();
+            $sheetmailers = Sheetmailer::with('user')->latest()->get();
         }
         else{
-            $sheetmailers = Sheetmailer::where('user_id',Auth::user()->id)->get();
+            // Show own or public
+            $sheetmailers = Sheetmailer::with('user')
+                ->where(function($q){
+                    $q->where('user_id', Auth::id())
+                      ->orWhere('is_public', true);
+                })
+                ->latest()
+                ->get();
         }
         
         return view('sheetmailers.index', compact('sheetmailers'));
@@ -41,13 +49,15 @@ class SheetmailerController extends Controller
         $validated = $request->input();
         $validated['user_id'] = auth()->user()->id;
         try{
-            $sheetmailer = Sheetmailer::create($validated);;
+            $sheetmailer = Sheetmailer::create($validated);
         }
         catch(Exception $e){
-            Log::channel('sheetmailers_actions')->error($e->getMessage());
+            Log::channel('sheetmailers_actions')->error('Sheetmail create failed by '. (Auth::user()->username ?? 'system'), [
+                'error' => $e->getMessage(),
+            ]);
             return redirect()->back()->with('error', 'Files not uploaded. Check today\'s sheetmailers log for more information.');
         }
-        Log::channel('sheetmailers_actions')->info('Sheetmailer created successfully');
+        Log::channel('sheetmailers_actions')->info('Sheetmail '. $sheetmailer->id .' created by '. (Auth::user()->username ?? 'system'));
         return redirect()->route('sheetmailers.edit', $sheetmailer->id)->with('success', 'Sheetmailer created successfully.');
     }
 
@@ -71,20 +81,39 @@ class SheetmailerController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Sheetmailer $sheetmailer)
+    public function update(UpdateSheetmailerRequest $request, Sheetmailer $sheetmailer)
     {
         Gate::authorize('update', $sheetmailer);
 
-        $data_to_update = $request->input();
-        $data_to_update['body'] = strip_tags($request->input('body'), '<p><a><strong><span><i><em><b><u><ul><ol><li><br>'); //allow only these tags
+        $data_to_update = $request->validated();
+        $data_to_update['body'] = strip_tags($request->input('body'), '<p><a><strong><span><i><em><b><u><ul><ol><li><br>'); // allow only these tags
+
+        // Enforce only creator can toggle is_public
+        if (array_key_exists('is_public', $data_to_update)) {
+            if ($sheetmailer->user_id !== Auth::id()) {
+                unset($data_to_update['is_public']);
+            } else {
+                $newVisibility = (bool) $data_to_update['is_public'];
+                if ($sheetmailer->is_public !== $newVisibility) {
+                    Log::channel('sheetmailers_actions')->info('Sheetmailer '. $sheetmailer->id .' visibility change by creator '. (Auth::user()->username ?? 'system'), [
+                        'from' => $sheetmailer->is_public ? 'public' : 'private',
+                        'to' => $newVisibility ? 'public' : 'private',
+                    ]);
+                }
+            }
+        }
+
+        // If checkbox was unchecked it may not be present; allow explicit false via hidden input in view
         try{
             $sheetmailer->update($data_to_update);
         }
         catch(\Exception $e){
-            Log::channel('sheetmailers_actions')->error($e->getMessage());
+            Log::channel('sheetmailers_actions')->error('Sheetmailer '. $sheetmailer->id .' update failed by '. (Auth::user()->username ?? 'system'), [
+                'error' => $e->getMessage(),
+            ]);
             return redirect()->back()->with('error', 'Sheetmailer not updated. Check today\'s sheetmailers log for more information.');
         }
-        Log::channel('sheetmailers_actions')->info('Sheetmailer updated successfully');
+        Log::channel('sheetmailers_actions')->info('Sheetmailer '. $sheetmailer->id .' updated by '. (Auth::user()->username ?? 'system'));
         return redirect()->back()->with('success', 'Sheetmailer updated successfully.');
     }
 
@@ -93,16 +122,18 @@ class SheetmailerController extends Controller
      */
     public function destroy(Sheetmailer $sheetmailer)
     {
-        Gate::authorize('delete',$sheetmailer );
+        Gate::authorize('delete', $sheetmailer);
 
         try{
             $sheetmailer->delete();
         }
         catch(\Exception $e){
-            Log::channel('sheetmailers')->error($e->getMessage());
+            Log::channel('sheetmailers')->error('Sheetmailer '. $sheetmailer->id .' delete failed by '. (Auth::user()->username ?? 'system'), [
+                'error' => $e->getMessage(),
+            ]);
             return redirect()->back()->with('error', 'Sheetmailer not deleted. Check today\'s sheetmailers log for more information.');
         }
-        Log::channel('sheetmailers_actions')->info('Sheetmailer deleted successfully');
+        Log::channel('sheetmailers_actions')->info('Sheetmailer '. $sheetmailer->id .' deleted by '. (Auth::user()->username ?? 'system'));
         return redirect()->route('sheetmailers.index')->with('success', 'Sheetmailer deleted successfully.');
     }
 
@@ -198,11 +229,16 @@ class SheetmailerController extends Controller
                 Mail::to($email['email'])->queue(new MailSheetMailer($sheetmailer, $email['additionalData'], Auth::user()->username));
             }
             catch(\Exception $e){
-                Log::channel('sheetmailers')->error("Sheetmailer #$sheetmailer->id: mail not queued to ".$email['email']. '. Reason: '.$e->getMessage());
+                Log::channel('sheetmailers')->error('Sheetmailer '. $sheetmailer->id .' NOT queued by '. (Auth::user()->username ?? 'system'), [
+                    'email' => $email['email'],
+                    'error' => $e->getMessage(),
+                ]);
                 $error = 1;
                 $errors= 1;
             }
-            if(!$error)Log::channel('sheetmailers')->info("Sheetmailer #$sheetmailer->id: mail queued to ".$email['email']);        
+            if(!$error) Log::channel('sheetmailers')->info('Sheetmailer '. $sheetmailer->id .' mail queued by '. (Auth::user()->username ?? 'system'), [
+                'email' => $email['email'],
+            ]);
         }
         session()->forget('emails');
         session()->forget('emailCount');
