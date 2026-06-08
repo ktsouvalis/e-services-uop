@@ -22,6 +22,6 @@
         "datatables.net-responsive-dt": "^3.0.3",
         "jquery": "^3.7.1",
         "marked": "^15.0.7",
-        "tinymce": "^7.4.1"
+        "tinymce": "^7.9.3"
     }
 }
