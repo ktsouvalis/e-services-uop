@@ -28,8 +28,12 @@ class RunNormalize implements ShouldQueue
     {
         $runDir = storage_path("app/private/pangolin/runs/{$this->run->id}");
         // 0777: see RunImport for why (cross-uid access between queue-worker
-        // (root) and the web process (www-data)).
-        mkdir($runDir, 0777, true);
+        // (root) and the web process (www-data)). is_dir() guard: a retried
+        // attempt hits an existing dir from the prior attempt — plain
+        // mkdir() throws "File exists".
+        if (! is_dir($runDir)) {
+            mkdir($runDir, 0777, true);
+        }
 
         $this->run->update(['status' => 'running', 'started_at' => now()]);
 

@@ -29,7 +29,11 @@ class RunImport implements ShouldQueue
         // 0777: written by queue-worker (root), read/written by the web
         // process (www-data) for sibling dirs like pangolin/imports/ and for
         // serving downloads — 0700/0755 breaks one side or the other.
-        mkdir($runDir, 0777, true);
+        // is_dir() guard: a retried attempt hits an existing dir from the
+        // prior attempt — plain mkdir() throws "File exists".
+        if (! is_dir($runDir)) {
+            mkdir($runDir, 0777, true);
+        }
 
         $this->run->update(['status' => 'running', 'started_at' => now()]);
 

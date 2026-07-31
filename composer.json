@@ -14,7 +14,8 @@
         "openai-php/client": "^0.10.3",
         "phpoffice/phpspreadsheet": "^3.3",
         "phpseclib/phpseclib": "^3.0",
-        "romanzipp/laravel-queue-monitor": "^5.3"
+        "romanzipp/laravel-queue-monitor": "^5.3",
+        "symfony/yaml": "^7.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
