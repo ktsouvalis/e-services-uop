@@ -1,0 +1,3 @@
+[submodule "pangolin-utils"]
+	path = pangolin-utils
+	url = https://github.com/ktsouvalis/pangolin.git

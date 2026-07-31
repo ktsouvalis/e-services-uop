@@ -13,6 +13,7 @@
         "laravel/tinker": "^2.9",
         "openai-php/client": "^0.10.3",
         "phpoffice/phpspreadsheet": "^3.3",
+        "phpseclib/phpseclib": "^3.0",
         "romanzipp/laravel-queue-monitor": "^5.3"
     },
     "require-dev": {
