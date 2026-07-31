@@ -10,9 +10,9 @@ class PangolinEnabled
 {
     public function handle($request, Closure $next)
     {
-        if (! auth()->user()?->admin) {
-            abort(403, 'Unauthorized.');
-        }
+        // if (! auth()->user()?->admin) {
+        //     abort(403, 'Unauthorized.');
+        // }
 
         if (Schema::hasTable('menus') && Schema::hasColumn('menus', 'enabled')) {
             $allowed = Menu::where('route_is', 'pangolin')->where('enabled', true)->exists();
