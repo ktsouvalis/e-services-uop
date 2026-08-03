@@ -50,16 +50,23 @@
                         </x-dropdown-link>
 
                         <!-- Authentication -->
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
+                        @unless(app()->environment('production'))
+                            {{-- Production signs in via Authentik SSO; a Laravel-only
+                                 logout can't end that session, so the outpost's
+                                 auth_request would just re-authenticate the user on
+                                 their very next request. Hiding this avoids a button
+                                 that looks like it does nothing. --}}
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
 
-                            <x-dropdown-link :href="route('logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();"
-                                    id="logout-link">
-                                {{ __('Log Out') }}
-                            </x-dropdown-link>
-                        </form>
+                                <x-dropdown-link :href="route('logout')"
+                                        onclick="event.preventDefault();
+                                                    this.closest('form').submit();"
+                                        id="logout-link">
+                                    {{ __('Log Out') }}
+                                </x-dropdown-link>
+                            </form>
+                        @endunless
                     </x-slot>
                 </x-dropdown>
                 @if(Auth::user()->notifications->where('read_at',null)->count()>0)
@@ -112,15 +119,17 @@
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
+                @unless(app()->environment('production'))
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
 
-                    <x-responsive-nav-link :href="route('logout')"
-                            onclick="event.preventDefault();
-                                        this.closest('form').submit();">
-                        {{ __('Log Out') }}
-                    </x-responsive-nav-link>
-                </form>
+                        <x-responsive-nav-link :href="route('logout')"
+                                onclick="event.preventDefault();
+                                            this.closest('form').submit();">
+                            {{ __('Log Out') }}
+                        </x-responsive-nav-link>
+                    </form>
+                @endunless
             </div>
         </div>
     </div>
