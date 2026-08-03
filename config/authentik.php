@@ -27,6 +27,13 @@ return [
         'authentik_api_token' => env('AUTHENTIK_API_TOKEN'),
     ],
 
+    // SSO (forward-auth outpost in front of this app itself, production only
+    // — see App\Http\Middleware\AuthentikSsoAuth). Distinct from the
+    // monitoring/logs config above.
+    'sso' => [
+        'admin_group' => env('AUTHENTIK_ADMIN_GROUP', 'dgu-services-admins'),
+    ],
+
     /*
      * The 3 Authentik HA nodes — same list reused for the authentik/patroni/
      * etcd/haproxy/keepalived checks (identical shape to authentik-utils'
