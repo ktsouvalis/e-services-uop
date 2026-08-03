@@ -200,6 +200,7 @@
                 <div class="pm-row" :class="'pm-row-' + keepalivedRowState(node).cls">
                     <span class="pm-dot" :class="'pm-dot-' + keepalivedRowState(node).cls"></span>
                     <span class="pm-name" x-text="node.node_name"></span>
+                    <span class="pm-meta" x-text="node.node_ip"></span>
                     <span class="pm-badge" x-text="keepalivedRowState(node).label"></span>
                     <span class="pm-meta">
                         priority=<span x-text="node.metrics?.effective_priority"></span><template x-if="node.status !== 'up'"><span> (base <span x-text="node.metrics?.base_priority"></span>)</span></template>
@@ -315,6 +316,7 @@
                 <div class="pm-row" :class="'pm-row-' + newtRowClass(row)">
                     <span class="pm-dot" :class="'pm-dot-' + newtRowClass(row)"></span>
                     <span class="pm-name" x-text="row.node_name"></span>
+                    <span class="pm-meta" x-text="row.node_ip"></span>
                     <span class="pm-badge" x-text="row.status === 'up' ? 'REACHABLE' : 'UNREACHABLE'"></span>
                     <span class="pm-meta" x-text="row.message || ''"></span>
                 </div>
