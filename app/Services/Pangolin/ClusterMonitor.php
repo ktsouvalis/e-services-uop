@@ -145,8 +145,14 @@ class ClusterMonitor
         $dbKb = 0;
 
         try {
+            // etcd's v3 JSON gateway wants a JSON *object* body (even though this
+            // request type has no fields) — Http::post($url, []) serializes an
+            // empty PHP array as `[]`, which etcd's Go server rejects with
+            // "cannot unmarshal array into Go value of type map[string]json.RawMessage".
+            // withBody('{}', ...) forces an actual empty object.
             $status = Http::timeout($this->timeout)
-                ->post("http://{$node['ip']}:{$port}/v3/maintenance/status", [])
+                ->withBody('{}', 'application/json')
+                ->post("http://{$node['ip']}:{$port}/v3/maintenance/status")
                 ->json();
             $memberId = $status['header']['member_id'] ?? null;
             $leaderId = $status['leader'] ?? null;

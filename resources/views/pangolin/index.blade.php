@@ -10,7 +10,6 @@
 
     <div class="py-12" x-data="{ tab: '{{ request('tab', 'monitor') }}' }" x-init="$watch('tab', (t) => history.replaceState(null, '', '{{ route('pangolin.index') }}?tab=' + t))">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-
             <div class="border-b border-gray-200 mb-6">
                 <nav class="-mb-px flex space-x-8">
                     <button type="button" @click="tab = 'monitor'"
@@ -35,19 +34,20 @@
                     </button>
                 </nav>
             </div>
+        </div>
 
-            <div x-show="tab === 'monitor'">
-                @include('pangolin._monitor')
-            </div>
-            <div x-show="tab === 'logs'" x-cloak>
-                @include('pangolin._logs')
-            </div>
-            <div x-show="tab === 'import'" x-cloak>
-                @include('pangolin._import')
-            </div>
-            <div x-show="tab === 'normalize'" x-cloak>
-                @include('pangolin._normalize')
-            </div>
+        <!-- Monitor tab spans the full window width (not max-w-7xl) so per-service panels have room to breathe -->
+        <div x-show="tab === 'monitor'" class="w-full px-4 sm:px-6 lg:px-8">
+            @include('pangolin._monitor')
+        </div>
+        <div x-show="tab === 'logs'" x-cloak class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @include('pangolin._logs')
+        </div>
+        <div x-show="tab === 'import'" x-cloak class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @include('pangolin._import')
+        </div>
+        <div x-show="tab === 'normalize'" x-cloak class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @include('pangolin._normalize')
         </div>
     </div>
 </x-app-layout>
