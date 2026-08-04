@@ -50,7 +50,7 @@ class RunImport implements ShouldQueue
         $reportPath = collect(glob("{$runDir}/input_results_*.xlsx"))->first();
 
         try {
-            $summary = $reportPath ? $this->summarizeStatusColumn($reportPath, 'Results', 10) : null;
+            $summary = $reportPath ? $this->summarizeStatusColumn($reportPath, 'Results', 'Status') : null;
         } catch (\Throwable $e) {
             report($e);
             $summary = null;

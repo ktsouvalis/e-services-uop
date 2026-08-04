@@ -61,7 +61,7 @@ class RunNormalize implements ShouldQueue
         $reportExists = file_exists($reportPath);
 
         try {
-            $summary = $reportExists ? $this->summarizeStatusColumn($reportPath, 'Normalize Report', 15) : null;
+            $summary = $reportExists ? $this->summarizeStatusColumn($reportPath, 'Normalize Report', 'Status') : null;
         } catch (\Throwable $e) {
             report($e);
             $summary = null;
