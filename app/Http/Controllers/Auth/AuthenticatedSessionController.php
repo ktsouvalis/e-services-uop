@@ -30,7 +30,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        
+
         $username = $request->input('username');
         $password = $request->input('password');
 
@@ -44,18 +44,18 @@ class AuthenticatedSessionController extends Controller
         $ldap = Container::getDefaultConnection();
         try {
             $ldap->connect();
-        } 
+        }
         catch (BindException $e) {
             Log::error('LDAP Bind Exception: ' . $e->getMessage());
             return back()->with('error', 'Could not connect to LDAP server. Please check your credentials or server configuration.');
-        } 
-        
+        }
+
         // Search for the user
         $ldap_user = User::where('uid', '=', $username)->first();
         if (!$ldap_user) {
             return redirect()->back()->with('error', 'Invalid credentials');
         }
-        
+
         // Attempt to bind with the user's credentials
         $isAuthenticated = $ldap->auth()->attempt($ldap_user, $password);
         if($isAuthenticated){
@@ -70,7 +70,7 @@ class AuthenticatedSessionController extends Controller
         try{
             MessageSent::dispatch("$app_user->username logged in", 'system');
         } catch (\Exception $e) {
-            
+
         }
         Log::info('User logged in.');
 
@@ -85,7 +85,7 @@ class AuthenticatedSessionController extends Controller
         try{
             MessageSent::dispatch(auth()->user()->username." logged out", 'system');
         } catch (\Exception $e) {
-            
+
         }
         Auth::guard('web')->logout();
 

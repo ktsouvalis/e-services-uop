@@ -50,12 +50,19 @@
                         </x-dropdown-link>
 
                         <!-- Authentication -->
-                        @unless(app()->environment('production'))
+                        @if(app()->environment('production'))
                             {{-- Production signs in via Authentik SSO; a Laravel-only
-                                 logout can't end that session, so the outpost's
-                                 auth_request would just re-authenticate the user on
-                                 their very next request. Hiding this avoids a button
-                                 that looks like it does nothing. --}}
+                                 logout only clears the Laravel session, not the
+                                 outpost's forward-auth session, so AuthentikSsoAuth
+                                 would just re-authenticate the user on their very next
+                                 request. Hit the outpost's own sign-out endpoint
+                                 instead (proxied by nginx, see
+                                 production/deploy/nginx/site.conf) to actually end
+                                 the session. --}}
+                            <x-dropdown-link href="/outpost.goauthentik.io/sign_out" id="logout-link">
+                                {{ __('Log Out') }}
+                            </x-dropdown-link>
+                        @else
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
 
@@ -66,7 +73,7 @@
                                     {{ __('Log Out') }}
                                 </x-dropdown-link>
                             </form>
-                        @endunless
+                        @endif
                     </x-slot>
                 </x-dropdown>
                 @if(Auth::user()->notifications->where('read_at',null)->count()>0)
@@ -119,7 +126,11 @@
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->
-                @unless(app()->environment('production'))
+                @if(app()->environment('production'))
+                    <x-responsive-nav-link href="/outpost.goauthentik.io/sign_out">
+                        {{ __('Log Out') }}
+                    </x-responsive-nav-link>
+                @else
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
 
@@ -129,7 +140,7 @@
                             {{ __('Log Out') }}
                         </x-responsive-nav-link>
                     </form>
-                @endunless
+                @endif
             </div>
         </div>
     </div>
