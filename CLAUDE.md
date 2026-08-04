@@ -4,11 +4,11 @@ Guidance for working in this repo.
 
 ## What this is
 
-A Laravel 11 (PHP 8.2) internal admin/tools app ("e-services") for a university's Digital Governance Unit. Breeze-based auth, MySQL, database-backed queue/cache/session, Vite + Tailwind frontend, Blade views (no SPA framework). Multiple unrelated internal tools live side by side in one app, each gated by a DB-driven, toggleable menu system.
+A Laravel 12 (PHP 8.2) internal admin/tools app ("e-services") for a university's Digital Governance Unit. Breeze-based scaffolding, MySQL, database-backed queue/cache/session, Vite + Tailwind frontend, Blade views (no SPA framework). Multiple unrelated internal tools live side by side in one app, each gated by a DB-driven, toggleable menu system.
 
 ## Stack
 
-- Laravel 11, PHP 8.2, Breeze scaffolding (`laravel/breeze` dev dep, `routes/auth.php`).
+- Laravel 12, PHP 8.2, Breeze scaffolding (`laravel/breeze` dev dep, `routes/auth.php`). Upgraded from Laravel 11 on 2026-08-04 — Laravel 11 exited security support in March 2026, so CVE fixes stop appearing on that branch; stay current going forward rather than pinning to a major version. Pest is intentionally held on the `^3.2` line (not v4) since Pest v4 requires PHP ^8.3 and this app's containers run PHP 8.2.
 - DB: MySQL (`DB_CONNECTION=mysql`). Queue/cache/session all use the `database` driver.
 - `romanzipp/laravel-queue-monitor` — job run tracking + a built-in UI at `/jobs` (see `config/queue-monitor.php`; `ui.enabled` true, prefix `jobs`).
 - `phpoffice/phpspreadsheet` — used repeatedly for xlsx read/write (see `LogReaderController`, `ItemController`). Already a first-class way to handle spreadsheet import/export in this app, not a bolt-on.
@@ -39,7 +39,12 @@ Every feature area (Mailers, Sheetmailers, Items, Chatbots, Notifications, Menus
 ## Auth / users
 
 - `App\Models\User` has a plain `admin` boolean column (`2024_10_17_083949_add_admin_to_users_table.php`), checked directly with `auth()->user()->admin` in a few places (the `/get_logs` zip-download route) rather than through a policy/gate. Not every admin-only action goes through the Menu/Policy system — some just inline-check this flag.
-- No roles/permissions package (no spatie/permission etc.) — authorization is entirely: Breeze session auth + the `admin` boolean + the Menu-driven policies described above.
+- No roles/permissions package (no spatie/permission etc.) — authorization is entirely: session auth + the `admin` boolean + the Menu-driven policies described above.
+- **Two completely different login paths, gated by `app()->environment()`, not one Breeze flow reused everywhere:**
+  - **Local/dev**: `AuthenticatedSessionController` (`routes/auth.php`, `/login`) binds against LDAP directly via `directorytree/ldaprecord-laravel`. It looks up a **local** `App\Models\User` row by username *before* even touching LDAP and fails fast with "Invalid credentials" if none exists — unlike production, it does **not** auto-provision a local user from a successful LDAP bind. If local login fails despite correct credentials and a reachable LDAP server, check whether the dev DB was ever seeded (`php artisan db:seed`) — a fresh `migrate:fresh` without `--seed` leaves `users` (and `menus`, `categories`, etc.) empty, and this is the actual failure mode, not an LDAP problem. `database/seeders/UserSeeder.php` has the known-good dev usernames.
+  - **Production**: nginx (`production/deploy/nginx/site.conf`) gates every request through an `auth_request` to an Authentik outpost sidecar (forward-auth), then forwards `X-Authentik-Username`/`-Groups`/`-Email`/`-Name` headers to PHP-FPM. `App\Http\Middleware\AuthentikSsoAuth` (global `web` middleware, registered in `bootstrap/app.php`, no-ops outside `production`) trusts those headers and does `User::updateOrCreate` + `Auth::login()` on every request where the current session doesn't already match — this *is* the auto-provisioning production's flow has and dev's doesn't.
+  - **The outpost session and the app's Laravel session are not the same thing, and logging one out doesn't touch the other.** The outpost issues its own forward-auth session cookie on the app's domain, separate from Authentik core's own session cookie on Authentik's domain — ending an Authentik core session does not invalidate an already-issued outpost cookie. Because of this, a plain Laravel `Auth::guard('web')->logout()` in production is a no-op from the user's perspective: `AuthentikSsoAuth` just re-authenticates from the (still-valid) outpost headers on the very next request. The nav's Log Out link (`resources/views/layouts/navigation.blade.php`) branches on environment: in production it hits the outpost's own `/outpost.goauthentik.io/sign_out` (proxied by nginx, same location block as the auth_request check) to actually end the forward-auth session; elsewhere it uses the normal Laravel `logout` route.
+- **`production/source/` is a separate, un-synced copy of this codebase, not a symlink or submodule.** Changes made here under `developing/source/` (this file's own directory) do not automatically propagate — confirmed stale during the 2026-08-04 logout fix, where `production/source/resources/views/layouts/navigation.blade.php` still had the old, always-visible logout button after `developing/source`'s copy had already been fixed. Whatever the deploy/promotion step is, don't assume a `developing/`-only change is live in production.
 
 ## Routes of note (`routes/web.php`)
 
