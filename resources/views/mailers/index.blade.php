@@ -25,11 +25,13 @@
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Creator</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Visibility</th>
+                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach($mailers as $mailer)
+                                @can('view', $mailer)
                                 <tr>
                                     <td class="px-6 py-4 whitespace-normal text-center">{{ $mailer->id }}</td>
                                     <td class="px-6 py-4 whitespace-normal text-center">{{ $mailer->name }}</td>
@@ -41,43 +43,44 @@
                                             <span class="text-gray-600">Private</span>
                                         @endif
                                     </td>
+                                    <td class="px-6 py-4 whitespace-normal text-center" title="{{ $mailer->created_at->format('d/m/Y H:i') }}">
+                                        {{ $mailer->created_at->diffForHumans() }}
+                                    </td>
                                     <td class="px-6 py-4 flex justify-center">
-                                        {{-- <a href="{{ route('mailers.edit', $mailer->id) }}" class="text-blue-600 hover:text-blue-900">{{ __('Edit') }}</a> --}}
                                         @can('update', $mailer)
                                         <a href="{{ route('mailers.edit', $mailer->id) }}" class="text-blue-600" >
-                                            <svg 
-                                                xmlns="http://www.w3.org/2000/svg" 
-                                                fill="none" 
-                                                viewBox="0 0 24 24" 
-                                                stroke-width="1.2" 
-                                                stroke="currentColor" 
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke-width="1.2"
+                                                stroke="currentColor"
                                                 class="w-6 h-6">
-                                                <path 
+                                                <path
                                                     stroke-linecap="round"
-                                                    stroke-linejoin="round" 
-                                                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" 
+                                                    stroke-linejoin="round"
+                                                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
                                                 />
                                             </svg>
-                                                
+
                                         </a>
                                         @endcan
                                         @can('delete', $mailer)
                                         <form action="{{ route('mailers.destroy', $mailer->id) }}" method="POST" class="inline-block">
                                             @csrf
                                             @method('DELETE')
-                                            {{-- <button type="submit" class="text-red-600 hover:text-red-900 ml-4" onclick="return confirm('Are you sure?')">{{ __('Delete') }}</button> --}}
                                             <button type="submit" class="text-red-600 ml-4" onclick="return confirm('Are you sure?')">
-                                                <svg 
-                                                    xmlns="http://www.w3.org/2000/svg" 
-                                                    fill="none" 
-                                                    viewBox="0 0 24 24" 
-                                                    stroke-width="1.5" 
-                                                    stroke="currentColor" 
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke-width="1.5"
+                                                    stroke="currentColor"
                                                     class="size-6">
-                                                    <path 
-                                                        stroke-linecap="round" 
-                                                        stroke-linejoin="round" 
-                                                        d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" 
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
                                                     />
                                                 </svg>
                                             </button>
@@ -85,14 +88,19 @@
                                         @endcan
                                     </td>
                                 </tr>
+                                @endcan
                             @endforeach
                         </tbody>
                     </table>
+                    <div class="mt-4">
+                        {{ $mailers->links() }}
+                    </div>
                 @endif
             </div>
 
             <!-- Section 2: Create Form -->
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                @include('mailers._steps', ['step' => 1])
                 <h3 class="text-lg font-semibold mb-4">{{ __('Create New DFD') }}</h3>
                 <form action="{{ route('mailers.store') }}" method="POST">
                     @csrf

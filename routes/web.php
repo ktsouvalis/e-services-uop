@@ -49,7 +49,9 @@ Route::resource('/menus', MenuController::class)->middleware('auth');
 Route::post('menus/toggle-enabled/{menu}', [MenuController::class, 'toggleEnabled'])->name('menus.toggle-enabled')->middleware('auth');
 
 
-Route::resource('/mailers', MailerController::class)->middleware('auth');
+Route::resource('/mailers', MailerController::class)
+    ->only(['index', 'store', 'edit', 'update', 'destroy'])
+    ->middleware('auth');
 
 Route::group(['prefix' => 'mailers','middleware'=>'auth'], function(){
     Route::get('/{mailer}/download_f/{index}', [MailerController::class, 'download_file'])->name('mailers.download_file');
@@ -65,6 +67,8 @@ Route::group(['prefix' => 'mailers','middleware'=>'auth'], function(){
     Route::post('/{mailer}/send/{index}/{department}', [MailerController::class, 'send'])->name('mailers.send');
 
     Route::post('/{mailer}/send_all/', [MailerController::class, 'send_all'])->name('mailers.send_all');
+
+    Route::get('/{mailer}/send-status/{batch}', [MailerController::class, 'sendStatus'])->name('mailers.send-status');
 });
 
 Route::resource('/sheetmailers', SheetmailerController::class)
