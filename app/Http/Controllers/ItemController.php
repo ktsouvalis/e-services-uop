@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
+use App\Services\Items\ItemFileManager;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\File;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -22,6 +22,9 @@ class ItemController extends Controller
     public function index()
     {
         Gate::authorize('viewAny', Item::class);
+        // Not paginated server-side: #DataTable (resources/js/items/datatable_init.js)
+        // needs the full list in the DOM so its paging and per-column
+        // include/exclude search operate across every item, not just one page.
         $items = Item::all();
         return view('items.index')->with('items', $items);
     }
@@ -53,7 +56,7 @@ class ItemController extends Controller
             'user_id' => 'nullable|string|max:255',
             'comments' => 'nullable|string',
             'file_path' => 'nullable|array',
-            'file_path.*' => 'file|mimes:pdf',
+            'file_path.*' => 'file|mimes:pdf|mimetypes:application/pdf',
         ]);
     $incoming = $request->except('file_path');
 
@@ -69,22 +72,7 @@ class ItemController extends Controller
             $incoming['user_id'] = $request->input('user_id');
         }
         // Handle multiple file uploads
-        $filesMeta = [];
-        if ($request->hasFile('file_path')) {
-            foreach ($request->file('file_path') as $file) {
-                if (!$file) continue;
-                $original = $file->getClientOriginalName();
-                $unique = uniqid(date('YmdHis').'_');
-                $ext = $file->getClientOriginalExtension();
-                $storedName = $unique . ($ext ? ('.' . $ext) : '');
-                $file->move(storage_path('app/private/items'), $storedName);
-                $filesMeta[] = [
-                    'original' => $original,
-                    'stored' => $storedName,
-                    'uploaded_at' => now()->toDateTimeString(),
-                ];
-            }
-        }
+        $filesMeta = ItemFileManager::storeMany($request->file('file_path', []));
         if (!empty($filesMeta)) {
             $incoming['file_path'] = json_encode($filesMeta, JSON_UNESCAPED_UNICODE);
         }
@@ -135,7 +123,7 @@ class ItemController extends Controller
             abort(404);
         }
 
-        $path = storage_path('app/private/items/' . $storedName);
+        $path = ItemFileManager::path($storedName);
         if (!file_exists($path)) {
             abort(404);
         }
@@ -171,7 +159,7 @@ class ItemController extends Controller
             'user_id' => 'nullable|string|max:255',
             'comments' => 'nullable|string',
             'file_path' => 'nullable|array',
-            'file_path.*' => 'file|mimes:pdf',
+            'file_path.*' => 'file|mimes:pdf|mimetypes:application/pdf',
         ]);
 
         $incoming = $request->except('file_path');
@@ -179,28 +167,12 @@ class ItemController extends Controller
         if ($request->has('in_local_storage')) {
             $incoming['in_local_storage'] = (bool)$request->input('in_local_storage');
         }
-        if($incoming['user_id'] == 99){
+        if(($incoming['user_id'] ?? null) == 99){
             $incoming['user_id'] = null;
         }
         // Handle newly uploaded files: append to existing list
         // Start with existing files array from accessor
-        $existing = $item->files;
-
-        if ($request->hasFile('file_path')) {
-            foreach ($request->file('file_path') as $file) {
-                if (!$file) continue;
-                $original = $file->getClientOriginalName();
-                $unique = uniqid(date('YmdHis').'_');
-                $ext = $file->getClientOriginalExtension();
-                $storedName = $unique . ($ext ? ('.' . $ext) : '');
-                $file->move(storage_path('app/private/items'), $storedName);
-                $existing[] = [
-                    'original' => $original,
-                    'stored' => $storedName,
-                    'uploaded_at' => now()->toDateTimeString(),
-                ];
-            }
-        }
+        $existing = array_merge($item->files, ItemFileManager::storeMany($request->file('file_path', [])));
         $incoming['file_path'] = !empty($existing) ? json_encode($existing, JSON_UNESCAPED_UNICODE) : null;
         DB::beginTransaction();
         try{
@@ -238,7 +210,7 @@ class ItemController extends Controller
         foreach ($item->files as $file) {
             $stored = is_array($file) ? ($file['stored'] ?? $file['original'] ?? null) : $file;
             if ($stored) {
-                File::delete(storage_path('app/private/items/'.$stored));
+                ItemFileManager::delete($stored);
             }
         }
         Log::channel('items')->info('User '.auth()->user()->name.' deleted item with id '.$item->id);
@@ -247,7 +219,7 @@ class ItemController extends Controller
 
     public function extract()
     {
-        Gate::authorize('create', Item::class);
+        Gate::authorize('viewAny', Item::class);
         $items = Item::where('given_away', 0)->get();
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -316,7 +288,9 @@ class ItemController extends Controller
         }
         $timestamp = now()->format('Y-m-d');
         $filename = "items_$timestamp.xlsx";
-        $directory = storage_path('app/private/items');
+        // Exported reports get their own subdirectory, separate from real item file
+        // uploads that live directly under storage/app/private/items/.
+        $directory = storage_path('app/private/items/exports');
         if (!is_dir($directory)) {
             mkdir($directory, 0755, true);
         }
@@ -326,8 +300,7 @@ class ItemController extends Controller
         if (ob_get_level() > 0) {
             ob_end_clean();
         }
-        // ob_end_clean();
-        return response()->download($path);
+        return response()->download($path)->deleteFileAfterSend();
     }
 
     public function delete_file(Request $request, Item $item){
@@ -337,7 +310,7 @@ class ItemController extends Controller
         foreach ($item->files as $file) {
             $stored = is_array($file) ? ($file['stored'] ?? $file['original'] ?? null) : $file;
             if ($stored && $stored === $filename) {
-                File::delete(storage_path('app/private/items/'.$stored));
+                ItemFileManager::delete($stored);
                 continue;
             }
             $updated[] = $file;

@@ -112,7 +112,7 @@ Route::prefix('authentik')->middleware(['auth', AuthentikEnabled::class])->name(
 });
 
 
-Route::resource('/items', ItemController::class)->middleware('auth');
+Route::resource('/items', ItemController::class)->except(['show'])->middleware('auth');
 
 Route::group(['prefix' => 'items', 'middleware'=>'auth'], function(){
     Route::get('/{item}/download_f', [ItemController::class, 'download_file'])->name('items.download_file');
