@@ -41,7 +41,23 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Feature policies read Menu::where('route_is', ...)->first()->enabled, so any
+ * request into a menu-gated feature needs its Menu row to exist first (a missing
+ * row means ->first() is null and ->enabled fatals, rather than just denying access).
+ */
+function enableMenu(string $routeIs): \App\Models\Menu
 {
-    // ..
+    return \App\Models\Menu::updateOrCreate(
+        ['route_is' => $routeIs],
+        ['title' => ucfirst($routeIs), 'route' => 'dashboard', 'enabled' => true]
+    );
+}
+
+function disableMenu(string $routeIs): \App\Models\Menu
+{
+    return \App\Models\Menu::updateOrCreate(
+        ['route_is' => $routeIs],
+        ['title' => ucfirst($routeIs), 'route' => 'dashboard', 'enabled' => false]
+    );
 }

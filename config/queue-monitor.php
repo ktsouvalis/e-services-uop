@@ -28,7 +28,10 @@ return [
         // Accepts route group configuration
         'route' => [
             'prefix' => 'jobs',
-            'middleware' => ['web','auth'],
+            // This UI lets any user retry/delete/purge queued job records, so it's
+            // restricted to admins like this app's other admin-grade surfaces
+            // (/get_logs, Users, AImodels, Menus) rather than just any authenticated user.
+            'middleware' => ['web','auth',\App\Http\Middleware\AdminOnly::class],
         ],
 
         // Set the monitored jobs count to be displayed per page.

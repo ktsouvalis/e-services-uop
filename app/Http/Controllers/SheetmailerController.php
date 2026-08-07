@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use App\Http\Requests\StoreSheetmailerRequest;
 use App\Http\Requests\UpdateSheetmailerRequest;
 
 class SheetmailerController extends Controller
@@ -42,11 +43,11 @@ class SheetmailerController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreSheetmailerRequest $request)
     {
         Gate::authorize('create', Sheetmailer::class);
 
-        $validated = $request->input();
+        $validated = $request->validated();
         $validated['user_id'] = auth()->user()->id;
         try{
             $sheetmailer = Sheetmailer::create($validated);

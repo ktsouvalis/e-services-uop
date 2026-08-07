@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AImodel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class AImodelController extends Controller
 {
@@ -12,6 +13,7 @@ class AImodelController extends Controller
      */
     public function index()
     {
+        Gate::authorize('viewAny', AImodel::class);
         $aimodels = AImodel::all()->sortBy('name');
         return view('aimodels.index', compact('aimodels'));
     }
@@ -21,6 +23,7 @@ class AImodelController extends Controller
      */
     public function store(Request $request)
     {
+        Gate::authorize('create', AImodel::class);
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
@@ -40,6 +43,7 @@ class AImodelController extends Controller
      */
     public function edit(AImodel $aimodel)
     {
+        Gate::authorize('update', $aimodel);
         return view('aimodels.edit', compact('aimodel'));
     }
 
@@ -48,6 +52,7 @@ class AImodelController extends Controller
      */
     public function update(Request $request, AImodel $aimodel)
     {
+        Gate::authorize('update', $aimodel);
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -75,6 +80,7 @@ class AImodelController extends Controller
      */
     public function destroy(AImodel $aimodel)
     {
+        Gate::authorize('delete', $aimodel);
         $aimodel->delete();
 
         return redirect()->route('aimodels.index')->with('success', 'AI Model deleted successfully.');

@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Chatbot extends Model
 {
+    use HasFactory;
+
     protected $table = 'chatbots';
     protected $guarded = ['id'];
 

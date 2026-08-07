@@ -45,9 +45,9 @@ Route::post('/chat/send-message', function (Request $request) {
     MessageSent::dispatch($text, $user->name);
 })->middleware('auth')->name('chat.send-message');
 
-Route::resource('/menus', MenuController::class);
+Route::resource('/menus', MenuController::class)->middleware('auth');
 
-Route::post('menus/toggle-enabled/{menu}', [MenuController::class, 'toggleEnabled'])->name('menus.toggle-enabled');
+Route::post('menus/toggle-enabled/{menu}', [MenuController::class, 'toggleEnabled'])->name('menus.toggle-enabled')->middleware('auth');
 
 
 Route::resource('/mailers', MailerController::class)->middleware('auth');
@@ -124,7 +124,7 @@ Route::get('/extract_items', [ItemController::class, 'extract'])->name('items.ex
 
 Route::resource('users', UserController::class)->middleware('auth');
 
-Route::resource('aimodels', AImodelController::class);
+Route::resource('aimodels', AImodelController::class)->middleware('auth');
 
 Route::resource('/chatbots', ChatbotController::class)->middleware('auth');
 
@@ -151,7 +151,7 @@ Route::group(['prefix' => 'chatbots', 'middleware'=>'auth'], function(){
 
 Route::resource('notifications', NotificationController::class)->middleware('auth');
 
-Route::group(['prefix' => 'notifications'], function(){
+Route::group(['prefix' => 'notifications', 'middleware' => 'auth'], function(){
     Route::post('/mark_as_read/{notification}', [NotificationController::class, 'markNotificationAsRead'])->name('notifications.mark_as_read');
 
     Route::post('/mark_all_as_read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark_all_as_read');
@@ -196,7 +196,7 @@ Route::get('/get_logs', function(Request $request){
     else {
         return back()->with('error', 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη λειτουργία.');
     }
-});
+})->middleware('auth');
 
 Route::get('/health', function() {
     return response()->json(['status' => 'OK'], 200);
