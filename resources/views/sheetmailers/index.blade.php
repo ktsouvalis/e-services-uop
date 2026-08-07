@@ -92,11 +92,15 @@
                             @endforeach
                         </tbody>
                     </table>
+                    <div class="mt-4">
+                        {{ $sheetmailers->links() }}
+                    </div>
                 @endif
             </div>
 
             <!-- Section 2: Create Form -->
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                @include('sheetmailers._steps', ['step' => 1])
                 <h3 class="text-lg font-semibold mb-4">{{ __('Create New Sheet/Comma Mailer') }}</h3>
                 <form action="{{ route('sheetmailers.store') }}" method="POST">
                     @csrf

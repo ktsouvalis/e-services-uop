@@ -1,8 +1,4 @@
-@if($username=='preview')
 <div>
-    <p><strong>Θέμα:</strong> {{$sheetmailer->subject}}</p>
-<div>
-@endif
 {!! $sheetmailer->body !!}
 </div>
 

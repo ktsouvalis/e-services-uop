@@ -2,30 +2,28 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use App\Models\Sheetmailer;
-use romanzipp\QueueMonitor\Traits\IsMonitored;
 
-class MailSheetMailer extends Mailable implements ShouldQueue
+class MailSheetMailer extends Mailable
 {
-    use SerializesModels, isMonitored;
+    // Not ShouldQueue: sending is now driven by App\Jobs\Sheetmailers\SendSheetmailerEmail,
+    // one job per recipient dispatched inside a Bus::batch() for live send progress -
+    // that job (not this Mailable) is what's actually queued and monitored.
+    use SerializesModels;
     public $sheetmailer;
     public $additionalData;
-    public $username; //the user who triggered the mail job
     /**
      * Create a new message instance.
      */
-    public function __construct(Sheetmailer $sheetmailer, $additionalData, $username)
+    public function __construct(Sheetmailer $sheetmailer, $additionalData)
     {
         $this->sheetmailer = $sheetmailer;
         $this->additionalData = $additionalData;
-        $this->username = $username;
     }
 
     /**
@@ -44,13 +42,10 @@ class MailSheetMailer extends Mailable implements ShouldQueue
      */
     public function content(): Content
     {
+        // $sheetmailer, $additionalData are exposed to the view automatically -
+        // Mailable::buildViewData() forwards all public properties, no explicit with() needed.
         return new Content(
             view: 'sheetmailers.mail',
-            with: [
-                'user' => $this->username,
-                'sheetmailer' => $this->sheetmailer,
-                'additionalData' => $this->additionalData,
-            ],
         );
     }
 
@@ -63,10 +58,4 @@ class MailSheetMailer extends Mailable implements ShouldQueue
     {
         return [];
     }
-
-    // If you want to keep monitoring only for failure, you can override this method
-    // public static function keepMonitorOnSuccess(): bool
-    // {
-    //     return false;
-    // }
 }

@@ -37,8 +37,9 @@ return [
         // Set the monitored jobs count to be displayed per page.
         'per_page' => 35,
 
-        // Show custom data stored on model
-        'show_custom_data' => false,
+        // Show custom data stored on model - surfaces SendSheetmailerEmail's
+        // recipient address (see initialMonitorData()) as a column in /jobs.
+        'show_custom_data' => true,
 
         // Allow the deletion of single monitor items.
         'allow_deletion' => true,

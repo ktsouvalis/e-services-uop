@@ -6,7 +6,6 @@ use App\Models\Menu;
 use App\Models\Chatbot;
 use App\Models\Department;
 use App\Events\MessageSent;
-use App\Models\Sheetmailer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ItemController;
@@ -68,20 +67,20 @@ Route::group(['prefix' => 'mailers','middleware'=>'auth'], function(){
     Route::post('/{mailer}/send_all/', [MailerController::class, 'send_all'])->name('mailers.send_all');
 });
 
-Route::resource('/sheetmailers', SheetmailerController::class)->middleware('auth');
+Route::resource('/sheetmailers', SheetmailerController::class)
+    ->only(['index', 'store', 'edit', 'update', 'destroy'])
+    ->middleware('auth');
 
 Route::group(['prefix' => 'sheetmailers','middleware'=>'auth'], function(){
     Route::post('/{sheetmailer}/upload_file', [SheetmailerController::class, 'upload_file'])->name('sheetmailers.upload_file');
 
     Route::post('/{sheetmailer}/comma_mails', [SheetmailerController::class, 'comma_mails'])->name('sheetmailers.comma_mails');
 
-    Route::get('/{sheetmailer}/confirm', function (Sheetmailer $sheetmailer) {
-        return view('sheetmailers.confirm', compact('sheetmailer'));
-    })->name('sheetmailers.confirm')->middleware('can:view,sheetmailer');
-
-    Route::get('/{sheetmailer}/preview', [SheetmailerController::class, 'preview'])->name('sheetmailers.preview');
+    Route::get('/{sheetmailer}/confirm', [SheetmailerController::class, 'confirm'])->name('sheetmailers.confirm');
 
     Route::post('/{sheetmailer}/send', [SheetmailerController::class, 'send'])->name('sheetmailers.send');
+
+    Route::get('/{sheetmailer}/send-status/{batch}', [SheetmailerController::class, 'sendStatus'])->name('sheetmailers.send-status');
 });
 
 Route::group(['prefix' => 'log-reader', 'middleware' => ['auth', LogReaderEnabled::class]], function () {
