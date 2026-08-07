@@ -139,41 +139,65 @@ class SheetmailerController extends Controller
 
     public function upload_file(Request $request, Sheetmailer $sheetmailer)
     {
+        Gate::authorize('update', $sheetmailer);
+
         // Clear session data
         session()->forget('emails');
         session()->forget('non_emails');
         session()->forget('emailCount');
 
-        // Validate the input
+        // Validate the input (mimes checks the extension, mimetypes checks the detected content type -
+        // require both to agree so a renamed file can't sneak past either check alone)
         $request->validate([
-            'file' => 'required|mimetypes:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:2048', // max 2MB file
+            'file' => 'required|file|mimes:xlsx|mimetypes:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|max:2048', // max 2MB file
+        ], [
+            'file.required' => 'Please choose a file to upload.',
+            'file.mimes' => 'The file must be an .xlsx spreadsheet.',
+            'file.mimetypes' => 'The file must be an .xlsx spreadsheet.',
+            'file.max' => 'The file is too large. Maximum allowed size is 2MB.',
         ]);
 
-        // Load the file
-        $filePath = $request->file('file')->getRealPath();
-        $spreadsheet = IOFactory::load($filePath);
-        $sheet = $spreadsheet->getActiveSheet();
+        // Give parsing more headroom than the default 30s execution limit for larger sheets
+        ini_set('max_execution_time', 60);
 
-        // Get all emails from the first column and extra data from the second column
-        $eligible_emails = [];
-        $non_emails = [];
-        foreach ($sheet->getRowIterator() as $row) {
-            $cellA = $sheet->getCell('A' . $row->getRowIndex());
-            $email = $cellA->getValue();
-            $cellB = $sheet->getCell('B' . $row->getRowIndex());
-            $additionalData = $cellB->getValue();
-            // Validate email format
-            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $eligible_emails[] = [
-                    'email' => $email,
-                    'additionalData' =>$additionalData
-                ];
-                                    
-            }
-            else{
-                $non_emails[]=$email;
+        // Load and parse the file - a corrupt/malformed upload throws from PhpSpreadsheet, not just from validation
+        try {
+            $filePath = $request->file('file')->getRealPath();
+            $spreadsheet = IOFactory::load($filePath);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // Get all emails from the first column and extra data from the second column
+            $eligible_emails = [];
+            $non_emails = [];
+            foreach ($sheet->getRowIterator() as $row) {
+                $cellA = $sheet->getCell('A' . $row->getRowIndex());
+                $email = $cellA->getValue();
+                $cellB = $sheet->getCell('B' . $row->getRowIndex());
+                $additionalData = $cellB->getValue();
+                // Validate email format
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $eligible_emails[] = [
+                        'email' => $email,
+                        'additionalData' =>$additionalData
+                    ];
+
+                }
+                else{
+                    $non_emails[]=$email;
+                }
             }
         }
+        catch (\Throwable $e) {
+            Log::channel('sheetmailers')->error('Sheetmailer '. $sheetmailer->id .' file upload failed to parse for '. (Auth::user()->username ?? 'system'), [
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->back()->with('error', 'The uploaded file could not be read. Make sure it is a valid, uncorrupted .xlsx file and try again.');
+        }
+
+        if (empty($eligible_emails) && empty($non_emails)) {
+            return redirect()->back()->with('error', 'The uploaded file appears to be empty - no rows were found.');
+        }
+
         // Count the number of valid emails
         $emailCount = count($eligible_emails);
         session()->put('emails', $eligible_emails);
@@ -184,6 +208,8 @@ class SheetmailerController extends Controller
     }
 
     public function comma_mails(Request $request, Sheetmailer $sheetmailer){
+        Gate::authorize('update', $sheetmailer);
+
         // Clear session data
         session()->forget('emails');
         session()->forget('non_emails');

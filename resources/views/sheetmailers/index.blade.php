@@ -25,6 +25,7 @@
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Creator</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Visibility</th>
+                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -41,6 +42,9 @@
                                         @else
                                             <span class="text-gray-600">Private</span>
                                         @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-normal text-center" title="{{ $sheetmailer->created_at->format('d/m/Y H:i') }}">
+                                        {{ $sheetmailer->created_at->diffForHumans() }}
                                     </td>
                                     <td class="px-6 py-4 flex justify-center">
                                         @can('update', $sheetmailer)
