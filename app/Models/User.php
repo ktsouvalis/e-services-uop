@@ -57,4 +57,12 @@ class User extends Authenticatable
     public function chatbots(){
         return $this->hasMany(Chatbot::class);
     }
+
+    public function pangolinRuns(){
+        return $this->hasMany(PangolinRun::class);
+    }
+
+    public function authentikLogRuns(){
+        return $this->hasMany(AuthentikLogRun::class);
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Authentik;
 
+use App\Services\Concerns\ClusterMonitorHelpers;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Throwable;
@@ -33,6 +34,8 @@ use Throwable;
  */
 class ClusterMonitor
 {
+    use ClusterMonitorHelpers;
+
     private int $timeout;
 
     public function __construct()
@@ -237,39 +240,10 @@ class ClusterMonitor
             return $this->row('haproxy', $node['name'], $node['ip'], 'down');
         }
 
-        $backends = [];
-        foreach (explode("\n", $response->body()) as $line) {
-            $line = trim($line);
-            if ($line === '' || str_starts_with($line, '#')) {
-                continue;
-            }
-            $parts = str_getcsv($line);
-            if (count($parts) < 18) {
-                continue;
-            }
-            [$pxname, $svname] = [$parts[0], $parts[1]];
-            $status = $parts[17];
-            if (in_array($svname, ['FRONTEND', 'BACKEND'], true)) {
-                continue;
-            }
-            $backends[$pxname][] = ['server' => $svname, 'status' => $status];
-        }
+        $parsed = $this->parseHaproxyStats($response->body());
 
-        // A backend pool with 0 UP servers is a real problem. Partial UP
-        // counts within a pool are role-based and expected (e.g. exactly
-        // 1 UP in a Patroni primary pool) — mirrors monitor.py's
-        // HAProxyPanel "any_zero" logic exactly.
-        $anyPoolFullyDown = false;
-        foreach ($backends as $servers) {
-            $ups = count(array_filter($servers, fn ($s) => $s['status'] === 'UP'));
-            if ($ups === 0) {
-                $anyPoolFullyDown = true;
-                break;
-            }
-        }
-
-        return $this->row('haproxy', $node['name'], $node['ip'], $anyPoolFullyDown ? 'degraded' : 'up', metrics: [
-            'backends' => $backends,
+        return $this->row('haproxy', $node['name'], $node['ip'], $parsed['status'], metrics: [
+            'backends' => $parsed['backends'],
         ]);
     }
 
@@ -395,26 +369,5 @@ class ClusterMonitor
             'missing' => $missing,
             'mismatched' => $mismatched,
         ]);
-    }
-
-    private function row(
-        string $service,
-        string $nodeName,
-        string $nodeIp,
-        string $status,
-        ?string $role = null,
-        ?array $metrics = null,
-        ?string $message = null,
-    ): array {
-        return [
-            'service' => $service,
-            'node_name' => $nodeName,
-            'node_ip' => $nodeIp,
-            'status' => $status,
-            'role' => $role,
-            'metrics' => $metrics,
-            'message' => $message,
-            'checked_at' => now(),
-        ];
     }
 }

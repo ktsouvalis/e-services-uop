@@ -14,7 +14,7 @@ class AuthentikController extends Controller
     {
         $statuses = AuthentikMonitorStatus::orderBy('service')->orderBy('node_name')->get()->groupBy('service');
 
-        $logRuns = AuthentikLogRun::latest()->take(10)->get();
+        $logRuns = AuthentikLogRun::with('user')->latest()->take(10)->get();
 
         return view('authentik.index', compact('statuses', 'logRuns'));
     }
