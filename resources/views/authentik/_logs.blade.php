@@ -1,6 +1,6 @@
 <div class="bg-white shadow-sm sm:rounded-lg p-6 mb-6">
     <h3 class="text-lg font-semibold mb-4">{{ __('Fetch cluster logs') }}</h3>
-    <p class="text-sm text-gray-500 mb-4">{{ __('Pulls WARN/ERROR logs from every node over SSH (docker logs for containerised services, journalctl for bare-metal ones).') }}</p>
+    <p class="text-sm text-gray-500 mb-4">{{ __('Pulls logs at or above the chosen level from every node over SSH (docker logs for containerised services, journalctl for bare-metal ones).') }}</p>
     <form action="{{ route('authentik.logs.fetch') }}" method="POST" class="flex items-end gap-4">
         @csrf
         <div>
@@ -8,6 +8,18 @@
             <input type="number" name="lookback_hours" id="lookback_hours" min="1" max="168" placeholder="24"
                    class="mt-1 block w-32 border-gray-300 rounded-md shadow-sm">
             @error('lookback_hours')
+                <span class="text-red-500 text-sm">{{ $message }}</span>
+            @enderror
+        </div>
+        <div>
+            <label for="level" class="block text-sm font-medium text-gray-700">{{ __('Minimum level') }}</label>
+            <select name="level" id="level" class="mt-1 block w-32 border-gray-300 rounded-md shadow-sm">
+                <option value="error">{{ __('Error') }}</option>
+                <option value="warning" selected>{{ __('Warning') }}</option>
+                <option value="info">{{ __('Info') }}</option>
+                <option value="debug">{{ __('Debug') }}</option>
+            </select>
+            @error('level')
                 <span class="text-red-500 text-sm">{{ $message }}</span>
             @enderror
         </div>

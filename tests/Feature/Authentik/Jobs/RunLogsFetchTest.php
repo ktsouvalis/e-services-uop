@@ -68,3 +68,19 @@ test('the lookback_hours option is passed through as a --last argument', functio
 
     expect($capturedCommand)->toContain('--last', '6');
 });
+
+test('the level option is passed through as a --level argument', function () {
+    $capturedCommand = null;
+    Process::fake(function ($process) use (&$capturedCommand) {
+        $capturedCommand = $process->command;
+        file_put_contents($process->path.'/cluster_logs.log', 'ok');
+
+        return Process::result(exitCode: 0);
+    });
+
+    $run = AuthentikLogRun::factory()->create(['options' => ['level' => 'info']]);
+
+    RunLogsFetch::dispatch($run);
+
+    expect($capturedCommand)->toContain('--level', 'info');
+});

@@ -56,7 +56,7 @@ test('logs fetch rejects an out-of-range lookback and otherwise queues a run', f
     $this->actingAs($user)->post(route('pangolin.logs.fetch'), ['lookback_hours' => 999])
         ->assertSessionHasErrors('lookback_hours');
 
-    $this->actingAs($user)->post(route('pangolin.logs.fetch'), ['lookback_hours' => 24])
+    $this->actingAs($user)->post(route('pangolin.logs.fetch'), ['lookback_hours' => 24, 'level' => 'error'])
         ->assertRedirect(route('pangolin.index', ['tab' => 'logs']))
         ->assertSessionHas('success');
 
@@ -64,7 +64,16 @@ test('logs fetch rejects an out-of-range lookback and otherwise queues a run', f
     expect($run->type)->toBe('logs');
     expect($run->user_id)->toBe($user->id);
     expect($run->options['lookback_hours'])->toBe(24);
+    expect($run->options['level'])->toBe('error');
     Queue::assertPushed(RunLogsFetch::class, 1);
+});
+
+test('logs fetch rejects an invalid level', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('pangolin.logs.fetch'), ['level' => 'trace'])
+        ->assertSessionHasErrors('level');
 });
 
 test('logs download 404s for a run of the wrong type or a missing file, and streams a real file otherwise', function () {

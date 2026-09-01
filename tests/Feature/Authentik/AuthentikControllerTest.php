@@ -40,14 +40,23 @@ test('logs fetch rejects an out-of-range lookback and otherwise queues a run', f
     $this->actingAs($user)->post(route('authentik.logs.fetch'), ['lookback_hours' => 999])
         ->assertSessionHasErrors('lookback_hours');
 
-    $this->actingAs($user)->post(route('authentik.logs.fetch'), ['lookback_hours' => 12])
+    $this->actingAs($user)->post(route('authentik.logs.fetch'), ['lookback_hours' => 12, 'level' => 'info'])
         ->assertRedirect(route('authentik.index', ['tab' => 'logs']))
         ->assertSessionHas('success');
 
     $run = AuthentikLogRun::first();
     expect($run->user_id)->toBe($user->id);
     expect($run->options['lookback_hours'])->toBe(12);
+    expect($run->options['level'])->toBe('info');
     Queue::assertPushed(RunLogsFetch::class, 1);
+});
+
+test('logs fetch rejects an invalid level', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('authentik.logs.fetch'), ['level' => 'trace'])
+        ->assertSessionHasErrors('level');
 });
 
 test('logs download 404s on a missing file and streams a real file otherwise', function () {
