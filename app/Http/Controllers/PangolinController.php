@@ -16,9 +16,9 @@ class PangolinController extends Controller
     {
         $statuses = PangolinMonitorStatus::orderBy('service')->orderBy('node_name')->get()->groupBy('service');
 
-        $logRuns = PangolinRun::ofType('logs')->latest()->take(10)->get();
-        $importRuns = PangolinRun::ofType('import')->latest()->take(10)->get();
-        $normalizeRuns = PangolinRun::ofType('normalize')->latest()->take(10)->get();
+        $logRuns = PangolinRun::ofType('logs')->with('user')->latest()->take(10)->get();
+        $importRuns = PangolinRun::ofType('import')->with('user')->latest()->take(10)->get();
+        $normalizeRuns = PangolinRun::ofType('normalize')->with('user')->latest()->take(10)->get();
 
         return view('pangolin.index', compact('statuses', 'logRuns', 'importRuns', 'normalizeRuns'));
     }
@@ -41,13 +41,17 @@ class PangolinController extends Controller
     {
         $request->validate([
             'lookback_hours' => 'nullable|integer|min:1|max:168',
+            'level' => 'nullable|in:error,warning,info,debug',
         ]);
 
         $run = PangolinRun::create([
             'type' => 'logs',
             'user_id' => auth()->id(),
             'status' => 'queued',
-            'options' => ['lookback_hours' => $request->input('lookback_hours')],
+            'options' => [
+                'lookback_hours' => $request->input('lookback_hours'),
+                'level' => $request->input('level'),
+            ],
         ]);
 
         RunLogsFetch::dispatch($run);

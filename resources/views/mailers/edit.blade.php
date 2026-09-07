@@ -12,6 +12,7 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                @include('mailers._steps', ['step' => 2])
                 <h3 class="text-lg font-semibold mb-4">{{ __('Edit Mail to Department') }}</h3>
 
                 <form action="{{ route('mailers.update', $mailer->id) }}" method="POST" enctype="multipart/form-data">

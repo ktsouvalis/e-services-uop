@@ -25,6 +25,7 @@
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Creator</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Visibility</th>
+                                <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                                 <th class="px-6 py-3  text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -41,6 +42,9 @@
                                         @else
                                             <span class="text-gray-600">Private</span>
                                         @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-normal text-center" title="{{ $sheetmailer->created_at->format('d/m/Y H:i') }}">
+                                        {{ $sheetmailer->created_at->diffForHumans() }}
                                     </td>
                                     <td class="px-6 py-4 flex justify-center">
                                         @can('update', $sheetmailer)
@@ -88,11 +92,15 @@
                             @endforeach
                         </tbody>
                     </table>
+                    <div class="mt-4">
+                        {{ $sheetmailers->links() }}
+                    </div>
                 @endif
             </div>
 
             <!-- Section 2: Create Form -->
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                @include('sheetmailers._steps', ['step' => 1])
                 <h3 class="text-lg font-semibold mb-4">{{ __('Create New Sheet/Comma Mailer') }}</h3>
                 <form action="{{ route('sheetmailers.store') }}" method="POST">
                     @csrf

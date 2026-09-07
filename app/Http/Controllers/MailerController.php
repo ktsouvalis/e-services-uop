@@ -5,15 +5,15 @@ namespace App\Http\Controllers;
 use Exception;
 use App\Models\Mailer;
 use App\Models\Department;
-use App\Mail\MailToDepartment;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\StoreMailerRequest;
 use App\Http\Requests\UpdateMailerRequest;
+use App\Jobs\Mailers\SendMailerFile;
 
 class MailerController extends Controller
 {
@@ -29,7 +29,8 @@ class MailerController extends Controller
                 $q->where('is_public', true)
                   ->orWhere('user_id', $userId);
             })
-            ->get();
+            ->latest()
+            ->paginate(15);
 
         return view('mailers.index', compact('mailers'));
     }
@@ -226,7 +227,15 @@ class MailerController extends Controller
     public function review(Mailer $mailer)
     {
         Gate::authorize('update', $mailer);
-        $files = $mailer->files;
+
+        $files = $mailer->files ?? [];
+
+        if (empty($files)) {
+            return redirect()->route('mailers.edit', $mailer)
+                ->with('error', 'This mailer has no files uploaded yet. Upload files first.');
+        }
+
+        $review_array = [];
         foreach ($files as $file) {
             $filename = $file['filename'];
             $fileindex = $file['index'];
@@ -246,50 +255,173 @@ class MailerController extends Controller
                 $review_array[] = ['index' => $fileindex, 'filename' => $filename, 'to' => 'Department not found'];
             }
         }
-        session()->put('review_array', $review_array);
-        return view('mailers.review')
-            ->with('mailer', $mailer);
+        $this->storeReview($mailer, $review_array);
+
+        return view('mailers.review', [
+            'mailer' => $mailer,
+            'review_array' => $review_array,
+            'sendBatch' => $this->activeSendBatchSummary($mailer),
+        ]);
     }
 
     public function send(Mailer $mailer, string $index, Department $department){
-        Gate::authorize('view', $mailer);
+        Gate::authorize('update', $mailer);
         $files = $mailer->files;
         $fileKey = $this->search_key($files, $index);
         $filename = $files[$fileKey]['filename'];
-        $path = "/mailers/$mailer->id/$filename";
+        $triggeredBy = Auth::user()->username ?? 'system';
+
         try{
-            Mail::to($department->email)->queue(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path], Auth::user()->username));
+            SendMailerFile::dispatch($mailer, $department, $filename, $triggeredBy);
         }
         catch(\Exception $e){
-            Log::channel('mailers')->error("Mailer $mailer->id file '$filename' to $department->name NOT queued: ".$e->getMessage()." by user: ".Auth::user()->username);
+            Log::channel('mailers')->error("Mailer $mailer->id file '$filename' to $department->name NOT queued: ".$e->getMessage()." by user: ".$triggeredBy);
             return redirect()->back()->with('error', 'Mail not queued.');
         }
-        Log::channel('mailers')->info("Mailer $mailer->id file '$filename' to $department->name: queued successfully by user: ".Auth::user()->username);
+        Log::channel('mailers_actions')->info("Mailer $mailer->id file '$filename' to $department->name: queued by user: ".$triggeredBy);
         return redirect()->back()->with('success', 'Mail queued successfully.');
     }
 
     public function send_all(Mailer $mailer){
-        Gate::authorize('view', $mailer);
-        $review_array = session('review_array');
-        $error = ['warning' => 'No Departments as stakeholders. Please upload some valid files'];
-        foreach ($review_array as $file){
-            if($file['to'] == 'Department not found'){
-                continue;
-            }
-            $filename = $file['filename'];
-            $department = $file['to'];
-            $path = "/mailers/$mailer->id/$filename";
-            $error = ['success' => 'Valid mails queued successfully.'];
-            try{
-                Mail::to($department->email)->queue(new MailToDepartment($mailer->subject, $mailer->signature, $mailer->body, [$path], Auth::user()->username));
-            }
-            catch(\Exception $e){
-                Log::channel('mailers')->error("Mailer $mailer->id file '$filename' to $department->name NOT queued: ".$e->getMessage()." by user: ".Auth::user()->username);
-                $error = ['warning' => 'Mails queued with errors. Check today\'s mailers log for more information.'];
-                continue;
-            }
-            Log::channel('mailers')->info("Mailer $mailer->id file '$filename' to $department->name: queued successfully by user: ".Auth::user()->username);
+        Gate::authorize('update', $mailer);
+
+        $review_array = $this->pullReview($mailer) ?? [];
+        $targets = array_filter($review_array, fn ($file) => $file['to'] !== 'Department not found');
+
+        if (empty($targets)) {
+            return redirect()->back()->with('warning', 'No Departments as stakeholders. Please upload some valid files');
         }
-        return redirect()->back()->with($error);
+
+        $triggeredBy = Auth::user()->username ?? 'system';
+
+        $jobs = collect($targets)
+            ->map(fn (array $file) => new SendMailerFile($mailer, $file['to'], $file['filename'], $triggeredBy))
+            ->all();
+
+        // allowFailures(): one department's mail failing shouldn't cancel the rest of the
+        // batch - by default Laravel cancels remaining jobs on the first failure.
+        $batch = Bus::batch($jobs)
+            ->name("mailer-{$mailer->id}")
+            ->allowFailures()
+            ->dispatch();
+
+        $this->storeSendBatch($mailer, $batch->id);
+
+        Log::channel('mailers_actions')->info('Mailer '. $mailer->id .' send batch '. $batch->id .' started by '. $triggeredBy, [
+            'recipients' => count($targets),
+        ]);
+
+        return redirect()->route('mailers.review', $mailer)
+            ->with('success', 'Sending to '.count($targets).' department(s) - see progress below.');
+    }
+
+    /**
+     * Live progress (polled by the "Sending..." bar on the Review page) for a batch
+     * started from send_all(). Scoped to the batch id this mailer's own session
+     * actually started, so one user can't probe another's batch id.
+     */
+    public function sendStatus(Mailer $mailer, string $batch)
+    {
+        Gate::authorize('update', $mailer);
+
+        if ($this->pullSendBatch($mailer) !== $batch) {
+            abort(404);
+        }
+
+        $found = Bus::findBatch($batch);
+
+        if (! $found) {
+            $this->forgetSendBatch($mailer);
+
+            return response()->json(['finished' => true, 'missing' => true]);
+        }
+
+        if ($found->finished()) {
+            $this->forgetSendBatch($mailer);
+        }
+
+        return response()->json([
+            'total' => $found->totalJobs,
+            'processed' => $found->processedJobs(),
+            'failed' => $found->failedJobs,
+            'progress' => $found->progress(),
+            'finished' => $found->finished(),
+            'cancelled' => $found->cancelled(),
+        ]);
+    }
+
+    /**
+     * Session key for this mailer's staged department/file review list.
+     * Namespaced by mailer id so reviewing one mailer (e.g. in a second
+     * browser tab) can't leak its review data into another mailer's send_all.
+     */
+    private function reviewSessionKey(Mailer $mailer): string
+    {
+        return "mailers.review.{$mailer->id}";
+    }
+
+    private function storeReview(Mailer $mailer, array $reviewArray): void
+    {
+        session()->put($this->reviewSessionKey($mailer), $reviewArray);
+    }
+
+    private function pullReview(Mailer $mailer): ?array
+    {
+        return session($this->reviewSessionKey($mailer));
+    }
+
+    /**
+     * Session key for the batch id of this mailer's in-flight send_all, if any.
+     */
+    private function sendBatchSessionKey(Mailer $mailer): string
+    {
+        return "mailers.send_batch.{$mailer->id}";
+    }
+
+    private function storeSendBatch(Mailer $mailer, string $batchId): void
+    {
+        session()->put($this->sendBatchSessionKey($mailer), $batchId);
+    }
+
+    private function pullSendBatch(Mailer $mailer): ?string
+    {
+        return session($this->sendBatchSessionKey($mailer));
+    }
+
+    private function forgetSendBatch(Mailer $mailer): void
+    {
+        session()->forget($this->sendBatchSessionKey($mailer));
+    }
+
+    /**
+     * Initial state for the Review page's progress bar. Only returned while the
+     * batch is still running - a page load after it's finished clears the
+     * session key so a stale "done" bar doesn't linger on a later visit (a
+     * still-open tab polling send-status will still see the final state once
+     * before that happens).
+     */
+    private function activeSendBatchSummary(Mailer $mailer): ?array
+    {
+        $batchId = $this->pullSendBatch($mailer);
+
+        if (! $batchId) {
+            return null;
+        }
+
+        $batch = Bus::findBatch($batchId);
+
+        if (! $batch || $batch->finished()) {
+            $this->forgetSendBatch($mailer);
+
+            return null;
+        }
+
+        return [
+            'id' => $batch->id,
+            'total' => $batch->totalJobs,
+            'processed' => $batch->processedJobs(),
+            'failed' => $batch->failedJobs,
+            'progress' => $batch->progress(),
+        ];
     }
 }

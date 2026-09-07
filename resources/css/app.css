@@ -11,3 +11,39 @@
 .tiptap p.is-editor-empty:first-child::before {
   @apply pointer-events-none float-left h-0 text-sm;
 }
+
+/* DataTables (Items list) - restyle the stock theme to match the app's look */
+div.dt-container .dt-layout-row {
+  @apply items-center;
+}
+
+div.dt-container .dt-length,
+div.dt-container .dt-info {
+  @apply text-sm text-gray-500;
+}
+
+div.dt-container .dt-length select.dt-input {
+  @apply ml-1 rounded-md border-gray-300 py-1 pl-2 pr-7 text-sm text-gray-700 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50;
+}
+
+div.dt-container .dt-paging {
+  @apply mt-3;
+}
+
+div.dt-container .dt-paging .dt-paging-button {
+  @apply mx-0.5 inline-flex h-9 min-w-9 items-center justify-center rounded-full border-0 bg-transparent px-3 text-sm font-medium text-gray-600 shadow-none transition-colors duration-150;
+}
+
+div.dt-container .dt-paging .dt-paging-button:hover {
+  @apply bg-gray-100 text-gray-900;
+}
+
+div.dt-container .dt-paging .dt-paging-button.current,
+div.dt-container .dt-paging .dt-paging-button.current:hover {
+  @apply bg-blue-600 text-white shadow-sm;
+}
+
+div.dt-container .dt-paging .dt-paging-button.disabled,
+div.dt-container .dt-paging .dt-paging-button.disabled:hover {
+  @apply cursor-not-allowed bg-transparent text-gray-300;
+}

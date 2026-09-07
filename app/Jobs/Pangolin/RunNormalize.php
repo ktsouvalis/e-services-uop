@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Pangolin;
 
+use App\Jobs\Pangolin\Concerns\ManagesRunLifecycle;
 use App\Jobs\Pangolin\Concerns\SummarizesXlsxReport;
 use App\Models\PangolinRun;
 use App\Services\Pangolin\ConfigYamlWriter;
@@ -16,7 +17,7 @@ use romanzipp\QueueMonitor\Traits\IsMonitored;
 
 class RunNormalize implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, IsMonitored, Queueable, SerializesModels, SummarizesXlsxReport;
+    use Dispatchable, InteractsWithQueue, IsMonitored, ManagesRunLifecycle, Queueable, SerializesModels, SummarizesXlsxReport;
 
     public int $timeout = 900;
 
@@ -27,15 +28,7 @@ class RunNormalize implements ShouldQueue
     public function handle(ConfigYamlWriter $configWriter, ScriptRunner $runner, PangolinApiClient $apiClient): void
     {
         $runDir = storage_path("app/private/pangolin/runs/{$this->run->id}");
-        // 0777: see RunImport for why (cross-uid access between queue-worker
-        // (root) and the web process (www-data)). is_dir() guard: a retried
-        // attempt hits an existing dir from the prior attempt — plain
-        // mkdir() throws "File exists".
-        if (! is_dir($runDir)) {
-            mkdir($runDir, 0777, true);
-        }
-
-        $this->run->update(['status' => 'running', 'started_at' => now()]);
+        $this->startRun($runDir);
 
         $configWriter->write("{$runDir}/config.yml");
 
@@ -49,7 +42,24 @@ class RunNormalize implements ShouldQueue
 
         // Users only ever see niceIds (reports, the Pangolin dashboard) — normalize_private_resources.py's
         // --resource-id is numeric siteResourceId only, so resolve niceIds via the Integration API first.
-        $resourceIds = $apiClient->resolveSiteResourceIds($this->run->options['resource_ids'] ?? []);
+        $requestedIds = $this->run->options['resource_ids'] ?? [];
+        $resourceIds = $apiClient->resolveSiteResourceIds($requestedIds);
+
+        if ($requestedIds && ! $resourceIds) {
+            // resolveSiteResourceIds() silently drops any token that doesn't
+            // resolve to a live resource. If every requested niceId/id was
+            // mistyped, passing zero --resource-id args would make the script
+            // apply to *every* private resource in the org instead of the
+            // scope the user actually asked for — refuse rather than run
+            // unscoped, especially since --apply --yes has no other prompt.
+            $this->finishRun([
+                'status' => 'failed',
+                'error' => 'None of the requested resource IDs/niceIds resolved to a live Pangolin resource — refusing to run unscoped.',
+            ]);
+
+            return;
+        }
+
         foreach ($resourceIds as $id) {
             $args[] = '--resource-id';
             $args[] = (string) $id;
@@ -61,19 +71,18 @@ class RunNormalize implements ShouldQueue
         $reportExists = file_exists($reportPath);
 
         try {
-            $summary = $reportExists ? $this->summarizeStatusColumn($reportPath, 'Normalize Report', 15) : null;
+            $summary = $reportExists ? $this->summarizeStatusColumn($reportPath, 'Normalize Report', 'Status') : null;
         } catch (\Throwable $e) {
             report($e);
             $summary = null;
         }
 
-        $this->run->update([
+        $this->finishRun([
             'status' => $result->successful() && $reportExists ? 'completed' : 'failed',
             'report_path' => $reportExists ? $reportPath : null,
             'summary' => $summary,
             'stdout' => $result->output().$result->errorOutput(),
             'error' => $result->successful() ? null : "Exit code {$result->exitCode()}",
-            'finished_at' => now(),
         ]);
     }
 }

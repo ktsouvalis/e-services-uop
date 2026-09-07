@@ -26,8 +26,10 @@ class ItemPolicy
      */
     public function view(User $user, Item $item): bool
     {
-        if(!$item->user) return true;
-        return $item->user == $user;
+        if(!Menu::where('route_is', $this->menu)->first()->enabled)
+            return false;
+        if(!$item->user_id) return true;
+        return $item->user_id === $user->id;
     }
 
     /**

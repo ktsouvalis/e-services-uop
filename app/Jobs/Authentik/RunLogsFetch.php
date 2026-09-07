@@ -42,6 +42,10 @@ class RunLogsFetch implements ShouldQueue
             $args[] = '--last';
             $args[] = (string) $hours;
         }
+        if ($level = $this->run->options['level'] ?? null) {
+            $args[] = '--level';
+            $args[] = $level;
+        }
 
         $result = $runner->run('logs_viewer.py', $args, $runDir);
 

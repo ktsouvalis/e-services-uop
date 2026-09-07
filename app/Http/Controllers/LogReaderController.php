@@ -10,12 +10,6 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class LogReaderController extends Controller
 {
-    //
-    public function initializeMiddleware(): void
-    {
-        $this->middleware('auth');
-    }
-    
     public function read(Request $request)
     {
         //read input

@@ -13,8 +13,13 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                @include('sheetmailers._steps', ['step' => 2])
                 <h3 class="text-lg font-semibold mb-2">{{ __('Edit Sheetmailer') }}</h3>
                 <p class="text-xs text-gray-500 mb-4">{{ __('Creator:') }} {{ optional($sheetmailer->user)->name ?? '-' }}</p>
+
+                @if($sendBatch)
+                    @include('sheetmailers._send-progress', ['sheetmailer' => $sheetmailer, 'sendBatch' => $sendBatch])
+                @endif
 
                 <form id="sheetmailer-form" action="{{ route('sheetmailers.update', $sheetmailer->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
@@ -83,47 +88,64 @@
                         </x-primary-button>
                     </div>
                 </form>
-                <hr class=my-2>
-                <form action="{{ route('sheetmailers.upload_file', $sheetmailer->id) }}" method="POST" enctype="multipart/form-data">
-                    <!-- Files Field (Single File Upload) -->
-                    @csrf
-                    <div class="mb-4">
-                        <label for="file" class="block text-sm font-medium text-gray-700">{{ __('You can upload one file') }}</label>
-                        <input type="file" name="file" id="file" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                        @error('file')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
-                        @enderror
-                        <div class="flex items-center justify-end mt-4">
-                            <x-primary-button>
-                               {{ __('Next') }}
-                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 ml-2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
-                              </svg>
-                              
-                            </x-primary-button>
-                        </div>
+                <hr class="my-2">
+                <div x-data="{ recipientTab: 'file' }">
+                    <h3 class="text-lg font-semibold mb-2 mt-4">{{ __('Add recipients') }}</h3>
+                    <div class="border-b border-gray-200 mb-4">
+                        <nav class="-mb-px flex space-x-6">
+                            <button type="button" @click="recipientTab = 'file'"
+                                    :class="recipientTab === 'file' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                    class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                                {{ __('Upload a file') }}
+                            </button>
+                            <button type="button" @click="recipientTab = 'comma'"
+                                    :class="recipientTab === 'comma' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                    class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                                {{ __('Paste emails') }}
+                            </button>
+                        </nav>
                     </div>
-                </form>
-                <hr class=my-2>
-                <form action="{{ route('sheetmailers.comma_mails', $sheetmailer->id) }}" method="POST" enctype="multipart/form-data">
-                    <!-- comma separated emails Field -->
-                    @csrf
-                    <div class="mb-4">
-                        <label for="comma_mails" class="block text-sm font-medium text-gray-700">{{ __('OR you can write comma separated emails') }}</label>
-                        <textarea name="comma_mails" id="comma_mails" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required></textarea>
-                        @error('file')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
-                        @enderror
-                        <div class="flex items-center justify-end mt-4">
-                            <x-primary-button>
-                                {{ __('Next') }}
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 ml-2">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
-                                </svg>
-                            </x-primary-button>
+
+                    <form x-show="recipientTab === 'file'" x-cloak action="{{ route('sheetmailers.upload_file', $sheetmailer->id) }}" method="POST" enctype="multipart/form-data">
+                        <!-- Files Field (Single File Upload) -->
+                        @csrf
+                        <div class="mb-4">
+                            <label for="file" class="block text-sm font-medium text-gray-700">{{ __('Spreadsheet with one email per row (column A), optional extra data in column B') }}</label>
+                            <input type="file" name="file" id="file" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                            @error('file')
+                                <span class="text-red-500 text-sm">{{ $message }}</span>
+                            @enderror
+                            <div class="flex items-center justify-end mt-4">
+                                <x-primary-button>
+                                   {{ __('Next') }}
+                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 ml-2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
+                                  </svg>
+                                </x-primary-button>
+                            </div>
                         </div>
-                    </div>
-                </form>
+                    </form>
+
+                    <form x-show="recipientTab === 'comma'" x-cloak action="{{ route('sheetmailers.comma_mails', $sheetmailer->id) }}" method="POST">
+                        <!-- comma separated emails Field -->
+                        @csrf
+                        <div class="mb-4">
+                            <label for="comma_mails" class="block text-sm font-medium text-gray-700">{{ __('Comma separated email addresses') }}</label>
+                            <textarea name="comma_mails" id="comma_mails" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required></textarea>
+                            @error('comma_mails')
+                                <span class="text-red-500 text-sm">{{ $message }}</span>
+                            @enderror
+                            <div class="flex items-center justify-end mt-4">
+                                <x-primary-button>
+                                    {{ __('Next') }}
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 ml-2">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
+                                    </svg>
+                                </x-primary-button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
               </div>
             </div>
         </div>

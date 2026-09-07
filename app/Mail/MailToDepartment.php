@@ -2,35 +2,33 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Attachment;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use romanzipp\QueueMonitor\Traits\IsMonitored;
 
-class MailToDepartment extends Mailable implements ShouldQueue
+class MailToDepartment extends Mailable
 {
-    use SerializesModels, isMonitored;
+    // Not ShouldQueue: sending is now driven by App\Jobs\Mailers\SendMailerFile,
+    // dispatched per department (individually, or one per job inside a Bus::batch()
+    // for send_all's live progress) - that job (not this Mailable) is what's
+    // actually queued and monitored.
+    use SerializesModels;
     public $subject;
     public $signature;
     public $body;
     public $files;
-    public $username; //the user who triggered the mail job
     /**
      * Create a new message instance.
      */
-    public function __construct($subject, $signature, $body, $files, $username)
+    public function __construct($subject, $signature, $body, $files)
     {
-        //
         $this->subject = $subject;
         $this->signature = $signature;
         $this->body = $body;
         $this->files = $files;
-        $this->username = $username;
     }
 
     /**

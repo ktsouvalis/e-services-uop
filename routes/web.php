@@ -6,7 +6,6 @@ use App\Models\Menu;
 use App\Models\Chatbot;
 use App\Models\Department;
 use App\Events\MessageSent;
-use App\Models\Sheetmailer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ItemController;
@@ -45,12 +44,14 @@ Route::post('/chat/send-message', function (Request $request) {
     MessageSent::dispatch($text, $user->name);
 })->middleware('auth')->name('chat.send-message');
 
-Route::resource('/menus', MenuController::class);
+Route::resource('/menus', MenuController::class)->middleware('auth');
 
-Route::post('menus/toggle-enabled/{menu}', [MenuController::class, 'toggleEnabled'])->name('menus.toggle-enabled');
+Route::post('menus/toggle-enabled/{menu}', [MenuController::class, 'toggleEnabled'])->name('menus.toggle-enabled')->middleware('auth');
 
 
-Route::resource('/mailers', MailerController::class)->middleware('auth');
+Route::resource('/mailers', MailerController::class)
+    ->only(['index', 'store', 'edit', 'update', 'destroy'])
+    ->middleware('auth');
 
 Route::group(['prefix' => 'mailers','middleware'=>'auth'], function(){
     Route::get('/{mailer}/download_f/{index}', [MailerController::class, 'download_file'])->name('mailers.download_file');
@@ -66,22 +67,24 @@ Route::group(['prefix' => 'mailers','middleware'=>'auth'], function(){
     Route::post('/{mailer}/send/{index}/{department}', [MailerController::class, 'send'])->name('mailers.send');
 
     Route::post('/{mailer}/send_all/', [MailerController::class, 'send_all'])->name('mailers.send_all');
+
+    Route::get('/{mailer}/send-status/{batch}', [MailerController::class, 'sendStatus'])->name('mailers.send-status');
 });
 
-Route::resource('/sheetmailers', SheetmailerController::class)->middleware('auth');
+Route::resource('/sheetmailers', SheetmailerController::class)
+    ->only(['index', 'store', 'edit', 'update', 'destroy'])
+    ->middleware('auth');
 
 Route::group(['prefix' => 'sheetmailers','middleware'=>'auth'], function(){
     Route::post('/{sheetmailer}/upload_file', [SheetmailerController::class, 'upload_file'])->name('sheetmailers.upload_file');
 
     Route::post('/{sheetmailer}/comma_mails', [SheetmailerController::class, 'comma_mails'])->name('sheetmailers.comma_mails');
 
-    Route::get('/{sheetmailer}/confirm', function (Sheetmailer $sheetmailer) {
-        return view('sheetmailers.confirm', compact('sheetmailer'));
-    })->name('sheetmailers.confirm')->middleware('can:view,sheetmailer');
-
-    Route::get('/{sheetmailer}/preview', [SheetmailerController::class, 'preview'])->name('sheetmailers.preview');
+    Route::get('/{sheetmailer}/confirm', [SheetmailerController::class, 'confirm'])->name('sheetmailers.confirm');
 
     Route::post('/{sheetmailer}/send', [SheetmailerController::class, 'send'])->name('sheetmailers.send');
+
+    Route::get('/{sheetmailer}/send-status/{batch}', [SheetmailerController::class, 'sendStatus'])->name('sheetmailers.send-status');
 });
 
 Route::group(['prefix' => 'log-reader', 'middleware' => ['auth', LogReaderEnabled::class]], function () {
@@ -109,7 +112,7 @@ Route::prefix('authentik')->middleware(['auth', AuthentikEnabled::class])->name(
 });
 
 
-Route::resource('/items', ItemController::class)->middleware('auth');
+Route::resource('/items', ItemController::class)->except(['show'])->middleware('auth');
 
 Route::group(['prefix' => 'items', 'middleware'=>'auth'], function(){
     Route::get('/{item}/download_f', [ItemController::class, 'download_file'])->name('items.download_file');
@@ -124,7 +127,7 @@ Route::get('/extract_items', [ItemController::class, 'extract'])->name('items.ex
 
 Route::resource('users', UserController::class)->middleware('auth');
 
-Route::resource('aimodels', AImodelController::class);
+Route::resource('aimodels', AImodelController::class)->middleware('auth');
 
 Route::resource('/chatbots', ChatbotController::class)->middleware('auth');
 
@@ -151,7 +154,7 @@ Route::group(['prefix' => 'chatbots', 'middleware'=>'auth'], function(){
 
 Route::resource('notifications', NotificationController::class)->middleware('auth');
 
-Route::group(['prefix' => 'notifications'], function(){
+Route::group(['prefix' => 'notifications', 'middleware' => 'auth'], function(){
     Route::post('/mark_as_read/{notification}', [NotificationController::class, 'markNotificationAsRead'])->name('notifications.mark_as_read');
 
     Route::post('/mark_all_as_read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark_all_as_read');
@@ -196,7 +199,7 @@ Route::get('/get_logs', function(Request $request){
     else {
         return back()->with('error', 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη λειτουργία.');
     }
-});
+})->middleware('auth');
 
 Route::get('/health', function() {
     return response()->json(['status' => 'OK'], 200);

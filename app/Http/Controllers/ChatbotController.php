@@ -28,9 +28,11 @@ class ChatbotController extends Controller
      */
     public function store(Request $request)
     {
+        Gate::authorize('create', Chatbot::class);
         $request->validate([
             'title' => 'required|string|max:255',
             'ai_model_id' => 'required|exists:ai_models,id',
+            'api_key' => 'required|string',
         ]);
         $request['user_id'] = auth()->id();
         $request['api_key'] = Crypt::encryptString($request->api_key);
@@ -252,6 +254,7 @@ class ChatbotController extends Controller
      */
     public function destroy(Chatbot $chatbot)
     {
+        Gate::authorize('delete', $chatbot);
         $chatbot->delete();
         if($chatbot->aiModel->accepts_audio){
             $path = unlink(storage_path("/app/private/whisper".$chatbot->id."/".json_decode($chatbot->history)->file));

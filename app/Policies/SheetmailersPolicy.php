@@ -55,6 +55,8 @@ class SheetmailersPolicy
      */
     public function update(User $user, Sheetmailer $sheetmailer): bool
     {
+        if(!Menu::where('route_is', $this->menu)->first()->enabled)
+            return false;
         // Admin or creator can always update
         // if ($user->admin) return true;
         if ($sheetmailer->user && $sheetmailer->user->id === $user->id) return true;
@@ -68,6 +70,8 @@ class SheetmailersPolicy
      */
     public function delete(User $user, Sheetmailer $sheetmailer): bool
     {
+        if(!Menu::where('route_is', $this->menu)->first()->enabled)
+            return false;
         // Only creator can delete, even if admin
         return $sheetmailer->user && $sheetmailer->user->id === $user->id;
     }

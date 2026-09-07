@@ -28,14 +28,18 @@ return [
         // Accepts route group configuration
         'route' => [
             'prefix' => 'jobs',
-            'middleware' => ['web','auth'],
+            // This UI lets any user retry/delete/purge queued job records, so it's
+            // restricted to admins like this app's other admin-grade surfaces
+            // (/get_logs, Users, AImodels, Menus) rather than just any authenticated user.
+            'middleware' => ['web','auth',\App\Http\Middleware\AdminOnly::class],
         ],
 
         // Set the monitored jobs count to be displayed per page.
         'per_page' => 35,
 
-        // Show custom data stored on model
-        'show_custom_data' => false,
+        // Show custom data stored on model - surfaces SendSheetmailerEmail's
+        // recipient address (see initialMonitorData()) as a column in /jobs.
+        'show_custom_data' => true,
 
         // Allow the deletion of single monitor items.
         'allow_deletion' => true,

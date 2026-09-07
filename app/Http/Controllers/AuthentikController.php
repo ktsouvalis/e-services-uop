@@ -14,7 +14,7 @@ class AuthentikController extends Controller
     {
         $statuses = AuthentikMonitorStatus::orderBy('service')->orderBy('node_name')->get()->groupBy('service');
 
-        $logRuns = AuthentikLogRun::latest()->take(10)->get();
+        $logRuns = AuthentikLogRun::with('user')->latest()->take(10)->get();
 
         return view('authentik.index', compact('statuses', 'logRuns'));
     }
@@ -37,12 +37,16 @@ class AuthentikController extends Controller
     {
         $request->validate([
             'lookback_hours' => 'nullable|integer|min:1|max:168',
+            'level' => 'nullable|in:error,warning,info,debug',
         ]);
 
         $run = AuthentikLogRun::create([
             'user_id' => auth()->id(),
             'status' => 'queued',
-            'options' => ['lookback_hours' => $request->input('lookback_hours')],
+            'options' => [
+                'lookback_hours' => $request->input('lookback_hours'),
+                'level' => $request->input('level'),
+            ],
         ]);
 
         RunLogsFetch::dispatch($run);

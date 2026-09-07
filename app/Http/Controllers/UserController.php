@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 
 class UserController extends Controller
@@ -47,6 +48,18 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         Gate::authorize('delete', $user);
+
+        // pangolin_runs/authentik_log_runs both cascadeOnDelete() on user_id,
+        // but that only removes the DB rows — their per-run directories under
+        // storage/app/private/{pangolin,authentik}/runs/{id}/ are otherwise
+        // orphaned on disk forever, since nothing else ever cleans them up.
+        foreach ($user->pangolinRuns as $run) {
+            File::deleteDirectory(storage_path("app/private/pangolin/runs/{$run->id}"));
+        }
+        foreach ($user->authentikLogRuns as $run) {
+            File::deleteDirectory(storage_path("app/private/authentik/runs/{$run->id}"));
+        }
+
         $user->delete();
         return redirect()->route('users.index')->with('success', 'User deleted successfully');
     }

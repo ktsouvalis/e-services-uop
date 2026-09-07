@@ -10,11 +10,6 @@ use Illuminate\Support\Facades\Gate;
 
 class MenuController extends Controller
 {
-    public function initializeMiddleware(): void
-    {
-        $this->middleware('auth');
-    }
-
     public function toggleEnabled(Request $request, Menu $menu)
     {
         Gate::authorize('update', $menu);
@@ -27,6 +22,7 @@ class MenuController extends Controller
      */
     public function index()
     {
+        Gate::authorize('viewAny', Menu::class);
         $menus = Menu::all();
         return view('menus.index', compact('menus'));
     }
