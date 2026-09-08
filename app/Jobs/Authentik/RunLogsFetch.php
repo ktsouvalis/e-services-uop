@@ -47,7 +47,7 @@ class RunLogsFetch implements ShouldQueue
             $args[] = $level;
         }
 
-        $result = $runner->run('logs_viewer.py', $args, $runDir);
+        $result = $runner->run('logs', $args, $runDir);
 
         $logPath = "{$runDir}/cluster_logs.log";
 

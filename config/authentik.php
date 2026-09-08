@@ -61,9 +61,12 @@ return [
         ['label' => 'Keepalived', 'nodes' => 'keepalived', 'type' => 'systemd', 'unit' => 'keepalived'],
     ],
 
+    // As of authentik-utils v1.0.0 this is a single-file zipapp binary
+    // (akropolis-monitor), not a python3 interpreter + script tree — see the
+    // Dockerfile for how it's fetched/pinned. ScriptRunner invokes it as
+    // `<bin> <subcommand> <args...>` (e.g. `<bin> logs --config ...`).
     'python' => [
-        'bin' => env('AUTHENTIK_PYTHON_BIN', '/opt/authentik-venv/bin/python3'),
-        'scripts_path' => env('AUTHENTIK_SCRIPTS_PATH', base_path('authentik-utils')),
+        'bin' => env('AUTHENTIK_PYTHON_BIN', '/opt/akropolis-monitor'),
         'timeout' => (int) env('AUTHENTIK_PROCESS_TIMEOUT', 600),
     ],
 

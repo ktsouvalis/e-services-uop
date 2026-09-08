@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Contracts\Process\ProcessResult;
 
 /**
- * Thin wrapper for shelling out to an authentik-utils script inside its own
- * per-run working directory.
+ * Thin wrapper for shelling out to the akropolis-monitor binary (see
+ * config/authentik.php) inside its own per-run working directory.
  *
  * Typed against the ProcessResult *contract*, not the concrete
  * Illuminate\Process\ProcessResult class — Process::fake() (used by this
@@ -16,13 +16,12 @@ use Illuminate\Contracts\Process\ProcessResult;
  */
 class ScriptRunner
 {
-    public function run(string $script, array $args, string $workingDirectory): ProcessResult
+    public function run(string $subcommand, array $args, string $workingDirectory): ProcessResult
     {
         $bin = config('authentik.python.bin');
-        $scriptPath = rtrim(config('authentik.python.scripts_path'), '/').'/'.$script;
 
         return Process::path($workingDirectory)
             ->timeout(config('authentik.python.timeout', 600))
-            ->run([$bin, $scriptPath, ...$args]);
+            ->run([$bin, $subcommand, ...$args]);
     }
 }
