@@ -3,4 +3,4 @@
 	url = https://github.com/ktsouvalis/pangolin.git
 [submodule "authentik-utils"]
 	path = authentik-utils
-	url = https://github.com/ktsouvalis/authentik.git
+	url = https://github.com/ktsouvalis/akropolis-monitor.git
