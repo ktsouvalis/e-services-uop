@@ -82,6 +82,8 @@ Route::group(['prefix' => 'sheetmailers','middleware'=>'auth'], function(){
 
     Route::get('/{sheetmailer}/confirm', [SheetmailerController::class, 'confirm'])->name('sheetmailers.confirm');
 
+    Route::post('/{sheetmailer}/dry-run', [SheetmailerController::class, 'dryRun'])->name('sheetmailers.dry-run');
+
     Route::post('/{sheetmailer}/send', [SheetmailerController::class, 'send'])->name('sheetmailers.send');
 
     Route::get('/{sheetmailer}/send-status/{batch}', [SheetmailerController::class, 'sendStatus'])->name('sheetmailers.send-status');

@@ -357,6 +357,86 @@ test('staged recipients for one sheetmailer do not leak into another sheetmailer
         });
 });
 
+test('dry run renders the first, middle and last staged recipient and sends no mail', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $response = $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [
+                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
+                ['email' => 'two@uop.gr', 'additionalData' => 'B'],
+                ['email' => 'three@uop.gr', 'additionalData' => 'C'],
+                ['email' => 'four@uop.gr', 'additionalData' => 'D'],
+                ['email' => 'five@uop.gr', 'additionalData' => 'E'],
+            ],
+            'non_emails' => [],
+            'emailCount' => 5,
+        ],
+    ])->actingAs($owner)->post(route('sheetmailers.dry-run', $sheetmailer));
+
+    $response->assertRedirect(route('sheetmailers.confirm', $sheetmailer))
+        ->assertSessionHas('success');
+
+    // Dry run must never actually mail anyone.
+    Mail::assertNothingSent();
+    Mail::assertNothingQueued();
+
+    // The staged list is a dry run, not a send - it must survive so Confirm
+    // still has something to show right after.
+    $response->assertSessionHas(recipientsSessionKey($sheetmailer));
+});
+
+test('dry run de-duplicates the sample when there are fewer than three staged recipients', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [
+                ['email' => 'only@uop.gr', 'additionalData' => 'A'],
+            ],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ])->actingAs($owner)->post(route('sheetmailers.dry-run', $sheetmailer))
+        ->assertRedirect(route('sheetmailers.confirm', $sheetmailer))
+        ->assertSessionHas('success');
+
+    Mail::assertNothingSent();
+});
+
+test('dry run without a staged recipient list redirects back with an error instead of crashing', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)->post(route('sheetmailers.dry-run', $sheetmailer))
+        ->assertRedirect(route('sheetmailers.edit', $sheetmailer))
+        ->assertSessionHas('error');
+});
+
+test('dry run is blocked while the menu is disabled, even for the owner', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [['email' => 'one@uop.gr', 'additionalData' => 'A']],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ]);
+
+    disableMenu('sheetmailers');
+
+    $this->actingAs($owner)->post(route('sheetmailers.dry-run', $sheetmailer))->assertForbidden();
+
+    Mail::assertNothingSent();
+});
+
 test('the create and show resource routes are not registered', function () {
     $owner = User::factory()->create();
     $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);

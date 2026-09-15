@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Exception;
+use App\Mail\MailSheetMailer;
 use App\Models\Sheetmailer;
 
 use Illuminate\Http\Request;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Http\Requests\StoreSheetmailerRequest;
 use App\Http\Requests\UpdateSheetmailerRequest;
@@ -259,6 +261,67 @@ class SheetmailerController extends Controller
 
         return redirect()->route('sheetmailers.edit', $sheetmailer)
             ->with('success', 'Sending to '.count($emails).' recipient(s) - see progress below.');
+    }
+
+    /**
+     * Render (but never send) the mail for a small sample of the staged
+     * recipient list - first, middle and last - and log the rendered
+     * subject/body for each. Exercises the exact same view-rendering path
+     * `SendSheetmailerEmail` uses (Mailable::render(), not Mail::send()),
+     * so a broken template or a bad `additionalData` substitution surfaces
+     * without actually mailing anyone. File size/type and address validity
+     * are already checked at upload time (upload_file()/comma_mails()) and
+     * shown on the confirm page, so this only covers what those don't.
+     */
+    public function dryRun(Sheetmailer $sheetmailer)
+    {
+        Gate::authorize('view', $sheetmailer);
+
+        $emails = $this->pullRecipients($sheetmailer)['emails'] ?? [];
+
+        if (empty($emails)) {
+            return redirect()->route('sheetmailers.edit', $sheetmailer)
+                ->with('error', 'No recipient list is staged for this sheetmailer. Upload a file or paste emails first.');
+        }
+
+        $total = count($emails);
+        $sampleIndexes = array_unique([0, intdiv($total - 1, 2), $total - 1]);
+        sort($sampleIndexes);
+
+        $failures = [];
+
+        foreach ($sampleIndexes as $index) {
+            $recipient = $emails[$index];
+
+            try {
+                $rendered = (new MailSheetMailer($sheetmailer, $recipient['additionalData']))->render();
+
+                Log::channel('sheetmailers')->info(
+                    'Sheetmailer ' . $sheetmailer->id . ' DRY RUN rendered OK for ' . $recipient['email']
+                        . ' (recipient ' . ($index + 1) . ' of ' . $total . ')',
+                    [
+                        'subject' => $sheetmailer->subject,
+                        'additionalData' => $recipient['additionalData'],
+                        'body_preview' => Str::limit(strip_tags($rendered), 300),
+                    ]
+                );
+            } catch (\Throwable $e) {
+                $failures[] = $recipient['email'];
+
+                Log::channel('sheetmailers')->error(
+                    'Sheetmailer ' . $sheetmailer->id . ' DRY RUN render FAILED for ' . $recipient['email'],
+                    ['error' => $e->getMessage()]
+                );
+            }
+        }
+
+        if (! empty($failures)) {
+            return redirect()->route('sheetmailers.confirm', $sheetmailer)
+                ->with('error', 'Dry run failed to render for: ' . implode(', ', $failures) . '. No emails were sent - check today\'s sheetmailers log for details.');
+        }
+
+        return redirect()->route('sheetmailers.confirm', $sheetmailer)
+            ->with('success', 'Dry run OK - rendered ' . count($sampleIndexes) . ' sample email(s) (first/middle/last) without sending. Check today\'s sheetmailers log for the rendered content.');
     }
 
     /**
