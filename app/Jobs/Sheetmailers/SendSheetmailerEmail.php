@@ -4,6 +4,7 @@ namespace App\Jobs\Sheetmailers;
 
 use App\Mail\MailSheetMailer;
 use App\Models\Sheetmailer;
+use App\Services\DeliveryLog;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,6 +25,7 @@ class SendSheetmailerEmail implements ShouldQueue
         private readonly string $email,
         private readonly mixed $additionalData,
         private readonly string $triggeredBy,
+        private readonly string $logPath,
     ) {
     }
 
@@ -58,6 +60,8 @@ class SendSheetmailerEmail implements ShouldQueue
         Log::channel('sheetmailers')->info(
             'Sheetmailer ' . $this->sheetmailer->id . ' mail sent to ' . $this->email . ' by ' . $this->triggeredBy
         );
+
+        DeliveryLog::append($this->logPath, "Sent to {$this->email}");
     }
 
     public function failed(Throwable $exception): void
@@ -66,5 +70,7 @@ class SendSheetmailerEmail implements ShouldQueue
             'Sheetmailer ' . $this->sheetmailer->id . ' mail NOT sent to ' . $this->email . ' (sent by ' . $this->triggeredBy . ')',
             ['error' => $exception->getMessage()]
         );
+
+        DeliveryLog::append($this->logPath, "FAILED to {$this->email}: {$exception->getMessage()}");
     }
 }

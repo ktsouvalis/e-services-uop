@@ -6,13 +6,20 @@ use App\Models\City;
 use App\Models\Department;
 use App\Models\Mailer;
 use App\Models\User;
+use App\Services\DeliveryLog;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use romanzipp\QueueMonitor\Models\Monitor;
 
 beforeEach(function () {
     enableMenu('mailers');
+    // Delivery logs are written to the real filesystem (see App\Services\DeliveryLog),
+    // not the fake disk - and mailer ids restart from 1 every test under sqlite
+    // :memory: RefreshDatabase, so a previous test's log files would otherwise
+    // leak into this one's directory.
+    File::deleteDirectory(storage_path('app/private/mailers/logs'));
 });
 
 function mailerSendBatchSessionKey(Mailer $mailer): string
@@ -326,6 +333,96 @@ test('send_all dispatches a batch that sends to every matched department and ski
 
     $batchId = session(mailerSendBatchSessionKey($mailer));
     expect($batchId)->not->toBeNull();
+});
+
+test('sending a mailer file writes a per-send delivery log that is listed and downloadable on edit', function () {
+    Mail::fake();
+    Storage::fake();
+    $owner = User::factory()->create();
+    $city = City::factory()->create();
+    $department = Department::factory()->create(['city_id' => $city->id, 'name' => 'Finance']);
+    $mailer = Mailer::factory()->create([
+        'user_id' => $owner->id,
+        'files' => [['index' => 0, 'filename' => 'report.pdf']],
+    ]);
+    Storage::disk('local')->put("mailers/{$mailer->id}/report.pdf", 'contents');
+
+    $this->actingAs($owner)
+        ->post(route('mailers.send', ['mailer' => $mailer, 'index' => 0, 'department' => $department->id]));
+
+    $response = $this->actingAs($owner)->get(route('mailers.edit', $mailer));
+    $response->assertOk();
+    $response->assertViewHas('deliveryLogs', fn ($logs) => count($logs) === 1
+        && str_starts_with($logs[0]['filename'], "mail_delivery_mailer_{$mailer->id}_"));
+
+    $filename = $response->viewData('deliveryLogs')[0]['filename'];
+
+    $this->actingAs($owner)
+        ->get(route('mailers.download-log', ['mailer' => $mailer, 'filename' => $filename]))
+        ->assertOk();
+
+    $content = file_get_contents(storage_path("app/private/mailers/logs/{$mailer->id}/{$filename}"));
+    expect($content)->toContain('Finance');
+});
+
+test('send_all writes one shared delivery log covering every recipient in the batch', function () {
+    Mail::fake();
+    Storage::fake();
+    $owner = User::factory()->create();
+    $city = City::factory()->create();
+    Department::factory()->create(['id' => 505, 'city_id' => $city->id, 'name' => 'Registry']);
+    Department::factory()->create(['id' => 506, 'city_id' => $city->id, 'name' => 'Legal']);
+    $mailer = Mailer::factory()->create([
+        'user_id' => $owner->id,
+        'files' => [
+            ['index' => 0, 'filename' => '505 - a.pdf'],
+            ['index' => 1, 'filename' => '506 - b.pdf'],
+        ],
+    ]);
+    Storage::disk('local')->put("mailers/{$mailer->id}/505 - a.pdf", 'contents');
+    Storage::disk('local')->put("mailers/{$mailer->id}/506 - b.pdf", 'contents');
+
+    $this->actingAs($owner)->get(route('mailers.review', $mailer));
+    $this->actingAs($owner)->post(route('mailers.send_all', $mailer));
+
+    $deliveryLogs = DeliveryLog::listFor('mailer', $mailer->id);
+    expect($deliveryLogs)->toHaveCount(1);
+
+    $content = file_get_contents(storage_path("app/private/mailers/logs/{$mailer->id}/{$deliveryLogs[0]['filename']}"));
+    expect($content)->toContain('Registry')->toContain('Legal');
+});
+
+test('a non-owner cannot download a private mailer\'s delivery log', function () {
+    Mail::fake();
+    Storage::fake();
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $city = City::factory()->create();
+    $department = Department::factory()->create(['city_id' => $city->id]);
+    $mailer = Mailer::factory()->create([
+        'user_id' => $owner->id,
+        'is_public' => false,
+        'files' => [['index' => 0, 'filename' => 'report.pdf']],
+    ]);
+    Storage::disk('local')->put("mailers/{$mailer->id}/report.pdf", 'contents');
+
+    $this->actingAs($owner)
+        ->post(route('mailers.send', ['mailer' => $mailer, 'index' => 0, 'department' => $department->id]));
+
+    $filename = DeliveryLog::listFor('mailer', $mailer->id)[0]['filename'];
+
+    $this->actingAs($other)
+        ->get(route('mailers.download-log', ['mailer' => $mailer, 'filename' => $filename]))
+        ->assertForbidden();
+});
+
+test('downloading a delivery log rejects a path-traversal filename', function () {
+    $owner = User::factory()->create();
+    $mailer = Mailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)
+        ->get(route('mailers.download-log', ['mailer' => $mailer, 'filename' => '../secret.log']))
+        ->assertNotFound();
 });
 
 test('send-status reports a finished batch and is scoped to the mailer that started it', function () {

@@ -5,6 +5,7 @@ namespace App\Jobs\Mailers;
 use App\Mail\MailToDepartment;
 use App\Models\Department;
 use App\Models\Mailer;
+use App\Services\DeliveryLog;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,6 +26,7 @@ class SendMailerFile implements ShouldQueue
         private readonly Department $department,
         private readonly string $filename,
         private readonly string $triggeredBy,
+        private readonly string $logPath,
     ) {
     }
 
@@ -57,6 +59,8 @@ class SendMailerFile implements ShouldQueue
         Log::channel('mailers')->info(
             "Mailer {$this->mailer->id} file '{$this->filename}' to {$this->department->name}: sent by {$this->triggeredBy}"
         );
+
+        DeliveryLog::append($this->logPath, "Sent '{$this->filename}' to {$this->department->name} <{$this->department->email}>");
     }
 
     public function failed(Throwable $exception): void
@@ -65,5 +69,7 @@ class SendMailerFile implements ShouldQueue
             "Mailer {$this->mailer->id} file '{$this->filename}' to {$this->department->name} NOT sent (triggered by {$this->triggeredBy})",
             ['error' => $exception->getMessage()]
         );
+
+        DeliveryLog::append($this->logPath, "FAILED '{$this->filename}' to {$this->department->name} <{$this->department->email}>: {$exception->getMessage()}");
     }
 }

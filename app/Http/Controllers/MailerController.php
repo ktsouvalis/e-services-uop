@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\StoreMailerRequest;
 use App\Http\Requests\UpdateMailerRequest;
 use App\Jobs\Mailers\SendMailerFile;
+use App\Services\DeliveryLog;
 
 class MailerController extends Controller
 {
@@ -65,6 +66,7 @@ class MailerController extends Controller
 
         return view('mailers.edit', [
             'mailer' => $mailer,
+            'deliveryLogs' => DeliveryLog::listFor('mailer', $mailer->id),
         ]);
     }
 
@@ -134,6 +136,23 @@ class MailerController extends Controller
             Log::channel('mailers_actions')->error($e->getMessage());
             return redirect()->back()->with('error', 'File error. Check today\'s mailers log for more information.');
         }
+    }
+
+    /**
+     * Download one per-send delivery log file (see App\Services\DeliveryLog)
+     * for this mailer, listed on its Edit page.
+     */
+    public function download_log(Mailer $mailer, string $filename)
+    {
+        Gate::authorize('view', $mailer);
+
+        $path = DeliveryLog::resolveForDownload('mailer', $mailer->id, $filename);
+
+        if (! $path) {
+            abort(404);
+        }
+
+        return response()->download($path);
     }
 
     public function delete_file(Mailer $mailer, string $index)
@@ -270,9 +289,10 @@ class MailerController extends Controller
         $fileKey = $this->search_key($files, $index);
         $filename = $files[$fileKey]['filename'];
         $triggeredBy = Auth::user()->username ?? 'system';
+        $logPath = DeliveryLog::newPath('mailer', $mailer->id);
 
         try{
-            SendMailerFile::dispatch($mailer, $department, $filename, $triggeredBy);
+            SendMailerFile::dispatch($mailer, $department, $filename, $triggeredBy, $logPath);
         }
         catch(\Exception $e){
             Log::channel('mailers')->error("Mailer $mailer->id file '$filename' to $department->name NOT queued: ".$e->getMessage()." by user: ".$triggeredBy);
@@ -293,9 +313,10 @@ class MailerController extends Controller
         }
 
         $triggeredBy = Auth::user()->username ?? 'system';
+        $logPath = DeliveryLog::newPath('mailer', $mailer->id);
 
         $jobs = collect($targets)
-            ->map(fn (array $file) => new SendMailerFile($mailer, $file['to'], $file['filename'], $triggeredBy))
+            ->map(fn (array $file) => new SendMailerFile($mailer, $file['to'], $file['filename'], $triggeredBy, $logPath))
             ->all();
 
         // allowFailures(): one department's mail failing shouldn't cancel the rest of the

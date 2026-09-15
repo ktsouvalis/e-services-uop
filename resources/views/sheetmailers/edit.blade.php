@@ -21,6 +21,8 @@
                     @include('sheetmailers._send-progress', ['sheetmailer' => $sheetmailer, 'sendBatch' => $sendBatch])
                 @endif
 
+                @include('sheetmailers._delivery-logs', ['sheetmailer' => $sheetmailer, 'deliveryLogs' => $deliveryLogs])
+
                 <form id="sheetmailer-form" action="{{ route('sheetmailers.update', $sheetmailer->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')

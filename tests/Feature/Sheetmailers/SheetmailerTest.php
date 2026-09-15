@@ -4,7 +4,9 @@ use App\Jobs\Sheetmailers\SendSheetmailerEmail;
 use App\Mail\MailSheetMailer;
 use App\Models\Sheetmailer;
 use App\Models\User;
+use App\Services\DeliveryLog;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -12,6 +14,11 @@ use romanzipp\QueueMonitor\Models\Monitor;
 
 beforeEach(function () {
     enableMenu('sheetmailers');
+    // Delivery logs are written to the real filesystem (see App\Services\DeliveryLog),
+    // not the fake disk - and sheetmailer ids restart from 1 every test under sqlite
+    // :memory: RefreshDatabase, so a previous test's log files would otherwise
+    // leak into this one's directory.
+    File::deleteDirectory(storage_path('app/private/sheetmailers/logs'));
 });
 
 function fakeEmailXlsxUpload(): UploadedFile
@@ -179,6 +186,67 @@ test('sending dispatches a batch that sends every eligible email in session', fu
     // the time dispatch() returns - each one calls Mail::send(), not queue().
     Mail::assertSent(MailSheetMailer::class, 2);
     $response->assertSessionMissing(recipientsSessionKey($sheetmailer));
+});
+
+test('sending writes one delivery log covering every recipient, listed and downloadable on edit', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [
+                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
+                ['email' => 'two@uop.gr', 'additionalData' => 'B'],
+            ],
+            'non_emails' => [],
+            'emailCount' => 2,
+        ],
+    ])->actingAs($owner)->post(route('sheetmailers.send', $sheetmailer));
+
+    $response = $this->actingAs($owner)->get(route('sheetmailers.edit', $sheetmailer));
+    $response->assertOk();
+    $response->assertViewHas('deliveryLogs', fn ($logs) => count($logs) === 1
+        && str_starts_with($logs[0]['filename'], "mail_delivery_sheetmailer_{$sheetmailer->id}_"));
+
+    $filename = $response->viewData('deliveryLogs')[0]['filename'];
+
+    $this->actingAs($owner)
+        ->get(route('sheetmailers.download-log', ['sheetmailer' => $sheetmailer, 'filename' => $filename]))
+        ->assertOk();
+
+    $content = file_get_contents(storage_path("app/private/sheetmailers/logs/{$sheetmailer->id}/{$filename}"));
+    expect($content)->toContain('one@uop.gr')->toContain('two@uop.gr');
+});
+
+test('a non-owner cannot download a private sheetmailer\'s delivery log', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id, 'is_public' => false]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [['email' => 'one@uop.gr', 'additionalData' => 'A']],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ])->actingAs($owner)->post(route('sheetmailers.send', $sheetmailer));
+
+    $filename = DeliveryLog::listFor('sheetmailer', $sheetmailer->id)[0]['filename'];
+
+    $this->actingAs($other)
+        ->get(route('sheetmailers.download-log', ['sheetmailer' => $sheetmailer, 'filename' => $filename]))
+        ->assertForbidden();
+});
+
+test('downloading a sheetmailer delivery log rejects a path-traversal filename', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)
+        ->get(route('sheetmailers.download-log', ['sheetmailer' => $sheetmailer, 'filename' => '../secret.log']))
+        ->assertNotFound();
 });
 
 test('sending tracks the recipient email on the queue-monitor row for each SendSheetmailerEmail job', function () {

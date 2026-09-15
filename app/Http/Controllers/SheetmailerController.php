@@ -16,6 +16,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Http\Requests\StoreSheetmailerRequest;
 use App\Http\Requests\UpdateSheetmailerRequest;
 use App\Jobs\Sheetmailers\SendSheetmailerEmail;
+use App\Services\DeliveryLog;
 use App\Services\Sheetmailers\RecipientListParser;
 
 class SheetmailerController extends Controller
@@ -77,6 +78,7 @@ class SheetmailerController extends Controller
         return view('sheetmailers.edit', [
             'sheetmailer' => $sheetmailer,
             'sendBatch' => $this->activeSendBatchSummary($sheetmailer),
+            'deliveryLogs' => DeliveryLog::listFor('sheetmailer', $sheetmailer->id),
         ]);
     }
 
@@ -240,9 +242,10 @@ class SheetmailerController extends Controller
         }
 
         $triggeredBy = Auth::user()->username ?? 'system';
+        $logPath = DeliveryLog::newPath('sheetmailer', $sheetmailer->id);
 
         $jobs = collect($emails)
-            ->map(fn (array $email) => new SendSheetmailerEmail($sheetmailer, $email['email'], $email['additionalData'], $triggeredBy))
+            ->map(fn (array $email) => new SendSheetmailerEmail($sheetmailer, $email['email'], $email['additionalData'], $triggeredBy, $logPath))
             ->all();
 
         // allowFailures(): one recipient's mail failing shouldn't cancel the rest of the
@@ -357,6 +360,23 @@ class SheetmailerController extends Controller
             'finished' => $found->finished(),
             'cancelled' => $found->cancelled(),
         ]);
+    }
+
+    /**
+     * Download one per-send delivery log file (see App\Services\DeliveryLog)
+     * for this sheetmailer, listed on its Edit page.
+     */
+    public function downloadLog(Sheetmailer $sheetmailer, string $filename)
+    {
+        Gate::authorize('view', $sheetmailer);
+
+        $path = DeliveryLog::resolveForDownload('sheetmailer', $sheetmailer->id, $filename);
+
+        if (! $path) {
+            abort(404);
+        }
+
+        return response()->download($path);
     }
 
     /**
