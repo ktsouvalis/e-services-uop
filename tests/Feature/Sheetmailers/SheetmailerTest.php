@@ -154,6 +154,68 @@ test('uploading an xlsx splits rows into eligible emails and non-emails in sessi
     expect($recipients['non_emails'])->toContain('not-an-email');
 });
 
+test('uploading an xlsx pairs each row\'s email with that same row\'s placeholder data, not another row\'s', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setCellValue('A1', 'email');
+    $sheet->setCellValue('B1', 'place1');
+    $sheet->setCellValue('C1', 'place2');
+    $sheet->setCellValue('A2', 'alice@uop.gr');
+    $sheet->setCellValue('B2', 'Alice');
+    $sheet->setCellValue('C2', 'alice01');
+    $sheet->setCellValue('A3', 'bob@uop.gr');
+    $sheet->setCellValue('B3', 'Bob');
+    $sheet->setCellValue('C3', 'bob02');
+    $sheet->setCellValue('A4', 'carol@uop.gr');
+    $sheet->setCellValue('B4', 'Carol');
+    $sheet->setCellValue('C4', 'carol03');
+
+    $path = tempnam(sys_get_temp_dir(), 'sheetmailer') . '.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+    $file = new UploadedFile($path, 'emails.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+
+    $this->actingAs($owner)->post(route('sheetmailers.upload_file', $sheetmailer), ['file' => $file]);
+
+    $emails = session(recipientsSessionKey($sheetmailer))['emails'];
+    expect($emails)->toHaveCount(3);
+
+    $byEmail = collect($emails)->keyBy('email');
+    expect($byEmail['alice@uop.gr']['placeholders'])->toBe(['place1' => 'Alice', 'place2' => 'alice01']);
+    expect($byEmail['bob@uop.gr']['placeholders'])->toBe(['place1' => 'Bob', 'place2' => 'bob02']);
+    expect($byEmail['carol@uop.gr']['placeholders'])->toBe(['place1' => 'Carol', 'place2' => 'carol03']);
+});
+
+test('the "email" column can be in any position and rows still pair correctly with their own data', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    // "email" is the middle column here, not column A.
+    $sheet->setCellValue('A1', 'place1');
+    $sheet->setCellValue('B1', 'email');
+    $sheet->setCellValue('C1', 'place2');
+    $sheet->setCellValue('A2', 'Alice');
+    $sheet->setCellValue('B2', 'alice@uop.gr');
+    $sheet->setCellValue('C2', 'alice01');
+    $sheet->setCellValue('A3', 'Bob');
+    $sheet->setCellValue('B3', 'bob@uop.gr');
+    $sheet->setCellValue('C3', 'bob02');
+
+    $path = tempnam(sys_get_temp_dir(), 'sheetmailer') . '.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+    $file = new UploadedFile($path, 'emails.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+
+    $this->actingAs($owner)->post(route('sheetmailers.upload_file', $sheetmailer), ['file' => $file]);
+
+    $byEmail = collect(session(recipientsSessionKey($sheetmailer))['emails'])->keyBy('email');
+    expect($byEmail['alice@uop.gr']['placeholders'])->toBe(['place1' => 'Alice', 'place2' => 'alice01']);
+    expect($byEmail['bob@uop.gr']['placeholders'])->toBe(['place1' => 'Bob', 'place2' => 'bob02']);
+});
+
 test('uploading an xlsx without an "email" column header is rejected with a friendly error', function () {
     $owner = User::factory()->create();
     $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
@@ -239,6 +301,43 @@ test('sending merges each recipient\'s placeholders into the subject and body', 
         return $mailable->envelope()->subject === 'Hello Alice'
             && $mailable->body === 'Dear Alice, your username is alice01.';
     });
+});
+
+test('the full upload-to-send pipeline keeps each recipient paired with their own row\'s data', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create([
+        'user_id' => $owner->id,
+        'subject' => 'Hello {{place1}}',
+        'body' => 'Dear {{place1}}, your username is {{place2}}.',
+    ]);
+
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setCellValue('A1', 'email');
+    $sheet->setCellValue('B1', 'place1');
+    $sheet->setCellValue('C1', 'place2');
+    $sheet->setCellValue('A2', 'alice@uop.gr');
+    $sheet->setCellValue('B2', 'Alice');
+    $sheet->setCellValue('C2', 'alice01');
+    $sheet->setCellValue('A3', 'bob@uop.gr');
+    $sheet->setCellValue('B3', 'Bob');
+    $sheet->setCellValue('C3', 'bob02');
+
+    $path = tempnam(sys_get_temp_dir(), 'sheetmailer') . '.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+    $file = new UploadedFile($path, 'emails.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+
+    $this->actingAs($owner)->post(route('sheetmailers.upload_file', $sheetmailer), ['file' => $file]);
+    $this->actingAs($owner)->post(route('sheetmailers.send', $sheetmailer));
+
+    Mail::assertSent(MailSheetMailer::class, fn ($mailable) => $mailable->hasTo('alice@uop.gr')
+        && $mailable->envelope()->subject === 'Hello Alice'
+        && $mailable->body === 'Dear Alice, your username is alice01.');
+
+    Mail::assertSent(MailSheetMailer::class, fn ($mailable) => $mailable->hasTo('bob@uop.gr')
+        && $mailable->envelope()->subject === 'Hello Bob'
+        && $mailable->body === 'Dear Bob, your username is bob02.');
 });
 
 test('a placeholder still gets replaced even when formatting was applied to only part of the token', function () {
@@ -668,6 +767,68 @@ test('dry run is blocked while the menu is disabled, even for the owner', functi
     $this->actingAs($owner)->post(route('sheetmailers.dry-run', $sheetmailer))->assertForbidden();
 
     Mail::assertNothingSent();
+});
+
+test('previewing a recipient returns their fully merged subject and body without sending', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create([
+        'user_id' => $owner->id,
+        'subject' => 'Hello {{place1}}',
+        'body' => 'Dear {{place1}}, your username is {{place2}}.',
+    ]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'Alice', 'place2' => 'alice01']],
+                ['email' => 'two@uop.gr', 'placeholders' => ['place1' => 'Bob', 'place2' => 'bob02']],
+            ],
+            'non_emails' => [],
+            'emailCount' => 2,
+        ],
+    ]);
+
+    $this->actingAs($owner)->get(route('sheetmailers.preview-recipient', [$sheetmailer, 1]))
+        ->assertOk()
+        ->assertJson([
+            'email' => 'two@uop.gr',
+            'subject' => 'Hello Bob',
+        ]);
+
+    Mail::assertNothingSent();
+});
+
+test('previewing an out-of-range recipient index 404s instead of crashing', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [['email' => 'one@uop.gr', 'placeholders' => []]],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ]);
+
+    $this->actingAs($owner)->get(route('sheetmailers.preview-recipient', [$sheetmailer, 5]))->assertNotFound();
+});
+
+test('previewing a recipient is blocked while the menu is disabled, even for the owner', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [['email' => 'one@uop.gr', 'placeholders' => []]],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ]);
+
+    disableMenu('sheetmailers');
+
+    $this->actingAs($owner)->get(route('sheetmailers.preview-recipient', [$sheetmailer, 0]))->assertForbidden();
 });
 
 test('the create and show resource routes are not registered', function () {

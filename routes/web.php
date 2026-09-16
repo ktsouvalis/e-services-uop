@@ -86,6 +86,10 @@ Route::group(['prefix' => 'sheetmailers','middleware'=>'auth'], function(){
 
     Route::post('/{sheetmailer}/dry-run', [SheetmailerController::class, 'dryRun'])->name('sheetmailers.dry-run');
 
+    Route::get('/{sheetmailer}/preview-recipient/{index}', [SheetmailerController::class, 'previewRecipient'])
+        ->whereNumber('index')
+        ->name('sheetmailers.preview-recipient');
+
     Route::post('/{sheetmailer}/send', [SheetmailerController::class, 'send'])->name('sheetmailers.send');
 
     Route::get('/{sheetmailer}/send-status/{batch}', [SheetmailerController::class, 'sendStatus'])->name('sheetmailers.send-status');

@@ -60,7 +60,8 @@
     @endif
 
     @if($emailCount > 0)
-    <form x-data="{}" action="{{ route('sheetmailers.send', $sheetmailer) }}" method="POST">
+    <form x-data="sheetmailerRecipientPreview('{{ route('sheetmailers.preview-recipient', [$sheetmailer, 999999999]) }}')"
+          action="{{ route('sheetmailers.send', $sheetmailer) }}" method="POST">
         @csrf
         <input type="hidden" name="keep_present" value="1">
 
@@ -108,6 +109,7 @@
                             @foreach($placeholderKeys as $key)
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ \App\Services\Sheetmailers\PlaceholderReplacer::token($key) }}</th>
                             @endforeach
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Preview') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -121,13 +123,85 @@
                             @foreach($placeholderKeys as $key)
                             <td class="px-4 py-2 text-gray-500">{{ $correspondent['placeholders'][$key] ?? '' }}</td>
                             @endforeach
+                            <td class="px-4 py-2">
+                                <button type="button" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium underline"
+                                        @click="openPreview({{ $loop->index }})">
+                                    {{ __('Preview') }}
+                                </button>
+                            </td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <!-- Per-recipient preview panel: shows this row's actual merged subject/body,
+             never sent - a spot-check that mail-merge data lined up correctly for this
+             specific recipient, since Dry Run only samples first/middle/last. -->
+        <div x-show="previewOpen" x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/75 px-4"
+             @keydown.escape.window="previewOpen = false">
+            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto" @click.outside="previewOpen = false">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                    <h3 class="text-sm font-semibold text-gray-800">{{ __('Preview for') }} <span x-text="previewEmail"></span></h3>
+                    <button type="button" class="text-gray-400 hover:text-gray-600 text-xl leading-none" @click="previewOpen = false">&times;</button>
+                </div>
+                <div class="px-4 py-4">
+                    <template x-if="previewLoading">
+                        <p class="text-sm text-gray-500">{{ __('Loading...') }}</p>
+                    </template>
+                    <template x-if="previewError">
+                        <p class="text-sm text-red-600" x-text="previewError"></p>
+                    </template>
+                    <template x-if="!previewLoading && !previewError">
+                        <div>
+                            <p class="text-xs text-gray-500">{{ __('Subject') }}</p>
+                            <p class="text-sm font-semibold text-gray-900 mb-3" x-text="previewSubject"></p>
+                            <p class="text-xs text-gray-500 mb-1">{{ __('Body') }}</p>
+                            <div class="text-sm text-gray-800 leading-relaxed border border-gray-100 rounded p-3" x-html="previewBody"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
     </form>
+
+    <script>
+        function sheetmailerRecipientPreview(previewUrlTemplate) {
+            return {
+                previewOpen: false,
+                previewLoading: false,
+                previewError: '',
+                previewEmail: '',
+                previewSubject: '',
+                previewBody: '',
+
+                openPreview(index) {
+                    this.previewOpen = true;
+                    this.previewLoading = true;
+                    this.previewError = '';
+
+                    fetch(previewUrlTemplate.replace(/\d+$/, index), { headers: { Accept: 'application/json' } })
+                        .then((r) => {
+                            if (!r.ok) throw new Error();
+                            return r.json();
+                        })
+                        .then((data) => {
+                            this.previewEmail = data.email;
+                            this.previewSubject = data.subject;
+                            this.previewBody = data.body;
+                        })
+                        .catch(() => {
+                            this.previewError = 'Could not load the preview for this recipient.';
+                        })
+                        .finally(() => {
+                            this.previewLoading = false;
+                        });
+                },
+            };
+        }
+    </script>
     @else
     <div class="mt-4">
         <a href="{{ route('sheetmailers.edit', $sheetmailer) }}" class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-500 focus:bg-gray-500 active:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150">

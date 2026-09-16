@@ -340,6 +340,35 @@ class SheetmailerController extends Controller
     }
 
     /**
+     * On-demand preview (fetched by the "Preview" button per row on the Confirm page)
+     * of one staged recipient's fully merged email - subject and body with this
+     * recipient's placeholders substituted in, exactly as it would be sent. Never
+     * sends anything. Unlike Dry Run's fixed first/middle/last sample, this lets a
+     * user spot-check any specific recipient - important now that mail-merge means
+     * every recipient's content genuinely differs, so a misaligned spreadsheet row
+     * could otherwise put the wrong data in front of the wrong person unnoticed.
+     */
+    public function previewRecipient(Sheetmailer $sheetmailer, int $index)
+    {
+        Gate::authorize('view', $sheetmailer);
+
+        $emails = $this->pullRecipients($sheetmailer)['emails'] ?? [];
+
+        if (! array_key_exists($index, $emails)) {
+            abort(404);
+        }
+
+        $recipient = $emails[$index];
+        $mailable = new MailSheetMailer($sheetmailer, $recipient['placeholders']);
+
+        return response()->json([
+            'email' => $recipient['email'],
+            'subject' => $mailable->envelope()->subject,
+            'body' => $mailable->render(),
+        ]);
+    }
+
+    /**
      * Live progress (polled by the "Sending..." bar on the Edit page) for a batch
      * started from send(). Scoped to the batch id this sheetmailer's own session
      * actually started, so one user can't probe another's batch id.
