@@ -137,6 +137,37 @@ test('sheetmailer body is stripped of disallowed html tags on update', function 
     expect($sheetmailer->fresh()->body)->toBe('<p>Hello</p>alert(1)');
 });
 
+test('sheetmailer signature is stripped of disallowed html tags but keeps allowed formatting on update', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)->patch(route('sheetmailers.update', $sheetmailer), [
+        'name' => $sheetmailer->name,
+        'signature' => '<em>Best regards</em><script>alert(1)</script>',
+    ]);
+
+    expect($sheetmailer->fresh()->signature)->toBe('<em>Best regards</em>alert(1)');
+});
+
+test('the signature is rendered as HTML (not escaped) in the sent mail, so formatting like <em> actually applies', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create([
+        'user_id' => $owner->id,
+        'signature' => '<em>Best regards</em>',
+    ]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [['email' => 'one@uop.gr', 'placeholders' => []]],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ])->actingAs($owner)->post(route('sheetmailers.send', $sheetmailer));
+
+    Mail::assertSent(MailSheetMailer::class, fn ($mailable) => str_contains($mailable->signature, '<em>Best regards</em>'));
+});
+
 test('uploading an xlsx splits rows into eligible emails and non-emails in session, keyed by header', function () {
     $owner = User::factory()->create();
     $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
@@ -769,13 +800,14 @@ test('dry run is blocked while the menu is disabled, even for the owner', functi
     Mail::assertNothingSent();
 });
 
-test('previewing a recipient returns their fully merged subject and body without sending', function () {
+test('previewing a recipient returns their fully merged subject, body and signature separately, without sending', function () {
     Mail::fake();
     $owner = User::factory()->create();
     $sheetmailer = Sheetmailer::factory()->create([
         'user_id' => $owner->id,
         'subject' => 'Hello {{place1}}',
         'body' => 'Dear {{place1}}, your username is {{place2}}.',
+        'signature' => '<em>Best regards</em>',
     ]);
 
     $this->withSession([
@@ -794,6 +826,8 @@ test('previewing a recipient returns their fully merged subject and body without
         ->assertJson([
             'email' => 'two@uop.gr',
             'subject' => 'Hello Bob',
+            'body' => 'Dear Bob, your username is bob02.',
+            'signature' => '<em>Best regards</em>',
         ]);
 
     Mail::assertNothingSent();

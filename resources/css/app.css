@@ -47,3 +47,25 @@ div.dt-container .dt-paging .dt-paging-button.disabled,
 div.dt-container .dt-paging .dt-paging-button.disabled:hover {
   @apply cursor-not-allowed bg-transparent text-gray-300;
 }
+
+/* Sheetmailers/Mailers "what will be sent" previews - Tailwind's Preflight zeroes
+   default <p>/<ul>/<ol> margins and list-style, so paragraph breaks (Enter key in
+   the body editor) and list bullets collapse invisibly when rendered inside the
+   app's own Tailwind-styled pages, even though the underlying HTML - and the actual
+   sent email, which has no Tailwind CSS applied - are unaffected. Restore them here
+   so the preview matches what recipients will actually see. */
+.email-body-preview p {
+  @apply mb-3;
+}
+
+.email-body-preview p:last-child {
+  @apply mb-0;
+}
+
+.email-body-preview ul {
+  @apply list-disc pl-5 mb-3;
+}
+
+.email-body-preview ol {
+  @apply list-decimal pl-5 mb-3;
+}

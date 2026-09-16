@@ -2,6 +2,6 @@
 {!! $body !!}
 </div>
 
-<div>
-<p>{{ $signature }}</p>
+<div style="margin-top: 1em;">
+<p>{!! $signature !!}</p>
 </div>

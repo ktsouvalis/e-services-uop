@@ -33,9 +33,9 @@
             <p class="text-xs text-gray-500">{{ __('From') }}: <span class="text-gray-700">Πανεπιστήμιο Πελοποννήσου &lt;noreply@uop.gr&gt;</span></p>
             <p class="text-sm font-semibold text-gray-900 mt-0.5">{{ $sheetmailer->subject }}</p>
         </div>
-        <div class="px-4 py-4 text-sm text-gray-800 leading-relaxed">{!! $sheetmailer->body !!}</div>
+        <div class="email-body-preview px-4 py-4 text-sm text-gray-800 leading-relaxed">{!! $sheetmailer->body !!}</div>
         @if($sheetmailer->signature)
-            <div class="px-4 pb-4 text-sm text-gray-500 italic">{{ $sheetmailer->signature }}</div>
+            <div class="email-body-preview px-4 pb-4 text-sm text-gray-500 italic">{!! $sheetmailer->signature !!}</div>
         @endif
     </div>
     @if(!empty($placeholderKeys))
@@ -124,9 +124,12 @@
                             <td class="px-4 py-2 text-gray-500">{{ $correspondent['placeholders'][$key] ?? '' }}</td>
                             @endforeach
                             <td class="px-4 py-2">
-                                <button type="button" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium underline"
+                                <button type="button" class="text-indigo-600 hover:text-indigo-800"
+                                        title="{{ __('Preview') }}" aria-label="{{ __('Preview') }}"
                                         @click="openPreview({{ $loop->index }})">
-                                    {{ __('Preview') }}
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                    </svg>
                                 </button>
                             </td>
                         </tr>
@@ -159,7 +162,10 @@
                             <p class="text-xs text-gray-500">{{ __('Subject') }}</p>
                             <p class="text-sm font-semibold text-gray-900 mb-3" x-text="previewSubject"></p>
                             <p class="text-xs text-gray-500 mb-1">{{ __('Body') }}</p>
-                            <div class="text-sm text-gray-800 leading-relaxed border border-gray-100 rounded p-3" x-html="previewBody"></div>
+                            <div class="email-body-preview text-sm text-gray-800 leading-relaxed border border-gray-100 rounded p-3" x-html="previewBody"></div>
+                            <template x-if="previewSignature">
+                                <div class="email-body-preview text-sm text-gray-500 italic mt-3" x-html="previewSignature"></div>
+                            </template>
                         </div>
                     </template>
                 </div>
@@ -176,6 +182,7 @@
                 previewEmail: '',
                 previewSubject: '',
                 previewBody: '',
+                previewSignature: '',
 
                 openPreview(index) {
                     this.previewOpen = true;
@@ -191,6 +198,7 @@
                             this.previewEmail = data.email;
                             this.previewSubject = data.subject;
                             this.previewBody = data.body;
+                            this.previewSignature = data.signature;
                         })
                         .catch(() => {
                             this.previewError = 'Could not load the preview for this recipient.';

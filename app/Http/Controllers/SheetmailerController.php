@@ -90,7 +90,13 @@ class SheetmailerController extends Controller
         Gate::authorize('update', $sheetmailer);
 
         $data_to_update = $request->validated();
-        $data_to_update['body'] = strip_tags($request->input('body'), '<p><a><strong><span><i><em><b><u><ul><ol><li><br>'); // allow only these tags
+        // Allow only these tags - same whitelist for both, so inline formatting (e.g.
+        // typing <em>...</em> by hand) works in the signature too, not just the body.
+        $allowedTags = '<p><a><strong><span><i><em><b><u><ul><ol><li><br>';
+        $data_to_update['body'] = strip_tags($request->input('body'), $allowedTags);
+        if ($request->has('signature')) {
+            $data_to_update['signature'] = strip_tags($request->input('signature'), $allowedTags);
+        }
 
         // Enforce only creator can toggle is_public
         if (array_key_exists('is_public', $data_to_update)) {
@@ -359,12 +365,17 @@ class SheetmailerController extends Controller
         }
 
         $recipient = $emails[$index];
+        // $mailable->body/$signature (already placeholder-merged, see MailSheetMailer's
+        // constructor) are returned separately rather than the combined render() output,
+        // so the preview panel can style the signature on its own - same as the Confirm
+        // page's raw-template card does - instead of it running into the body untouched.
         $mailable = new MailSheetMailer($sheetmailer, $recipient['placeholders']);
 
         return response()->json([
             'email' => $recipient['email'],
             'subject' => $mailable->envelope()->subject,
-            'body' => $mailable->render(),
+            'body' => $mailable->body,
+            'signature' => $mailable->signature,
         ]);
     }
 
