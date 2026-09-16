@@ -38,6 +38,13 @@
             <div class="px-4 pb-4 text-sm text-gray-500 italic">{{ $sheetmailer->signature }}</div>
         @endif
     </div>
+    @if(!empty($placeholderKeys))
+    <p class="mt-2 text-xs text-gray-500">
+        {{ __('The preview above shows the raw template - each recipient below gets their own') }}
+        {{ implode(', ', array_map([\App\Services\Sheetmailers\PlaceholderReplacer::class, 'token'], $placeholderKeys)) }}
+        {{ __('substituted in.') }}
+    </p>
+    @endif
 
     @if(!empty($nonEmails))
     <div class="mt-4 bg-red-50 border border-red-200 rounded-lg overflow-hidden">
@@ -98,7 +105,9 @@
                             <th class="w-10 px-4 py-2"></th>
                             <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Email') }}</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Additional data') }}</th>
+                            @foreach($placeholderKeys as $key)
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ \App\Services\Sheetmailers\PlaceholderReplacer::token($key) }}</th>
+                            @endforeach
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -109,7 +118,9 @@
                             </td>
                             <td class="px-2 py-2 text-gray-400">{{ $loop->iteration }}</td>
                             <td class="px-4 py-2 text-gray-800">{{ $correspondent['email'] }}</td>
-                            <td class="px-4 py-2 text-gray-500">{{ $correspondent['additionalData'] }}</td>
+                            @foreach($placeholderKeys as $key)
+                            <td class="px-4 py-2 text-gray-500">{{ $correspondent['placeholders'][$key] ?? '' }}</td>
+                            @endforeach
                         </tr>
                         @endforeach
                     </tbody>

@@ -20,10 +20,13 @@ class SendSheetmailerEmail implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, IsMonitored, Queueable, SerializesModels;
 
+    /**
+     * @param array<string, mixed> $placeholders this recipient's {{column_name}} => value map
+     */
     public function __construct(
         private readonly Sheetmailer $sheetmailer,
         private readonly string $email,
-        private readonly mixed $additionalData,
+        private readonly array $placeholders,
         private readonly string $triggeredBy,
         private readonly string $logPath,
     ) {
@@ -55,7 +58,7 @@ class SendSheetmailerEmail implements ShouldQueue
         // starts. Setting it here too means the recipient shows up either way.
         $this->queueData(['recipient' => $this->email], merge: true);
 
-        Mail::to($this->email)->send(new MailSheetMailer($this->sheetmailer, $this->additionalData));
+        Mail::to($this->email)->send(new MailSheetMailer($this->sheetmailer, $this->placeholders));
 
         Log::channel('sheetmailers')->info(
             'Sheetmailer ' . $this->sheetmailer->id . ' mail sent to ' . $this->email . ' by ' . $this->triggeredBy

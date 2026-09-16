@@ -51,6 +51,11 @@
                         </div>
                     @endif
 
+                    <p class="text-xs text-gray-500 mb-4">
+                        {{ __('Mail merge: use') }} <code class="bg-gray-100 px-1 rounded">@{{column_name}}</code>
+                        {{ __('in the subject, body or signature below to insert that recipient\'s value from a matching column in the uploaded spreadsheet - see "Add recipients" further down.') }}
+                    </p>
+
                     <!-- Subject Field -->
                     <div class="mb-4">
                         <label for="subject" class="block text-sm font-medium text-gray-700">{{ __('Subject') }}</label>
@@ -112,7 +117,7 @@
                         <!-- Files Field (Single File Upload) -->
                         @csrf
                         <div class="mb-4">
-                            <label for="file" class="block text-sm font-medium text-gray-700">{{ __('Spreadsheet with one email per row (column A), optional extra data in column B') }}</label>
+                            <label for="file" class="block text-sm font-medium text-gray-700">{{ __('Spreadsheet with a header row: one column named "email", plus any other named columns (e.g. "place1") to use as') }} <code class="bg-gray-100 px-1 rounded">@{{place1}}</code> {{ __('placeholders above') }}</label>
                             <input type="file" name="file" id="file" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
                             @error('file')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -133,6 +138,7 @@
                         @csrf
                         <div class="mb-4">
                             <label for="comma_mails" class="block text-sm font-medium text-gray-700">{{ __('Comma separated email addresses') }}</label>
+                            <p class="text-xs text-gray-500 mb-1">{{ __('No mail-merge data this way - any placeholder tokens in the template are sent as literal text. Upload a spreadsheet instead if you need per-recipient values.') }}</p>
                             <textarea name="comma_mails" id="comma_mails" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required></textarea>
                             @error('comma_mails')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>

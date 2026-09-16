@@ -167,6 +167,11 @@ class SheetmailerController extends Controller
             $spreadsheet = IOFactory::load($filePath);
             $parsed = RecipientListParser::fromWorksheet($spreadsheet->getActiveSheet());
         }
+        catch (\RuntimeException $e) {
+            // Thrown by RecipientListParser itself when row 1 has no "email" header -
+            // a user-fixable mistake, worth a specific message rather than the generic one below.
+            return redirect()->back()->with('error', $e->getMessage());
+        }
         catch (\Throwable $e) {
             Log::channel('sheetmailers')->error('Sheetmailer '. $sheetmailer->id .' file upload failed to parse for '. (Auth::user()->username ?? 'system'), [
                 'error' => $e->getMessage(),
@@ -210,11 +215,17 @@ class SheetmailerController extends Controller
                 ->with('error', 'No recipient list is staged for this sheetmailer. Upload a file or paste emails first.');
         }
 
+        $emails = $recipients['emails'] ?? [];
+
         return view('sheetmailers.confirm', [
             'sheetmailer' => $sheetmailer,
-            'emails' => $recipients['emails'] ?? [],
+            'emails' => $emails,
             'nonEmails' => $recipients['non_emails'] ?? [],
             'emailCount' => $recipients['emailCount'] ?? 0,
+            // Every recipient was parsed from the same header row, so the first
+            // one's placeholder keys are the full set - used to render one table
+            // column per {{placeholder}} available for this send.
+            'placeholderKeys' => array_keys($emails[0]['placeholders'] ?? []),
         ]);
     }
 
@@ -245,7 +256,7 @@ class SheetmailerController extends Controller
         $logPath = DeliveryLog::newPath('sheetmailer', $sheetmailer->id);
 
         $jobs = collect($emails)
-            ->map(fn (array $email) => new SendSheetmailerEmail($sheetmailer, $email['email'], $email['additionalData'], $triggeredBy, $logPath))
+            ->map(fn (array $email) => new SendSheetmailerEmail($sheetmailer, $email['email'], $email['placeholders'], $triggeredBy, $logPath))
             ->all();
 
         // allowFailures(): one recipient's mail failing shouldn't cancel the rest of the
@@ -271,7 +282,7 @@ class SheetmailerController extends Controller
      * recipient list - first, middle and last - and log the rendered
      * subject/body for each. Exercises the exact same view-rendering path
      * `SendSheetmailerEmail` uses (Mailable::render(), not Mail::send()),
-     * so a broken template or a bad `additionalData` substitution surfaces
+     * so a broken template or a bad placeholder substitution surfaces
      * without actually mailing anyone. File size/type and address validity
      * are already checked at upload time (upload_file()/comma_mails()) and
      * shown on the confirm page, so this only covers what those don't.
@@ -297,14 +308,15 @@ class SheetmailerController extends Controller
             $recipient = $emails[$index];
 
             try {
-                $rendered = (new MailSheetMailer($sheetmailer, $recipient['additionalData']))->render();
+                $mailable = new MailSheetMailer($sheetmailer, $recipient['placeholders']);
+                $rendered = $mailable->render();
 
                 Log::channel('sheetmailers')->info(
                     'Sheetmailer ' . $sheetmailer->id . ' DRY RUN rendered OK for ' . $recipient['email']
                         . ' (recipient ' . ($index + 1) . ' of ' . $total . ')',
                     [
-                        'subject' => $sheetmailer->subject,
-                        'additionalData' => $recipient['additionalData'],
+                        'subject' => $mailable->envelope()->subject,
+                        'placeholders' => $recipient['placeholders'],
                         'body_preview' => Str::limit(strip_tags($rendered), 300),
                     ]
                 );

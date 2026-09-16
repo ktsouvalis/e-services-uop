@@ -25,10 +25,27 @@ function fakeEmailXlsxUpload(): UploadedFile
 {
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setCellValue('A1', 'valid@uop.gr');
-    $sheet->setCellValue('B1', 'Extra 1');
-    $sheet->setCellValue('A2', 'not-an-email');
-    $sheet->setCellValue('B2', 'Extra 2');
+    $sheet->setCellValue('A1', 'email');
+    $sheet->setCellValue('B1', 'place1');
+    $sheet->setCellValue('A2', 'valid@uop.gr');
+    $sheet->setCellValue('B2', 'Extra 1');
+    $sheet->setCellValue('A3', 'not-an-email');
+    $sheet->setCellValue('B3', 'Extra 2');
+
+    $path = tempnam(sys_get_temp_dir(), 'sheetmailer') . '.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+
+    return new UploadedFile($path, 'emails.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+}
+
+function xlsxUploadMissingEmailHeader(): UploadedFile
+{
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setCellValue('A1', 'recipient');
+    $sheet->setCellValue('B1', 'place1');
+    $sheet->setCellValue('A2', 'valid@uop.gr');
+    $sheet->setCellValue('B2', 'Extra 1');
 
     $path = tempnam(sys_get_temp_dir(), 'sheetmailer') . '.xlsx';
     (new Xlsx($spreadsheet))->save($path);
@@ -120,7 +137,7 @@ test('sheetmailer body is stripped of disallowed html tags on update', function 
     expect($sheetmailer->fresh()->body)->toBe('<p>Hello</p>alert(1)');
 });
 
-test('uploading an xlsx splits rows into eligible emails and non-emails in session', function () {
+test('uploading an xlsx splits rows into eligible emails and non-emails in session, keyed by header', function () {
     $owner = User::factory()->create();
     $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
 
@@ -133,7 +150,42 @@ test('uploading an xlsx splits rows into eligible emails and non-emails in sessi
     $recipients = session(recipientsSessionKey($sheetmailer));
     expect($recipients['emailCount'])->toBe(1);
     expect($recipients['emails'][0]['email'])->toBe('valid@uop.gr');
+    expect($recipients['emails'][0]['placeholders'])->toBe(['place1' => 'Extra 1']);
     expect($recipients['non_emails'])->toContain('not-an-email');
+});
+
+test('uploading an xlsx without an "email" column header is rejected with a friendly error', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $response = $this->actingAs($owner)->post(route('sheetmailers.upload_file', $sheetmailer), [
+        'file' => xlsxUploadMissingEmailHeader(),
+    ]);
+
+    $response->assertRedirect()->assertSessionHas('error');
+    expect(session('error'))->toContain('email');
+    $response->assertSessionMissing(recipientsSessionKey($sheetmailer));
+});
+
+test('uploading an xlsx strips html tags out of placeholder column values', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setCellValue('A1', 'email');
+    $sheet->setCellValue('B1', 'place1');
+    $sheet->setCellValue('A2', 'valid@uop.gr');
+    $sheet->setCellValue('B2', '<script>alert(1)</script><b>Bob</b>');
+
+    $path = tempnam(sys_get_temp_dir(), 'sheetmailer') . '.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+    $file = new UploadedFile($path, 'emails.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+
+    $this->actingAs($owner)->post(route('sheetmailers.upload_file', $sheetmailer), ['file' => $file]);
+
+    $recipients = session(recipientsSessionKey($sheetmailer));
+    expect($recipients['emails'][0]['placeholders']['place1'])->toBe('alert(1)Bob');
 });
 
 test('uploading a non-xlsx file is rejected by validation', function () {
@@ -145,7 +197,7 @@ test('uploading a non-xlsx file is rejected by validation', function () {
     ])->assertSessionHasErrors('file');
 });
 
-test('comma separated emails are split into eligible and non-emails', function () {
+test('comma separated emails are split into eligible and non-emails, with no placeholder data', function () {
     $owner = User::factory()->create();
     $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
 
@@ -156,12 +208,110 @@ test('comma separated emails are split into eligible and non-emails', function (
     $recipients = session(recipientsSessionKey($sheetmailer));
     expect($recipients['emailCount'])->toBe(2);
     expect($recipients['non_emails'])->toBe(['not-valid']);
+    expect($recipients['emails'][0]['placeholders'])->toBe([]);
 });
 
 function recipientsSessionKey(Sheetmailer $sheetmailer): string
 {
     return "sheetmailers.recipients.{$sheetmailer->id}";
 }
+
+test('sending merges each recipient\'s placeholders into the subject and body', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create([
+        'user_id' => $owner->id,
+        'subject' => 'Hello {{place1}}',
+        'body' => 'Dear {{place1}}, your username is {{place2}}.',
+    ]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'Alice', 'place2' => 'alice01']],
+            ],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ])->actingAs($owner)->post(route('sheetmailers.send', $sheetmailer));
+
+    Mail::assertSent(MailSheetMailer::class, function ($mailable) {
+        return $mailable->envelope()->subject === 'Hello Alice'
+            && $mailable->body === 'Dear Alice, your username is alice01.';
+    });
+});
+
+test('a placeholder still gets replaced even when formatting was applied to only part of the token', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create([
+        'user_id' => $owner->id,
+        'subject' => 'Hello there',
+        // Selecting only the closing "}}" and hitting italic in the rich-text editor
+        // stores exactly this shape: one "}" plain, the other wrapped in <em>, splitting
+        // the token's raw text across a tag boundary.
+        'body' => 'Dear {{place1}<em>}</em>, welcome.',
+    ]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'Alice']],
+            ],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ])->actingAs($owner)->post(route('sheetmailers.send', $sheetmailer));
+
+    Mail::assertSent(MailSheetMailer::class, fn ($mailable) => $mailable->body === 'Dear Alice, welcome.');
+});
+
+test('a whole token wrapped consistently in one formatting tag keeps that formatting around the replaced value', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create([
+        'user_id' => $owner->id,
+        'subject' => 'Hello there',
+        // The whole "{{place1}}" token was selected together and bolded, so the tag
+        // wraps it entirely rather than splitting it - the bold tag must stay around
+        // the substituted value, not get swallowed as if it were a stray split-tag.
+        'body' => 'Dear <strong>{{place1}}</strong>, welcome.',
+    ]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'Alice']],
+            ],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ])->actingAs($owner)->post(route('sheetmailers.send', $sheetmailer));
+
+    Mail::assertSent(MailSheetMailer::class, fn ($mailable) => $mailable->body === 'Dear <strong>Alice</strong>, welcome.');
+});
+
+test('a placeholder with no matching column is left untouched in the sent mail', function () {
+    Mail::fake();
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create([
+        'user_id' => $owner->id,
+        'subject' => 'Hi {{place1}}',
+        'body' => 'Typo column: {{unknown}}',
+    ]);
+
+    $this->withSession([
+        recipientsSessionKey($sheetmailer) => [
+            'emails' => [
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'Alice']],
+            ],
+            'non_emails' => [],
+            'emailCount' => 1,
+        ],
+    ])->actingAs($owner)->post(route('sheetmailers.send', $sheetmailer));
+
+    Mail::assertSent(MailSheetMailer::class, fn ($mailable) => $mailable->body === 'Typo column: {{unknown}}');
+});
 
 test('sending dispatches a batch that sends every eligible email in session', function () {
     Mail::fake();
@@ -171,8 +321,8 @@ test('sending dispatches a batch that sends every eligible email in session', fu
     $response = $this->withSession([
         recipientsSessionKey($sheetmailer) => [
             'emails' => [
-                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
-                ['email' => 'two@uop.gr', 'additionalData' => 'B'],
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']],
+                ['email' => 'two@uop.gr', 'placeholders' => ['place1' => 'B']],
             ],
             'non_emails' => [],
             'emailCount' => 2,
@@ -196,8 +346,8 @@ test('sending writes one delivery log covering every recipient, listed and downl
     $this->withSession([
         recipientsSessionKey($sheetmailer) => [
             'emails' => [
-                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
-                ['email' => 'two@uop.gr', 'additionalData' => 'B'],
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']],
+                ['email' => 'two@uop.gr', 'placeholders' => ['place1' => 'B']],
             ],
             'non_emails' => [],
             'emailCount' => 2,
@@ -227,7 +377,7 @@ test('a non-owner cannot download a private sheetmailer\'s delivery log', functi
 
     $this->withSession([
         recipientsSessionKey($sheetmailer) => [
-            'emails' => [['email' => 'one@uop.gr', 'additionalData' => 'A']],
+            'emails' => [['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']]],
             'non_emails' => [],
             'emailCount' => 1,
         ],
@@ -257,7 +407,7 @@ test('sending tracks the recipient email on the queue-monitor row for each SendS
     $this->withSession([
         recipientsSessionKey($sheetmailer) => [
             'emails' => [
-                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']],
             ],
             'non_emails' => [],
             'emailCount' => 1,
@@ -279,8 +429,8 @@ test('send-status reports a finished batch and is scoped to the sheetmailer that
     $this->withSession([
         recipientsSessionKey($sheetmailer) => [
             'emails' => [
-                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
-                ['email' => 'two@uop.gr', 'additionalData' => 'B'],
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']],
+                ['email' => 'two@uop.gr', 'placeholders' => ['place1' => 'B']],
             ],
             'non_emails' => [],
             'emailCount' => 2,
@@ -313,7 +463,7 @@ test('edit no longer shows send progress once the batch has finished', function 
     $this->withSession([
         recipientsSessionKey($sheetmailer) => [
             'emails' => [
-                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']],
             ],
             'non_emails' => [],
             'emailCount' => 1,
@@ -343,9 +493,9 @@ test('sending only sends to the recipients left checked on the confirm page', fu
     $response = $this->withSession([
         recipientsSessionKey($sheetmailer) => [
             'emails' => [
-                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
-                ['email' => 'two@uop.gr', 'additionalData' => 'B'],
-                ['email' => 'three@uop.gr', 'additionalData' => 'C'],
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']],
+                ['email' => 'two@uop.gr', 'placeholders' => ['place1' => 'B']],
+                ['email' => 'three@uop.gr', 'placeholders' => ['place1' => 'C']],
             ],
             'non_emails' => [],
             'emailCount' => 3,
@@ -359,7 +509,7 @@ test('sending only sends to the recipients left checked on the confirm page', fu
         ->assertSessionHas('success');
 
     Mail::assertSent(MailSheetMailer::class, 2);
-    Mail::assertNotSent(MailSheetMailer::class, fn ($mailable) => $mailable->additionalData === 'B');
+    Mail::assertNotSent(MailSheetMailer::class, fn ($mailable) => $mailable->placeholders === ['place1' => 'B']);
 });
 
 test('sending with every recipient unchecked sends nothing and keeps the staged list for another try', function () {
@@ -370,7 +520,7 @@ test('sending with every recipient unchecked sends nothing and keeps the staged 
     $response = $this->withSession([
         recipientsSessionKey($sheetmailer) => [
             'emails' => [
-                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']],
             ],
             'non_emails' => [],
             'emailCount' => 1,
@@ -425,6 +575,21 @@ test('staged recipients for one sheetmailer do not leak into another sheetmailer
         });
 });
 
+test('confirm shows one table column per placeholder found in the uploaded spreadsheet', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)->post(route('sheetmailers.upload_file', $sheetmailer), [
+        'file' => fakeEmailXlsxUpload(),
+    ]);
+
+    $this->actingAs($owner)->get(route('sheetmailers.confirm', $sheetmailer))
+        ->assertOk()
+        ->assertViewHas('placeholderKeys', ['place1'])
+        ->assertSee('{{place1}}')
+        ->assertSee('Extra 1');
+});
+
 test('dry run renders the first, middle and last staged recipient and sends no mail', function () {
     Mail::fake();
     $owner = User::factory()->create();
@@ -433,11 +598,11 @@ test('dry run renders the first, middle and last staged recipient and sends no m
     $response = $this->withSession([
         recipientsSessionKey($sheetmailer) => [
             'emails' => [
-                ['email' => 'one@uop.gr', 'additionalData' => 'A'],
-                ['email' => 'two@uop.gr', 'additionalData' => 'B'],
-                ['email' => 'three@uop.gr', 'additionalData' => 'C'],
-                ['email' => 'four@uop.gr', 'additionalData' => 'D'],
-                ['email' => 'five@uop.gr', 'additionalData' => 'E'],
+                ['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']],
+                ['email' => 'two@uop.gr', 'placeholders' => ['place1' => 'B']],
+                ['email' => 'three@uop.gr', 'placeholders' => ['place1' => 'C']],
+                ['email' => 'four@uop.gr', 'placeholders' => ['place1' => 'D']],
+                ['email' => 'five@uop.gr', 'placeholders' => ['place1' => 'E']],
             ],
             'non_emails' => [],
             'emailCount' => 5,
@@ -464,7 +629,7 @@ test('dry run de-duplicates the sample when there are fewer than three staged re
     $this->withSession([
         recipientsSessionKey($sheetmailer) => [
             'emails' => [
-                ['email' => 'only@uop.gr', 'additionalData' => 'A'],
+                ['email' => 'only@uop.gr', 'placeholders' => ['place1' => 'A']],
             ],
             'non_emails' => [],
             'emailCount' => 1,
@@ -492,7 +657,7 @@ test('dry run is blocked while the menu is disabled, even for the owner', functi
 
     $this->withSession([
         recipientsSessionKey($sheetmailer) => [
-            'emails' => [['email' => 'one@uop.gr', 'additionalData' => 'A']],
+            'emails' => [['email' => 'one@uop.gr', 'placeholders' => ['place1' => 'A']]],
             'non_emails' => [],
             'emailCount' => 1,
         ],

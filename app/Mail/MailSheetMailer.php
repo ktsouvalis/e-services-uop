@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
 use App\Models\Sheetmailer;
+use App\Services\Sheetmailers\PlaceholderReplacer;
 
 class MailSheetMailer extends Mailable
 {
@@ -16,14 +17,20 @@ class MailSheetMailer extends Mailable
     // that job (not this Mailable) is what's actually queued and monitored.
     use SerializesModels;
     public $sheetmailer;
-    public $additionalData;
+    public $placeholders;
+    public $body;
+    public $signature;
+
     /**
-     * Create a new message instance.
+     * @param array<string, mixed> $placeholders this recipient's {{column_name}} => value
+     *        map, built from the uploaded spreadsheet's header row (see RecipientListParser)
      */
-    public function __construct(Sheetmailer $sheetmailer, $additionalData)
+    public function __construct(Sheetmailer $sheetmailer, array $placeholders = [])
     {
         $this->sheetmailer = $sheetmailer;
-        $this->additionalData = $additionalData;
+        $this->placeholders = $placeholders;
+        $this->body = PlaceholderReplacer::replace($sheetmailer->body, $placeholders);
+        $this->signature = PlaceholderReplacer::replace($sheetmailer->signature, $placeholders);
     }
 
     /**
@@ -33,7 +40,7 @@ class MailSheetMailer extends Mailable
     {
         return new Envelope(
             from: new Address('noreply@uop.gr', 'Πανεπιστήμιο Πελοποννήσου'),
-            subject: $this->sheetmailer->subject,
+            subject: PlaceholderReplacer::replace($this->sheetmailer->subject, $this->placeholders),
         );
     }
 
@@ -42,7 +49,8 @@ class MailSheetMailer extends Mailable
      */
     public function content(): Content
     {
-        // $sheetmailer, $additionalData are exposed to the view automatically -
+        // $body, $signature are already merged with this recipient's placeholders
+        // (see the constructor) and exposed to the view automatically -
         // Mailable::buildViewData() forwards all public properties, no explicit with() needed.
         return new Content(
             view: 'sheetmailers.mail',
