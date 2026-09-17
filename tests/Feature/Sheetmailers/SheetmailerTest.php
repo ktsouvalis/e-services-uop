@@ -105,37 +105,47 @@ test('creating a sheetmailer without a name fails validation', function () {
     expect(Sheetmailer::count())->toBe(0);
 });
 
-test('only the creator can toggle is_public on update, even in the payload', function () {
+test('is_public in the update payload is ignored - visibility is only changed via toggle-public', function () {
     $owner = User::factory()->create();
-    $other = User::factory()->create();
     $sheetmailer = Sheetmailer::factory()->public()->create(['user_id' => $owner->id]);
 
-    $this->actingAs($other)->patch(route('sheetmailers.update', $sheetmailer), [
+    $this->actingAs($owner)->patch(route('sheetmailers.update', $sheetmailer), [
         'name' => $sheetmailer->name,
         'is_public' => '0',
     ]);
 
     expect($sheetmailer->fresh()->is_public)->toBeTrue();
-
-    $this->actingAs($owner)->patch(route('sheetmailers.update', $sheetmailer), [
-        'name' => $sheetmailer->name,
-        'is_public' => '0',
-    ]);
-
-    expect($sheetmailer->fresh()->is_public)->toBeFalse();
 });
 
-test('unchecking the public checkbox (field omitted entirely) turns off is_public', function () {
+test('the creator can toggle is_public via the toggle-public endpoint, in both directions', function () {
     $owner = User::factory()->create();
     $sheetmailer = Sheetmailer::factory()->public()->create(['user_id' => $owner->id]);
 
-    // A real browser never sends an unchecked checkbox's field at all - unlike the
-    // previous test, which sends an explicit 'is_public' => '0'.
-    $this->actingAs($owner)->patch(route('sheetmailers.update', $sheetmailer), [
-        'name' => $sheetmailer->name,
-    ]);
+    $this->actingAs($owner)
+        ->post(route('sheetmailers.toggle-public', $sheetmailer), ['checked' => 'false'])
+        ->assertOk()
+        ->assertJsonPath('data.is_public', false);
 
     expect($sheetmailer->fresh()->is_public)->toBeFalse();
+
+    $this->actingAs($owner)
+        ->post(route('sheetmailers.toggle-public', $sheetmailer), ['checked' => 'true'])
+        ->assertOk()
+        ->assertJsonPath('data.is_public', true);
+
+    expect($sheetmailer->fresh()->is_public)->toBeTrue();
+});
+
+test('a non-creator cannot toggle is_public via the toggle-public endpoint, even on a public sheetmailer', function () {
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->public()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($other)
+        ->post(route('sheetmailers.toggle-public', $sheetmailer), ['checked' => 'false'])
+        ->assertForbidden();
+
+    expect($sheetmailer->fresh()->is_public)->toBeTrue();
 });
 
 test('sheetmailer body is stripped of disallowed html tags on update', function () {

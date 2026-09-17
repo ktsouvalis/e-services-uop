@@ -71,6 +71,8 @@ Route::group(['prefix' => 'mailers','middleware'=>'auth'], function(){
     Route::get('/{mailer}/send-status/{batch}', [MailerController::class, 'sendStatus'])->name('mailers.send-status');
 
     Route::get('/{mailer}/logs/{filename}', [MailerController::class, 'download_log'])->name('mailers.download-log');
+
+    Route::post('/{mailer}/toggle-public', [MailerController::class, 'togglePublic'])->name('mailers.toggle-public');
 });
 
 Route::resource('/sheetmailers', SheetmailerController::class)
@@ -95,6 +97,8 @@ Route::group(['prefix' => 'sheetmailers','middleware'=>'auth'], function(){
     Route::get('/{sheetmailer}/send-status/{batch}', [SheetmailerController::class, 'sendStatus'])->name('sheetmailers.send-status');
 
     Route::get('/{sheetmailer}/logs/{filename}', [SheetmailerController::class, 'downloadLog'])->name('sheetmailers.download-log');
+
+    Route::post('/{sheetmailer}/toggle-public', [SheetmailerController::class, 'togglePublic'])->name('sheetmailers.toggle-public');
 });
 
 Route::group(['prefix' => 'log-reader', 'middleware' => ['auth', LogReaderEnabled::class]], function () {

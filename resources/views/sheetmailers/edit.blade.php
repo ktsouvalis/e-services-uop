@@ -36,14 +36,14 @@
                         @enderror
                     </div>
 
-                    <!-- Visibility Toggle (creator only) -->
-                    <!-- Visibility: only creator can change -->
+                    <!-- Visibility Toggle (creator only) - saved instantly via AJAX (see resources/js/sheetmailers/is_public_toggle.js), not part of this form's submit -->
                     @if(auth()->id() === $sheetmailer->user_id)
                         <div class="mb-4">
                             <label class="inline-flex items-center">
-                                <input type="checkbox" name="is_public" value="1" class="rounded" {{ old('is_public', $sheetmailer->is_public) ? 'checked' : '' }}>
+                                <input type="checkbox" class="rounded sheetmailer-is-public-checkbox" data-toggle-url="{{ route('sheetmailers.toggle-public', $sheetmailer) }}" {{ $sheetmailer->is_public ? 'checked' : '' }}>
                                 <span class="ml-2">Public (everyone can view/update)</span>
                             </label>
+                            <span id="sheetmailer-is-public-status" class="ml-2 text-xs"></span>
                         </div>
                     @else
                         <div class="mb-4 text-sm text-gray-600">

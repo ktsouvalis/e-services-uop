@@ -19,15 +19,6 @@ class UpdateSheetmailerRequest extends FormRequest
             'subject' => ['sometimes','string','max:255'],
             'body' => ['sometimes','string','nullable'],
             'signature' => ['sometimes','string','nullable','max:255'],
-            'is_public' => ['nullable','boolean'],
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        // Ensure checkbox maps to boolean; unchecked may be missing
-        if ($this->has('is_public')) {
-            $this->merge(['is_public' => (bool) $this->input('is_public')]);
-        }
     }
 }

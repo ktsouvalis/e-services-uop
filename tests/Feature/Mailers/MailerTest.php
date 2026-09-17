@@ -88,12 +88,11 @@ test('any authenticated user can edit a public mailer but only the creator can d
     $this->assertModelMissing($mailer);
 });
 
-test('only the creator can toggle is_public even via a direct update payload', function () {
+test('is_public in the update payload is ignored - visibility is only changed via toggle-public', function () {
     $owner = User::factory()->create();
-    $other = User::factory()->create();
     $mailer = Mailer::factory()->public()->create(['user_id' => $owner->id]);
 
-    $this->actingAs($other)->patch(route('mailers.update', $mailer), [
+    $this->actingAs($owner)->patch(route('mailers.update', $mailer), [
         'name' => $mailer->name,
         'subject' => 'Subject',
         'is_public' => '0',
@@ -102,17 +101,35 @@ test('only the creator can toggle is_public even via a direct update payload', f
     expect($mailer->fresh()->is_public)->toBeTrue();
 });
 
-test('unchecking the public checkbox (field omitted entirely) turns off is_public', function () {
+test('the creator can toggle is_public via the toggle-public endpoint, in both directions', function () {
     $owner = User::factory()->create();
     $mailer = Mailer::factory()->public()->create(['user_id' => $owner->id]);
 
-    // A real browser never sends an unchecked checkbox's field at all.
-    $this->actingAs($owner)->patch(route('mailers.update', $mailer), [
-        'name' => $mailer->name,
-        'subject' => 'Subject',
-    ]);
+    $this->actingAs($owner)
+        ->post(route('mailers.toggle-public', $mailer), ['checked' => 'false'])
+        ->assertOk()
+        ->assertJsonPath('data.is_public', false);
 
     expect($mailer->fresh()->is_public)->toBeFalse();
+
+    $this->actingAs($owner)
+        ->post(route('mailers.toggle-public', $mailer), ['checked' => 'true'])
+        ->assertOk()
+        ->assertJsonPath('data.is_public', true);
+
+    expect($mailer->fresh()->is_public)->toBeTrue();
+});
+
+test('a non-creator cannot toggle is_public via the toggle-public endpoint, even on a public mailer', function () {
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $mailer = Mailer::factory()->public()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($other)
+        ->post(route('mailers.toggle-public', $mailer), ['checked' => 'false'])
+        ->assertForbidden();
+
+    expect($mailer->fresh()->is_public)->toBeTrue();
 });
 
 test('mailer body is stripped of disallowed html tags on update', function () {

@@ -13,3 +13,5 @@ import './items/datatable_init'; // Import datatable_init.js
 import './items/item_given'; // Import item_given.js
 import './items/item_delete'; // Import item_delete.js
 import './items/item_in_local_storage'; // Import item_in_local_storage.js
+import './sheetmailers/is_public_toggle'; // Import is_public_toggle.js
+import './mailers/is_public_toggle'; // Import is_public_toggle.js

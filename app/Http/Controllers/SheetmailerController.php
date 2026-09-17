@@ -98,22 +98,8 @@ class SheetmailerController extends Controller
             $data_to_update['signature'] = strip_tags($request->input('signature'), $allowedTags);
         }
 
-        // Only the creator can toggle is_public. The checkbox isn't sent at all when
-        // unchecked, so $request->validated() (which drops keys missing from the
-        // request entirely) never contains 'is_public' in that case - read via
-        // boolean() instead, same pattern MailerController::update() already uses.
-        if ($sheetmailer->user_id === Auth::id()) {
-            $newVisibility = $request->boolean('is_public');
-            if ($sheetmailer->is_public !== $newVisibility) {
-                Log::channel('sheetmailers_actions')->info('Sheetmailer '. $sheetmailer->id .' visibility change by creator '. (Auth::user()->username ?? 'system'), [
-                    'from' => $sheetmailer->is_public ? 'public' : 'private',
-                    'to' => $newVisibility ? 'public' : 'private',
-                ]);
-            }
-            $data_to_update['is_public'] = $newVisibility;
-        } else {
-            unset($data_to_update['is_public']);
-        }
+        // is_public is toggled live via togglePublic() below, not through this form.
+        unset($data_to_update['is_public']);
 
         try{
             $sheetmailer->update($data_to_update);
@@ -126,6 +112,55 @@ class SheetmailerController extends Controller
         }
         Log::channel('sheetmailers_actions')->info('Sheetmailer '. $sheetmailer->id .' updated by '. (Auth::user()->username ?? 'system'));
         return redirect()->back()->with('success', 'Sheetmailer updated successfully.');
+    }
+
+    /**
+     * Live AJAX toggle for the Edit page's "Public" checkbox - lets the creator
+     * flip visibility without submitting the whole form. Only the creator may
+     * toggle it, same rule the main update() enforced before this was split out.
+     */
+    public function togglePublic(Request $request, Sheetmailer $sheetmailer)
+    {
+        Gate::authorize('update', $sheetmailer);
+
+        if ($sheetmailer->user_id !== Auth::id()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Only the creator can change visibility.',
+            ], 403);
+        }
+
+        $newVisibility = $request->boolean('checked');
+        $originalVisibility = $sheetmailer->is_public;
+        $sheetmailer->is_public = $newVisibility;
+
+        try {
+            $sheetmailer->save();
+        }
+        catch(\Exception $e){
+            Log::channel('sheetmailers_actions')->error('Sheetmailer '. $sheetmailer->id .' visibility toggle failed by '. (Auth::user()->username ?? 'system'), [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Visibility not updated. Check today\'s sheetmailers log for more information.',
+            ], 500);
+        }
+
+        if ($originalVisibility !== $newVisibility) {
+            Log::channel('sheetmailers_actions')->info('Sheetmailer '. $sheetmailer->id .' visibility change by creator '. (Auth::user()->username ?? 'system'), [
+                'from' => $originalVisibility ? 'public' : 'private',
+                'to' => $newVisibility ? 'public' : 'private',
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Visibility updated successfully.',
+            'data' => [
+                'is_public' => (bool) $sheetmailer->is_public,
+            ],
+        ]);
     }
 
     /**

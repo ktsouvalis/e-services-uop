@@ -59,13 +59,14 @@
                         @enderror
                     </div>
                     
-                    <!-- Visibility: only creator can change -->
+                    <!-- Visibility: only creator can change - saved instantly via AJAX (see resources/js/mailers/is_public_toggle.js), not part of this form's submit -->
                     @if(auth()->id() === $mailer->user_id)
                         <div class="mb-4">
                             <label class="inline-flex items-center">
-                                <input type="checkbox" name="is_public" value="1" class="rounded" {{ old('is_public', $mailer->is_public) ? 'checked' : '' }}>
+                                <input type="checkbox" class="rounded mailer-is-public-checkbox" data-toggle-url="{{ route('mailers.toggle-public', $mailer) }}" {{ $mailer->is_public ? 'checked' : '' }}>
                                 <span class="ml-2">Public (everyone can view/update)</span>
                             </label>
+                            <span id="mailer-is-public-status" class="ml-2 text-xs"></span>
                         </div>
                     @else
                         <div class="mb-4 text-sm text-gray-600">

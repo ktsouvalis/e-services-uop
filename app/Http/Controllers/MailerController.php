@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Exception;
 use App\Models\Mailer;
 use App\Models\Department;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -78,16 +79,8 @@ class MailerController extends Controller
         Gate::authorize('update', $mailer);
 
         $data_to_update = $request->validated();
-        // Only the creator can change public/private status
-        $originalPublic = $mailer->is_public;
-        $willCheckVisibility = false;
-        if (Auth::id() === $mailer->user_id) {
-            // Checkbox not sent when unchecked; boolean() returns false in that case
-            $data_to_update['is_public'] = $request->boolean('is_public');
-            $willCheckVisibility = true;
-        } else {
-            unset($data_to_update['is_public']);
-        }
+        // is_public is toggled live via togglePublic() below, not through this form.
+        unset($data_to_update['is_public']);
         $data_to_update['body'] = strip_tags($request->validated('body'), '<p><a><strong><i><em><b><u><ul><ol><li>');
         try{
             $mailer->update($data_to_update);
@@ -96,11 +89,52 @@ class MailerController extends Controller
             Log::channel('mailers_actions')->error($e->getMessage());
             return redirect()->back()->with('error', 'Mailer not updated. Check today\'s mailers log for more information.');
         }
-        if ($willCheckVisibility && $originalPublic !== $mailer->is_public) {
-            Log::channel('mailers_actions')->info("Mailer $mailer->id visibility changed by creator ".Auth::user()->username." to ".($mailer->is_public ? 'public' : 'private'));
-        }
         Log::channel('mailers_actions')->info("Mailer $mailer->id updated by user: ".Auth::user()->username);
         return redirect()->back()->with('success', 'Mailer updated successfully.');
+    }
+
+    /**
+     * Live AJAX toggle for the Edit page's "Public" checkbox - lets the creator
+     * flip visibility without submitting the whole form. Only the creator may
+     * toggle it, same rule the main update() enforced before this was split out.
+     */
+    public function togglePublic(Request $request, Mailer $mailer)
+    {
+        Gate::authorize('update', $mailer);
+
+        if ($mailer->user_id !== Auth::id()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Only the creator can change visibility.',
+            ], 403);
+        }
+
+        $newVisibility = $request->boolean('checked');
+        $originalVisibility = $mailer->is_public;
+        $mailer->is_public = $newVisibility;
+
+        try {
+            $mailer->save();
+        }
+        catch(\Exception $e){
+            Log::channel('mailers_actions')->error("Mailer $mailer->id visibility toggle failed by ".Auth::user()->username.": ".$e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Visibility not updated. Check today\'s mailers log for more information.',
+            ], 500);
+        }
+
+        if ($originalVisibility !== $newVisibility) {
+            Log::channel('mailers_actions')->info("Mailer $mailer->id visibility changed by creator ".Auth::user()->username." to ".($newVisibility ? 'public' : 'private'));
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Visibility updated successfully.',
+            'data' => [
+                'is_public' => (bool) $mailer->is_public,
+            ],
+        ]);
     }
 
     /**
