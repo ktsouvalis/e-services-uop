@@ -125,6 +125,19 @@ test('only the creator can toggle is_public on update, even in the payload', fun
     expect($sheetmailer->fresh()->is_public)->toBeFalse();
 });
 
+test('unchecking the public checkbox (field omitted entirely) turns off is_public', function () {
+    $owner = User::factory()->create();
+    $sheetmailer = Sheetmailer::factory()->public()->create(['user_id' => $owner->id]);
+
+    // A real browser never sends an unchecked checkbox's field at all - unlike the
+    // previous test, which sends an explicit 'is_public' => '0'.
+    $this->actingAs($owner)->patch(route('sheetmailers.update', $sheetmailer), [
+        'name' => $sheetmailer->name,
+    ]);
+
+    expect($sheetmailer->fresh()->is_public)->toBeFalse();
+});
+
 test('sheetmailer body is stripped of disallowed html tags on update', function () {
     $owner = User::factory()->create();
     $sheetmailer = Sheetmailer::factory()->create(['user_id' => $owner->id]);

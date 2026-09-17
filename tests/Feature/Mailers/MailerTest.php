@@ -102,6 +102,19 @@ test('only the creator can toggle is_public even via a direct update payload', f
     expect($mailer->fresh()->is_public)->toBeTrue();
 });
 
+test('unchecking the public checkbox (field omitted entirely) turns off is_public', function () {
+    $owner = User::factory()->create();
+    $mailer = Mailer::factory()->public()->create(['user_id' => $owner->id]);
+
+    // A real browser never sends an unchecked checkbox's field at all.
+    $this->actingAs($owner)->patch(route('mailers.update', $mailer), [
+        'name' => $mailer->name,
+        'subject' => 'Subject',
+    ]);
+
+    expect($mailer->fresh()->is_public)->toBeFalse();
+});
+
 test('mailer body is stripped of disallowed html tags on update', function () {
     $owner = User::factory()->create();
     $mailer = Mailer::factory()->create(['user_id' => $owner->id]);

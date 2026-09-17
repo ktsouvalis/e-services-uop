@@ -98,22 +98,23 @@ class SheetmailerController extends Controller
             $data_to_update['signature'] = strip_tags($request->input('signature'), $allowedTags);
         }
 
-        // Enforce only creator can toggle is_public
-        if (array_key_exists('is_public', $data_to_update)) {
-            if ($sheetmailer->user_id !== Auth::id()) {
-                unset($data_to_update['is_public']);
-            } else {
-                $newVisibility = (bool) $data_to_update['is_public'];
-                if ($sheetmailer->is_public !== $newVisibility) {
-                    Log::channel('sheetmailers_actions')->info('Sheetmailer '. $sheetmailer->id .' visibility change by creator '. (Auth::user()->username ?? 'system'), [
-                        'from' => $sheetmailer->is_public ? 'public' : 'private',
-                        'to' => $newVisibility ? 'public' : 'private',
-                    ]);
-                }
+        // Only the creator can toggle is_public. The checkbox isn't sent at all when
+        // unchecked, so $request->validated() (which drops keys missing from the
+        // request entirely) never contains 'is_public' in that case - read via
+        // boolean() instead, same pattern MailerController::update() already uses.
+        if ($sheetmailer->user_id === Auth::id()) {
+            $newVisibility = $request->boolean('is_public');
+            if ($sheetmailer->is_public !== $newVisibility) {
+                Log::channel('sheetmailers_actions')->info('Sheetmailer '. $sheetmailer->id .' visibility change by creator '. (Auth::user()->username ?? 'system'), [
+                    'from' => $sheetmailer->is_public ? 'public' : 'private',
+                    'to' => $newVisibility ? 'public' : 'private',
+                ]);
             }
+            $data_to_update['is_public'] = $newVisibility;
+        } else {
+            unset($data_to_update['is_public']);
         }
 
-        // If checkbox was unchecked it may not be present; allow explicit false via hidden input in view
         try{
             $sheetmailer->update($data_to_update);
         }
