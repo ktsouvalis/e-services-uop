@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <h4 class="font-semibold mb-2">{{ __('Current location') }}</h4>
                             <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
                                 <div><dt class="text-gray-500">IP</dt><dd>{{ $result['ip_address'] ?? '—' }}</dd></div>
-                                <div><dt class="text-gray-500">MAC</dt><dd>{{ $result['mac_address'] }}</dd></div>
+                                <div><dt class="text-gray-500">MAC</dt><dd>{{ $result['mac_address_display'] }}</dd></div>
                                 <div><dt class="text-gray-500">Switch</dt><dd>{{ $result['device']->name }} ({{ $result['device']->mgmt_ip }})</dd></div>
                                 <div><dt class="text-gray-500">Port</dt><dd>{{ $result['port'] }}</dd></div>
                                 <div><dt class="text-gray-500">Port description</dt><dd>{{ $result['port_description'] ?? '—' }}</dd></div>
@@ -113,7 +113,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     @endif
 
                     @if ($macHistory->isNotEmpty() || $arpHistory->isNotEmpty())
-                        <details class="mt-6">
+                        <div class="mt-4 flex items-center gap-3 text-sm">
+                            <span class="text-gray-500">{{ __('Export') }}:</span>
+                            <a href="{{ route('network-lookup.export', ['q' => $query, 'format' => 'xlsx']) }}" class="text-blue-600 hover:underline">xlsx</a>
+                            <a href="{{ route('network-lookup.export', ['q' => $query, 'format' => 'ods']) }}" class="text-blue-600 hover:underline">ods</a>
+                        </div>
+
+                        <details class="mt-2">
                             <summary class="cursor-pointer font-semibold text-sm text-gray-700">{{ __('History') }}</summary>
 
                             @if ($macHistory->isNotEmpty())
@@ -229,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <span class="ml-2">{{ $device->enabled ? 'On' : 'Off' }}</span>
                                     </label>
                                 </td>
-                                <td class="px-4 py-2 border border-gray-300">{{ $device->last_polled_at?->diffForHumans() ?? '—' }}</td>
+                                <td class="px-4 py-2 border border-gray-300">{{ $device->last_polled_at?->format('d/m/Y. H:i:s') ?? '—' }}</td>
                                 <td class="px-4 py-2 border border-gray-300 {{ $latestRun && $device->last_poll_run_id !== $latestRun->id && $device->enabled ? 'text-amber-600 font-medium' : '' }}">
                                     {{ $device->last_poll_run_id ?? '—' }}
                                 </td>

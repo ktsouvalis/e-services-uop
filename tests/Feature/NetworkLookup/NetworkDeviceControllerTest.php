@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\NetworkDevice;
+use App\Models\NetworkDevicePort;
 use App\Models\User;
 
 beforeEach(function () {
@@ -39,6 +40,52 @@ test('storing a new device creates it in the DB and appends it to devices.json',
         'role' => 'l2',
         'protocol' => 'ssh',
     ]);
+});
+
+test('storing a device with trunk_ports marks those ports link_type=trunk and writes the csv to devices.json', function () {
+    $this->actingAs($this->user)->post(route('network-lookup.devices.store'), [
+        'name' => 'New_SW_1',
+        'mgmt_ip' => '10.23.255.99',
+        'vendor' => 'huawei',
+        'role' => 'l2',
+        'protocol' => 'ssh',
+        'trunk_ports' => 'XGE0/0/1, GE0/0/24',
+    ])->assertRedirect(route('network-lookup.index'));
+
+    $device = NetworkDevice::where('name', 'New_SW_1')->first();
+    $trunkPorts = NetworkDevicePort::where('network_device_id', $device->id)->where('link_type', 'trunk')->pluck('port');
+    expect($trunkPorts->sort()->values()->all())->toBe(['GE0/0/24', 'XGE0/0/1']);
+
+    $entries = json_decode(file_get_contents($this->devicesFile), true);
+    expect($entries[0]['trunk_ports'])->toBe('XGE0/0/1, GE0/0/24');
+});
+
+test('updating a device to remove a trunk port from the list demotes it back to unclassified', function () {
+    $device = NetworkDevice::factory()->create(['name' => 'Karam_SW_1']);
+    NetworkDevicePort::create(['network_device_id' => $device->id, 'port' => 'XGE0/0/1', 'link_type' => 'trunk']);
+    NetworkDevicePort::create(['network_device_id' => $device->id, 'port' => 'GE0/0/24', 'link_type' => 'trunk']);
+
+    $this->actingAs($this->user)->put(route('network-lookup.devices.update', $device), [
+        'name' => 'Karam_SW_1',
+        'mgmt_ip' => $device->mgmt_ip,
+        'vendor' => 'huawei',
+        'role' => 'l2',
+        'protocol' => 'ssh',
+        'trunk_ports' => 'XGE0/0/1',
+    ])->assertRedirect(route('network-lookup.index'));
+
+    expect(NetworkDevicePort::where('network_device_id', $device->id)->where('port', 'XGE0/0/1')->value('link_type'))->toBe('trunk');
+    expect(NetworkDevicePort::where('network_device_id', $device->id)->where('port', 'GE0/0/24')->value('link_type'))->toBeNull();
+});
+
+test('the edit form is pre-filled with the device current trunk ports', function () {
+    $device = NetworkDevice::factory()->create();
+    NetworkDevicePort::create(['network_device_id' => $device->id, 'port' => 'XGE0/0/1', 'link_type' => 'trunk']);
+
+    $response = $this->actingAs($this->user)->get(route('network-lookup.devices.edit', $device));
+
+    $response->assertOk();
+    $response->assertViewHas('trunkPorts', 'XGE0/0/1');
 });
 
 test('a duplicate device name is rejected', function () {

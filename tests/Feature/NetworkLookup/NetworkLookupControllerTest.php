@@ -78,6 +78,25 @@ test('searching by MAC in any input format resolves the current switch/port and 
     $response->assertViewHas('result', fn ($result) => $result['ip_address'] === '10.23.14.156' && $result['port'] === 'GE0/0/3');
 });
 
+test('the current-location result carries the mac in Huawei display format alongside the canonical one', function () {
+    $device = NetworkDevice::factory()->create();
+
+    NetworkMacHistory::create([
+        'network_device_id' => $device->id,
+        'mac_address' => '20:3a:43:16:6c:90',
+        'port' => 'GE0/0/3',
+        'vlan' => '2313',
+        'first_seen_at' => now(),
+        'last_seen_at' => now(),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('network-lookup.index', ['q' => '203a-4316-6c90']));
+
+    $response->assertOk();
+    $response->assertViewHas('result', fn ($result) => $result['mac_address'] === '20:3a:43:16:6c:90'
+        && $result['mac_address_display'] === '203a-4316-6c90');
+});
+
 test('a stale trunk-port history row is never shown, even if it is the most recent row for that mac', function () {
     $device = NetworkDevice::factory()->create();
     NetworkDevicePort::create(['network_device_id' => $device->id, 'port' => 'GE0/0/1', 'link_type' => 'trunk']);

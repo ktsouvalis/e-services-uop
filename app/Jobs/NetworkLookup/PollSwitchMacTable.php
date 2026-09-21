@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -68,14 +69,19 @@ class PollSwitchMacTable implements ShouldQueue
         $trunkPorts = NetworkDevicePort::where('network_device_id', $this->device->id)
             ->where('link_type', 'trunk')
             ->pluck('port')
+            ->map(fn (string $port) => strtoupper($port))
             ->all();
 
         foreach ($rows as $row) {
             // A MAC learned on a trunk is just transit traffic to/from
             // another switch, not where that device is physically plugged
             // in - excluded so history only ever reflects the final,
-            // physical access port.
-            if (in_array($row['port'], $trunkPorts, true)) {
+            // physical access port. Compared case-insensitively since
+            // trunk ports can also come from a hand-typed devices.json
+            // trunk_ports list (DeviceRegistry::syncTrunkPorts), not just
+            // the config-repo import, and casing there isn't guaranteed to
+            // match what the live MAC table reports.
+            if (in_array(strtoupper($row['port']), $trunkPorts, true)) {
                 continue;
             }
 
@@ -87,15 +93,41 @@ class PollSwitchMacTable implements ShouldQueue
 
     private function upsertHistory(string $mac, string $port, ?string $vlan): void
     {
+        // Scoped to exclude any currently-known-trunk row from the "most
+        // recent" comparison, same as macHistoryExcludingTrunkPorts() at
+        // read time. Trunk ports are skipped above so they can't compete
+        // here going forward, but leftover rows from before a port's
+        // link_type was known (or on a still-unclassified environment, e.g.
+        // production before network-lookup:import-port-details/trunk_ports
+        // has run) can otherwise win as "most recent" and make this device's
+        // own unchanged sighting look like a brand new row every single
+        // poll, instead of just touching last_seen_at.
         $existing = NetworkMacHistory::where('mac_address', $mac)
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('network_device_ports')
+                    ->whereColumn('network_device_ports.network_device_id', 'network_mac_histories.network_device_id')
+                    ->whereColumn('network_device_ports.port', 'network_mac_histories.port')
+                    ->where('network_device_ports.link_type', 'trunk');
+            })
             ->orderByDesc('last_seen_at')
             ->first();
+
+        // Same device/port/vlan alone isn't enough - a routine overnight
+        // shutdown and reconnect to the exact same port should still read
+        // as one continuous stay (bridge it), but losing the device for
+        // longer than that (stale_after_minutes, default one day) means
+        // something actually changed - it moved, was decommissioned, etc -
+        // so that's treated as a new stay instead of silently claiming
+        // uninterrupted presence across the whole gap.
+        $staleAfterMinutes = config('network-lookup.stale_after_minutes', 1440);
 
         if (
             $existing
             && $existing->network_device_id === $this->device->id
             && $existing->port === $port
             && $existing->vlan === $vlan
+            && $existing->last_seen_at->diffInMinutes(now()) <= $staleAfterMinutes
         ) {
             $existing->update(['last_seen_at' => now()]);
 

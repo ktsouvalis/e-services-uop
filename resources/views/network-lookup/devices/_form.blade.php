@@ -51,3 +51,13 @@
         <span class="text-red-500 text-sm">{{ $message }}</span>
     @enderror
 </div>
+
+<div class="mb-4">
+    <label for="trunk_ports" class="block text-sm font-medium text-gray-700">{{ __('Trunk ports') }}</label>
+    <input type="text" name="trunk_ports" id="trunk_ports" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+           value="{{ old('trunk_ports', $trunkPorts ?? '') }}" placeholder="XGE0/0/1, GE0/0/24, Eth-Trunk0">
+    <p class="mt-1 text-xs text-gray-500">{{ __('Comma-separated, exactly as the switch itself reports them (e.g. in "display mac-address" output). MACs learned on these ports are transit traffic from another switch, not a real device location, so they\'re excluded from history.') }}</p>
+    @error('trunk_ports')
+        <span class="text-red-500 text-sm">{{ $message }}</span>
+    @enderror
+</div>

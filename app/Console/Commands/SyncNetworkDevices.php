@@ -45,10 +45,12 @@ class SyncNetworkDevices extends Command
                 continue;
             }
 
-            NetworkDevice::updateOrCreate(
+            $device = NetworkDevice::updateOrCreate(
                 ['name' => $validated['name']],
                 ['mgmt_ip' => $validated['ip'], 'vendor' => $validated['vendor'], 'role' => $validated['role'], 'protocol' => $validated['protocol']]
             );
+
+            $registry->syncTrunkPorts($device, $validated['trunk_ports'] ?? null);
 
             $synced++;
         }

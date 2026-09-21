@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\NetworkDevice;
+use App\Models\NetworkDevicePort;
 use Illuminate\Support\Facades\Artisan;
 
 function writeDevicesFile(array $entries): string
@@ -48,6 +49,34 @@ test('re-syncing updates ip/vendor/role but never overwrites a manually-set enab
     $device->refresh();
     expect($device->mgmt_ip)->toBe('10.23.255.99');
     expect($device->enabled)->toBeFalse();
+});
+
+test('a trunk_ports entry marks those ports link_type=trunk on the device', function () {
+    writeDevicesFile([
+        ['name' => 'Karam_SW_1', 'ip' => '10.23.255.78', 'vendor' => 'huawei', 'role' => 'l2', 'trunk_ports' => 'XGE0/0/1, GE0/0/24'],
+    ]);
+
+    Artisan::call('network-lookup:sync-devices');
+
+    $device = NetworkDevice::where('name', 'Karam_SW_1')->first();
+    $trunkPorts = NetworkDevicePort::where('network_device_id', $device->id)->where('link_type', 'trunk')->pluck('port');
+    expect($trunkPorts->sort()->values()->all())->toBe(['GE0/0/24', 'XGE0/0/1']);
+});
+
+test('re-syncing without a previously-listed trunk port demotes it back to unclassified', function () {
+    writeDevicesFile([
+        ['name' => 'Karam_SW_1', 'ip' => '10.23.255.78', 'vendor' => 'huawei', 'role' => 'l2', 'trunk_ports' => 'XGE0/0/1, GE0/0/24'],
+    ]);
+    Artisan::call('network-lookup:sync-devices');
+    $device = NetworkDevice::where('name', 'Karam_SW_1')->first();
+
+    writeDevicesFile([
+        ['name' => 'Karam_SW_1', 'ip' => '10.23.255.78', 'vendor' => 'huawei', 'role' => 'l2', 'trunk_ports' => 'XGE0/0/1'],
+    ]);
+    Artisan::call('network-lookup:sync-devices');
+
+    expect(NetworkDevicePort::where('network_device_id', $device->id)->where('port', 'XGE0/0/1')->value('link_type'))->toBe('trunk');
+    expect(NetworkDevicePort::where('network_device_id', $device->id)->where('port', 'GE0/0/24')->value('link_type'))->toBeNull();
 });
 
 test('an invalid entry is skipped instead of crashing the whole sync', function () {

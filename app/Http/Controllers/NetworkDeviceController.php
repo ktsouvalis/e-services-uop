@@ -31,25 +31,33 @@ class NetworkDeviceController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validated($request);
+        $trunkPorts = $validated['trunk_ports'] ?? null;
+        $deviceFields = collect($validated)->except('trunk_ports')->all();
 
-        NetworkDevice::create($validated);
-        $this->registry->add($validated);
+        $device = NetworkDevice::create($deviceFields);
+        $this->registry->add($deviceFields + ['trunk_ports' => $trunkPorts]);
+        $this->registry->syncTrunkPorts($device, $trunkPorts);
 
         return redirect()->route('network-lookup.index')->with('success', 'Device added.');
     }
 
     public function edit(NetworkDevice $device)
     {
-        return view('network-lookup.devices.edit', compact('device'));
+        $trunkPorts = $this->registry->trunkPortsCsv($device);
+
+        return view('network-lookup.devices.edit', compact('device', 'trunkPorts'));
     }
 
     public function update(Request $request, NetworkDevice $device)
     {
         $validated = $this->validated($request, $device);
+        $trunkPorts = $validated['trunk_ports'] ?? null;
+        $deviceFields = collect($validated)->except('trunk_ports')->all();
         $oldName = $device->name;
 
-        $device->update($validated);
-        $this->registry->replace($oldName, $validated);
+        $device->update($deviceFields);
+        $this->registry->replace($oldName, $deviceFields + ['trunk_ports' => $trunkPorts]);
+        $this->registry->syncTrunkPorts($device, $trunkPorts);
 
         return redirect()->route('network-lookup.index')->with('success', 'Device updated.');
     }
@@ -107,13 +115,14 @@ class NetworkDeviceController extends Controller
                 'protocol' => $validated['protocol'],
             ];
 
-            NetworkDevice::updateOrCreate(['name' => $fields['name']], [
+            $device = NetworkDevice::updateOrCreate(['name' => $fields['name']], [
                 'mgmt_ip' => $fields['mgmt_ip'],
                 'vendor' => $fields['vendor'],
                 'role' => $fields['role'],
                 'protocol' => $fields['protocol'],
             ]);
-            $this->registry->replace($fields['name'], $fields);
+            $this->registry->replace($fields['name'], $fields + ['trunk_ports' => $validated['trunk_ports']]);
+            $this->registry->syncTrunkPorts($device, $validated['trunk_ports']);
 
             $imported++;
         }
@@ -142,6 +151,7 @@ class NetworkDeviceController extends Controller
             'vendor' => ['required', 'in:huawei,cisco'],
             'role' => ['required', 'in:l2,core'],
             'protocol' => ['required', 'in:ssh,telnet'],
+            'trunk_ports' => ['nullable', 'string', 'max:2000'],
         ]);
     }
 }

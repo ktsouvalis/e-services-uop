@@ -124,12 +124,14 @@ Route::prefix('authentik')->middleware(['auth', AuthentikEnabled::class])->name(
     Route::get('/', [AuthentikController::class, 'index'])->name('index');
     Route::get('/monitor/data', [AuthentikController::class, 'monitorData'])->name('monitor.data');
     Route::post('/monitor/refresh', [AuthentikController::class, 'monitorRefresh'])->name('monitor.refresh');
+    Route::post('/monitor/settings', [AuthentikController::class, 'monitorSettingsUpdate'])->name('monitor.settings.update');
     Route::post('/logs/fetch', [AuthentikController::class, 'logsFetch'])->name('logs.fetch');
     Route::get('/logs/{run}/download', [AuthentikController::class, 'logsDownload'])->name('logs.download');
 });
 
 Route::prefix('network-lookup')->middleware(['auth', NetworkLookupEnabled::class])->name('network-lookup.')->group(function () {
     Route::get('/', [NetworkLookupController::class, 'index'])->name('index');
+    Route::get('/export', [NetworkLookupController::class, 'export'])->name('export');
     Route::post('/poll', [NetworkLookupController::class, 'poll'])->name('poll');
     Route::post('/devices/{device}/toggle-enabled', [NetworkDeviceController::class, 'toggleEnabled'])->name('devices.toggle-enabled');
     Route::get('/devices/import', [NetworkDeviceController::class, 'showImport'])->name('devices.import.show');

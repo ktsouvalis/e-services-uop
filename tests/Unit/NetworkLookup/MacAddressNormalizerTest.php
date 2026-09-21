@@ -18,3 +18,7 @@ test('returns null for input that is not 12 hex characters', function (string $i
     'ip address' => '10.23.14.156',
     'empty' => '',
 ]);
+
+test('formats the canonical colon form into Huawei dash-grouped display style', function () {
+    expect(MacAddressNormalizer::toHuawei('20:3a:43:16:6c:90'))->toBe('203a-4316-6c90');
+});

@@ -12,12 +12,12 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <p class="text-sm text-gray-600 mb-4">
-                    {{ __('Upload a JSON file listing devices to add or update in bulk. Each entry needs: name, ip, vendor (huawei/cisco), role (l2/core), and optionally protocol (ssh/telnet, defaults to ssh). A device that already exists (matched by name) is updated in place; a new name is added. Existing devices missing from the file are left untouched.') }}
+                    {{ __('Upload a JSON file listing devices to add or update in bulk. Each entry needs: name, ip, vendor (huawei/cisco), role (l2/core), optionally protocol (ssh/telnet, defaults to ssh), and optionally trunk_ports (comma-separated port names exactly as the switch itself reports them - marks those ports as trunk/uplink, so MACs learned there are excluded from history). A device that already exists (matched by name) is updated in place; a new name is added. Existing devices missing from the file are left untouched.') }}
                 </p>
 
                 <pre class="bg-gray-50 border border-gray-300 rounded-md p-3 text-xs mb-6 overflow-x-auto">[
-    {"name": "Example_SW_1", "ip": "10.23.255.10", "vendor": "huawei", "role": "l2", "protocol": "ssh"},
-    {"name": "Example_SW_2", "ip": "10.23.255.11", "vendor": "cisco", "role": "l2", "protocol": "telnet"}
+    {"name": "Example_SW_1", "ip": "10.23.255.10", "vendor": "huawei", "role": "l2", "protocol": "ssh", "trunk_ports": "XGE0/0/1,GE0/0/24"},
+    {"name": "Example_SW_2", "ip": "10.23.255.11", "vendor": "cisco", "role": "l2", "protocol": "telnet", "trunk_ports": "XGE0/0/1,GE0/0/24"}
 ]</pre>
 
                 <form action="{{ route('network-lookup.devices.import') }}" method="POST" enctype="multipart/form-data">

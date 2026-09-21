@@ -20,4 +20,18 @@ class MacAddressNormalizer
 
         return implode(':', str_split($hex, 2));
     }
+
+    /**
+     * Formats an already-normalized colon-separated MAC (as stored/matched
+     * everywhere else) into Huawei's own display style, e.g.
+     * "20:3a:43:16:6c:90" -> "203a-4316-6c90" - for display only, never used
+     * for matching/storage so the canonical colon form stays the single
+     * source of truth.
+     */
+    public static function toHuawei(string $normalized): string
+    {
+        $hex = str_replace(':', '', $normalized);
+
+        return implode('-', str_split($hex, 4));
+    }
 }

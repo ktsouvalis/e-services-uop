@@ -2,6 +2,9 @@
 
 namespace App\Services\NetworkLookup;
 
+use App\Models\NetworkDevice;
+use App\Models\NetworkDevicePort;
+
 /**
  * Reads/writes storage/app/private/network-lookup/devices.json - the same
  * hand-maintained file network-lookup:sync-devices bulk-imports from. The
@@ -73,7 +76,7 @@ class DeviceRegistry
      * between the two paths. Returns the entry with defaults applied
      * (protocol defaults to 'ssh'), or null if it's invalid.
      *
-     * @return ?array{name: string, ip: string, vendor: string, role: string, protocol: string}
+     * @return ?array{name: string, ip: string, vendor: string, role: string, protocol: string, trunk_ports: string}
      */
     public function validateEntry(array $entry): ?array
     {
@@ -93,7 +96,9 @@ class DeviceRegistry
             return null;
         }
 
-        return compact('name', 'ip', 'vendor', 'role', 'protocol');
+        $trunkPorts = is_string($entry['trunk_ports'] ?? null) ? trim($entry['trunk_ports']) : '';
+
+        return compact('name', 'ip', 'vendor', 'role', 'protocol') + ['trunk_ports' => $trunkPorts];
     }
 
     public function remove(string $name): void
@@ -106,15 +111,64 @@ class DeviceRegistry
         $this->save($entries);
     }
 
+    /**
+     * Declarative full-replacement: after this call, exactly the listed
+     * ports (comma-separated, matched case-insensitively against what the
+     * live MAC table actually reports - see PollSwitchMacTable) have
+     * link_type='trunk' for this device, and any port that was 'trunk' but
+     * is no longer listed is demoted back to unclassified. This is the
+     * primary way to mark trunk ports in environments (e.g. production)
+     * where network-lookup:import-port-details' config-repo checkout isn't
+     * available - link_type is what lets PollSwitchMacTable and the search
+     * query exclude switch-to-switch transit traffic from history.
+     */
+    public function syncTrunkPorts(NetworkDevice $device, ?string $trunkPortsCsv): void
+    {
+        $wanted = collect(explode(',', (string) $trunkPortsCsv))
+            ->map(fn (string $port) => trim($port))
+            ->filter()
+            ->unique()
+            ->values();
+
+        NetworkDevicePort::where('network_device_id', $device->id)
+            ->where('link_type', 'trunk')
+            ->whereNotIn('port', $wanted)
+            ->update(['link_type' => null]);
+
+        foreach ($wanted as $port) {
+            NetworkDevicePort::updateOrCreate(
+                ['network_device_id' => $device->id, 'port' => $port],
+                ['link_type' => 'trunk']
+            );
+        }
+    }
+
+    public function trunkPortsCsv(NetworkDevice $device): string
+    {
+        return NetworkDevicePort::where('network_device_id', $device->id)
+            ->where('link_type', 'trunk')
+            ->orderBy('port')
+            ->pluck('port')
+            ->implode(', ');
+    }
+
     private function toEntry(array $device): array
     {
-        return [
+        $entry = [
             'name' => $device['name'],
             'ip' => $device['mgmt_ip'],
             'vendor' => $device['vendor'],
             'role' => $device['role'],
             'protocol' => $device['protocol'],
         ];
+
+        $trunkPorts = trim((string) ($device['trunk_ports'] ?? ''));
+
+        if ($trunkPorts !== '') {
+            $entry['trunk_ports'] = $trunkPorts;
+        }
+
+        return $entry;
     }
 
     private function save(array $entries): void

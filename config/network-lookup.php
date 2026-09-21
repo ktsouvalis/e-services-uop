@@ -18,6 +18,16 @@ return [
     // cluster health checks - default to every 10 minutes.
     'poll_interval_minutes' => (int) env('NETWORK_LOOKUP_POLL_INTERVAL', 10),
 
+    // How long a mac_history row's last_seen_at can go untouched before a
+    // fresh sighting on the same device/port/vlan is treated as a new stay
+    // instead of silently extending the old one - see
+    // PollSwitchMacTable::upsertHistory(). A routine overnight shutdown
+    // (turn the PC off at 18:00, back on at 10:00 - well under a day) should
+    // still read as the same stay; only losing a device for longer than
+    // that - it moved, was decommissioned, etc. - should open a new row.
+    // Default: one day's worth of polling.
+    'stale_after_minutes' => (int) env('NETWORK_LOOKUP_STALE_AFTER_MINUTES', 1440),
+
     // The one device (role = 'core' in network_devices) that display arp / ARP
     // data is fetched from - identified by name, not hardcoded IP, since the
     // device inventory itself lives in the network_devices table.

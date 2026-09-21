@@ -81,6 +81,45 @@ test('polling twice with the same mac/port/vlan touches last_seen_at instead of 
     expect($row->last_seen_at->isAfter($firstSeenAt))->toBeTrue();
 });
 
+test('a mac reappearing on the same device/port/vlan after a gap longer than stale_after_minutes opens a new stay instead of silently bridging it', function () {
+    config(['network-lookup.stale_after_minutes' => 1440]);
+    $this->app->instance(SshCommandRunner::class, fakeSshRunner("203a-4316-6c90 2313/-/-         GE0/0/3             dynamic\n"));
+    $device = NetworkDevice::factory()->create(['vendor' => 'huawei']);
+
+    PollSwitchMacTable::dispatch($device);
+    $firstRow = NetworkMacHistory::first();
+
+    // A multi-day absence - well beyond even a routine overnight/weekend
+    // shutdown - before it reconnects to the exact same port.
+    $this->travel(3)->days();
+    PollSwitchMacTable::dispatch($device);
+
+    expect(NetworkMacHistory::count())->toBe(2);
+    $oldRow = NetworkMacHistory::find($firstRow->id);
+    expect($oldRow->last_seen_at->equalTo($firstRow->last_seen_at))->toBeTrue(); // untouched, not bridged
+    $newRow = NetworkMacHistory::where('id', '!=', $firstRow->id)->first();
+    expect($newRow->first_seen_at->equalTo($newRow->last_seen_at))->toBeTrue();
+    expect($newRow->first_seen_at->isAfter($firstRow->last_seen_at))->toBeTrue();
+});
+
+test('a mac reappearing on the same device/port/vlan after a routine overnight gap still bridges into the same stay', function () {
+    config(['network-lookup.stale_after_minutes' => 1440]);
+    $this->app->instance(SshCommandRunner::class, fakeSshRunner("203a-4316-6c90 2313/-/-         GE0/0/3             dynamic\n"));
+    $device = NetworkDevice::factory()->create(['vendor' => 'huawei']);
+
+    PollSwitchMacTable::dispatch($device);
+    $firstRow = NetworkMacHistory::first();
+
+    // Off overnight (e.g. 18:00 to 10:00 the next day) - well under a day.
+    $this->travel(16)->hours();
+    PollSwitchMacTable::dispatch($device);
+
+    expect(NetworkMacHistory::count())->toBe(1);
+    $row = NetworkMacHistory::first();
+    expect($row->first_seen_at->equalTo($firstRow->first_seen_at))->toBeTrue();
+    expect($row->last_seen_at->isAfter($firstRow->last_seen_at))->toBeTrue();
+});
+
 test('a mac moving to a different port opens a new history row instead of overwriting the old one', function () {
     $this->app->instance(SshCommandRunner::class, fakeSshRunner("203a-4316-6c90 2313/-/-         GE0/0/3             dynamic\n"));
     $device = NetworkDevice::factory()->create(['vendor' => 'huawei']);
@@ -93,6 +132,36 @@ test('a mac moving to a different port opens a new history row instead of overwr
     expect(NetworkMacHistory::count())->toBe(2);
     $ports = NetworkMacHistory::orderBy('id')->pluck('port')->all();
     expect($ports)->toBe(['GE0/0/3', 'GE0/0/7']);
+});
+
+test('a leftover row on another devices trunk port does not stop this devices own repeat sighting from deduping', function () {
+    $this->app->instance(SshCommandRunner::class, fakeSshRunner("203a-4316-6c90 2313/-/-         GE0/0/3             dynamic\n"));
+    $device = NetworkDevice::factory()->create(['vendor' => 'huawei']);
+    PollSwitchMacTable::dispatch($device);
+    $firstRow = NetworkMacHistory::first();
+
+    // Simulates data written before this other port's link_type was known:
+    // a more-recent row for the same mac, on a *different* device, on a
+    // port now classified as trunk. Without excluding it from the "most
+    // recent" comparison, it would make $device's own unchanged sighting
+    // look like a fresh location every poll.
+    $otherDevice = NetworkDevice::factory()->create(['vendor' => 'huawei']);
+    NetworkDevicePort::create(['network_device_id' => $otherDevice->id, 'port' => 'XGE0/0/1', 'link_type' => 'trunk']);
+    NetworkMacHistory::create([
+        'network_device_id' => $otherDevice->id,
+        'mac_address' => '20:3a:43:16:6c:90',
+        'port' => 'XGE0/0/1',
+        'vlan' => '2313',
+        'first_seen_at' => now(),
+        'last_seen_at' => now(),
+    ]);
+
+    $this->travel(5)->minutes();
+    PollSwitchMacTable::dispatch($device);
+
+    expect(NetworkMacHistory::count())->toBe(2);
+    $row = NetworkMacHistory::find($firstRow->id);
+    expect($row->last_seen_at->isAfter($firstRow->last_seen_at))->toBeTrue();
 });
 
 test('a mac learned on a known trunk port is excluded from history entirely', function () {
@@ -109,6 +178,21 @@ test('a mac learned on a known trunk port is excluded from history entirely', fu
     expect(NetworkMacHistory::count())->toBe(1);
     expect(NetworkMacHistory::first()->port)->toBe('GE0/0/3');
     expect($device->fresh()->last_poll_status)->toBe('ok');
+});
+
+test('trunk-port matching is case-insensitive, so a hand-typed devices.json trunk_ports entry still excludes it', function () {
+    $device = NetworkDevice::factory()->create(['vendor' => 'huawei']);
+    // Lowercase, as a manually-typed trunk_ports value might come in - the
+    // live MAC table below reports it uppercase, as switches actually do.
+    NetworkDevicePort::create(['network_device_id' => $device->id, 'port' => 'ge0/0/1', 'link_type' => 'trunk']);
+
+    $this->app->instance(SshCommandRunner::class, fakeSshRunner(
+        "203a-4316-6c90 2313/-/-         GE0/0/1             dynamic\n"
+    ));
+
+    PollSwitchMacTable::dispatch($device);
+
+    expect(NetworkMacHistory::count())->toBe(0);
 });
 
 test('a device with protocol=telnet is polled via TelnetCommandRunner, not SshCommandRunner', function () {
