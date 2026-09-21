@@ -18,6 +18,7 @@ class MenuSeeder extends Seeder
             ['title' => 'Items', 'route' => 'items.index', 'route_is' => 'items', 'enabled' => true],
             ['title' => 'Chatbots', 'route' => 'chatbots.index', 'route_is' => 'chatbots', 'enabled' => true],
             ['title' => 'Log Reader', 'route' => 'log-reader', 'route_is' => 'log-reader', 'enabled' => true],
+            ['title' => 'Network Lookup', 'route' => 'network-lookup.index', 'route_is' => 'network-lookup.*', 'enabled' => true],
         ];
 
         foreach ($menus as $m) {

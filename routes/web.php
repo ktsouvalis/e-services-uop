@@ -14,6 +14,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Middleware\LogReaderEnabled;
 use App\Http\Middleware\PangolinEnabled;
 use App\Http\Middleware\AuthentikEnabled;
+use App\Http\Middleware\NetworkLookupEnabled;
 use App\Http\Controllers\MailerController;
 use App\Http\Controllers\AImodelController;
 use App\Http\Controllers\ChatbotController;
@@ -21,6 +22,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogReaderController;
 use App\Http\Controllers\PangolinController;
 use App\Http\Controllers\AuthentikController;
+use App\Http\Controllers\NetworkLookupController;
+use App\Http\Controllers\NetworkDeviceController;
 use App\Http\Controllers\SheetmailerController;
 use App\Http\Controllers\NotificationController;
 
@@ -123,6 +126,15 @@ Route::prefix('authentik')->middleware(['auth', AuthentikEnabled::class])->name(
     Route::post('/monitor/refresh', [AuthentikController::class, 'monitorRefresh'])->name('monitor.refresh');
     Route::post('/logs/fetch', [AuthentikController::class, 'logsFetch'])->name('logs.fetch');
     Route::get('/logs/{run}/download', [AuthentikController::class, 'logsDownload'])->name('logs.download');
+});
+
+Route::prefix('network-lookup')->middleware(['auth', NetworkLookupEnabled::class])->name('network-lookup.')->group(function () {
+    Route::get('/', [NetworkLookupController::class, 'index'])->name('index');
+    Route::post('/poll', [NetworkLookupController::class, 'poll'])->name('poll');
+    Route::post('/devices/{device}/toggle-enabled', [NetworkDeviceController::class, 'toggleEnabled'])->name('devices.toggle-enabled');
+    Route::get('/devices/import', [NetworkDeviceController::class, 'showImport'])->name('devices.import.show');
+    Route::post('/devices/import', [NetworkDeviceController::class, 'import'])->name('devices.import');
+    Route::resource('devices', NetworkDeviceController::class)->except(['index', 'show']);
 });
 
 
