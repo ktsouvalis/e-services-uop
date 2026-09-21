@@ -1,29 +1,40 @@
 <div class="bg-white shadow-sm sm:rounded-lg p-6 mb-6">
     <h3 class="text-lg font-semibold mb-4">{{ __('Fetch cluster logs') }}</h3>
     <p class="text-sm text-gray-500 mb-4">{{ __('Pulls logs at or above the chosen level from every node over SSH (docker logs for containerised services, journalctl for bare-metal ones).') }}</p>
-    <form action="{{ route('authentik.logs.fetch') }}" method="POST" class="flex items-end gap-4">
+    <form action="{{ route('authentik.logs.fetch') }}" method="POST">
         @csrf
-        <div>
-            <label for="lookback_hours" class="block text-sm font-medium text-gray-700">{{ __('Lookback (hours)') }}</label>
-            <input type="number" name="lookback_hours" id="lookback_hours" min="1" max="168" placeholder="24"
-                   class="mt-1 block w-32 border-gray-300 rounded-md shadow-sm">
-            @error('lookback_hours')
+        <div class="mb-4">
+            <label for="logs_config_yml" class="block text-sm font-medium text-gray-700">{{ __('config.<site>.monitor.yml') }}</label>
+            <textarea name="config_yml" id="logs_config_yml" rows="10" spellcheck="false" required
+                      placeholder="site_name: ..."
+                      class="mt-1 block w-full font-mono text-sm border-gray-300 rounded-md shadow-sm">{{ old('config_yml', $lastConfig) }}</textarea>
+            @error('config_yml')
                 <span class="text-red-500 text-sm">{{ $message }}</span>
             @enderror
         </div>
-        <div>
-            <label for="level" class="block text-sm font-medium text-gray-700">{{ __('Minimum level') }}</label>
-            <select name="level" id="level" class="mt-1 block w-32 border-gray-300 rounded-md shadow-sm">
-                <option value="error">{{ __('Error') }}</option>
-                <option value="warning" selected>{{ __('Warning') }}</option>
-                <option value="info">{{ __('Info') }}</option>
-                <option value="debug">{{ __('Debug') }}</option>
-            </select>
-            @error('level')
-                <span class="text-red-500 text-sm">{{ $message }}</span>
-            @enderror
+        <div class="flex items-end gap-4">
+            <div>
+                <label for="lookback_hours" class="block text-sm font-medium text-gray-700">{{ __('Lookback (hours)') }}</label>
+                <input type="number" name="lookback_hours" id="lookback_hours" min="1" max="168" placeholder="24"
+                       class="mt-1 block w-32 border-gray-300 rounded-md shadow-sm">
+                @error('lookback_hours')
+                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                @enderror
+            </div>
+            <div>
+                <label for="level" class="block text-sm font-medium text-gray-700">{{ __('Minimum level') }}</label>
+                <select name="level" id="level" class="mt-1 block w-32 border-gray-300 rounded-md shadow-sm">
+                    <option value="error">{{ __('Error') }}</option>
+                    <option value="warning" selected>{{ __('Warning') }}</option>
+                    <option value="info">{{ __('Info') }}</option>
+                    <option value="debug">{{ __('Debug') }}</option>
+                </select>
+                @error('level')
+                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                @enderror
+            </div>
+            <x-primary-button type="submit">{{ __('Fetch logs') }}</x-primary-button>
         </div>
-        <x-primary-button type="submit">{{ __('Fetch logs') }}</x-primary-button>
     </form>
 </div>
 

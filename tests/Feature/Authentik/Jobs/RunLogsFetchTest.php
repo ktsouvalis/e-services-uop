@@ -7,15 +7,18 @@ use Illuminate\Support\Facades\Process;
 use romanzipp\QueueMonitor\Models\Monitor;
 
 beforeEach(function () {
-    config([
-        'authentik.nodes' => [],
-        'authentik.vip' => null,
-        'authentik.credentials.authentik_api_token' => null,
-    ]);
     // Run directories are named after the AuthentikLogRun id, and sqlite's
     // :memory: RefreshDatabase rolls back per test rather than recreating the
     // schema — ids restart from 1 every test, so leftover files from a
     // previous test's run would otherwise be inherited by this one.
+    File::deleteDirectory(storage_path('app/private/authentik'));
+});
+
+// afterEach too — storage_path() is the real, shared dev storage tree (not
+// swapped out for tests) and `make test` runs as root, so files this suite
+// leaves behind are root-owned and can break the real app's later www-data
+// requests to the same paths. See AuthentikControllerTest.php's note.
+afterEach(function () {
     File::deleteDirectory(storage_path('app/private/authentik'));
 });
 

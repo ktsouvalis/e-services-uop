@@ -1,99 +1,111 @@
 <?php
 
 use App\Jobs\Authentik\PollCluster;
+use App\Models\AuthentikMonitorSettings;
 use App\Models\AuthentikMonitorStatus;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 
-function authentikHaproxyCsv(array $pools): string
+function fakeAuthentikSettings(bool $withToken = true): AuthentikMonitorSettings
 {
-    $lines = ['#pxname,svname,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f14,f15,f16,status'];
-    $filler = implode(',', array_fill(0, 15, '0'));
-
-    foreach ($pools as $pool => $statuses) {
-        foreach ($statuses as $i => $status) {
-            $lines[] = "{$pool},srv{$i},{$filler},{$status}";
-        }
-    }
-
-    return implode("\n", $lines);
-}
-
-function fakeAuthentikClusterHttp(string $haproxyCsv): void
-{
-    Http::fake([
-        'http://10.40.50.1:9000/stats;csv' => Http::response($haproxyCsv, 200),
-        'http://10.40.50.1:8008/history' => Http::response([], 200),
-        'http://10.40.50.1:8008/' => Http::response(['role' => 'primary', 'state' => 'running'], 200),
-        'http://10.40.50.1:2379/health' => Http::response(['health' => true], 200),
-        'http://10.40.50.1:2379/v3/maintenance/status' => Http::response([
-            'header' => ['member_id' => 1], 'leader' => 1, 'raftTerm' => 3, 'dbSizeInUse' => 4096,
-        ], 200),
-        'https://10.40.50.1/monitor' => Http::response('', 200),
-        'https://10.40.50.1:9443/-/health/live/' => Http::response('', 200),
-        'http://10.40.50.1:8080/nginx_status' => Http::response("Active connections: 1 \nReading: 0 Writing: 1 Waiting: 0\n", 200),
-        '*' => Http::response('', 200),
-    ]);
-
-    config([
-        'authentik.nodes' => [
-            ['ip' => '10.40.50.1', 'name' => 'ak-1', 'base_priority' => 100],
-        ],
-        'authentik.vip' => null,
-        'authentik.credentials.authentik_api_token' => null,
+    return AuthentikMonitorSettings::create([
+        'node_ip' => '10.23.2.71',
+        'authentik_url' => 'https://auth.uop.gr',
+        'api_token' => $withToken ? Crypt::encryptString('test-token') : null,
     ]);
 }
 
-test('a backend pool with zero UP servers is degraded, but a pool with at least one UP server is not', function () {
-    fakeAuthentikClusterHttp(authentikHaproxyCsv([
-        'auth_primary' => ['UP', 'DOWN', 'DOWN'],
-        'auth_replica' => ['DOWN', 'DOWN', 'DOWN'],
-    ]));
-
+test('with no settings saved, only the authentik row is written, flagged unknown', function () {
     PollCluster::dispatch();
 
-    $haproxy = AuthentikMonitorStatus::where('service', 'haproxy')->where('node_ip', '10.40.50.1')->first();
-    expect($haproxy->status)->toBe('degraded');
+    expect(AuthentikMonitorStatus::count())->toBe(1);
+    $row = AuthentikMonitorStatus::first();
+    expect($row->service)->toBe('authentik');
+    expect($row->status)->toBe('unknown');
 });
 
-test('every pool having at least one UP server is reported up, even with only 1-of-3 UP (Patroni steady state)', function () {
-    fakeAuthentikClusterHttp(authentikHaproxyCsv([
-        'auth_primary' => ['UP', 'DOWN', 'DOWN'],
-        'auth_replica' => ['DOWN', 'UP', 'DOWN'],
-    ]));
-
-    PollCluster::dispatch();
-
-    $haproxy = AuthentikMonitorStatus::where('service', 'haproxy')->where('node_ip', '10.40.50.1')->first();
-    expect($haproxy->status)->toBe('up');
-});
-
-test('polling twice upserts the same row per service+node_ip instead of accumulating duplicates', function () {
-    config([
-        'authentik.nodes' => [
-            ['ip' => '10.40.50.1', 'name' => 'ak-1', 'base_priority' => 100],
-        ],
-        'authentik.vip' => null,
-        'authentik.credentials.authentik_api_token' => null,
+test('a fully healthy poll marks every service up', function () {
+    fakeAuthentikSettings();
+    Http::fake([
+        'https://10.23.2.71/-/health/live/' => Http::response('', 200),
+        'http://10.23.2.71:8080/nginx_status' => Http::response(
+            "Active connections: 5\nserver accepts handled requests\n 1 1 1\nReading: 0 Writing: 1 Waiting: 4",
+            200
+        ),
+        'https://auth.uop.gr/api/v3/tasks/workers/' => Http::response([
+            ['worker_id' => 'abc@authentik-patra', 'version_matching' => true],
+        ], 200),
+        'https://auth.uop.gr/api/v3/tasks/tasks/status/' => Http::response([
+            'queued' => 0, 'running' => 1, 'rejected' => 0, 'error' => 0, 'warning' => 0, 'done' => 10,
+        ], 200),
     ]);
 
-    // A second Http::fake() call merges rather than replaces stubs (the
-    // first-registered match for a URL always wins), so switching the
-    // haproxy response between the two polls has to go through a sequence
-    // on a single fake() call rather than re-faking in between.
+    PollCluster::dispatch();
+
+    // 4 rows: authentik, nginx, workers, worker_queue — no direct worker
+    // liveness port check (dropped, see ClusterMonitor's docblock).
+    expect(AuthentikMonitorStatus::count())->toBe(4);
+    expect(AuthentikMonitorStatus::where('status', 'up')->count())->toBe(4);
+
+    $nginx = AuthentikMonitorStatus::where('service', 'nginx')->first();
+    expect($nginx->metrics['active'])->toBe(5);
+    expect($nginx->metrics['waiting'])->toBe(4);
+
+    $workers = AuthentikMonitorStatus::where('service', 'workers')->first();
+    expect($workers->metrics['count'])->toBe(1);
+});
+
+test('an unreachable node marks the direct checks down without touching the API checks', function () {
+    fakeAuthentikSettings();
     Http::fake([
-        'http://10.40.50.1:9000/stats;csv' => Http::sequence()
-            ->push(authentikHaproxyCsv(['pool' => ['UP']]), 200)
-            ->push(authentikHaproxyCsv(['pool' => ['DOWN']]), 200),
-        'http://10.40.50.1:8008/history' => Http::response([], 200),
-        'http://10.40.50.1:8008/' => Http::response(['role' => 'primary', 'state' => 'running'], 200),
-        'http://10.40.50.1:2379/health' => Http::response(['health' => true], 200),
-        'http://10.40.50.1:2379/v3/maintenance/status' => Http::response([
-            'header' => ['member_id' => 1], 'leader' => 1, 'raftTerm' => 3, 'dbSizeInUse' => 4096,
+        'https://10.23.2.71/-/health/live/' => Http::response('', 503),
+        'http://10.23.2.71:8080/nginx_status' => Http::response('', 500),
+        'https://auth.uop.gr/api/v3/tasks/workers/' => Http::response([], 200),
+        'https://auth.uop.gr/api/v3/tasks/tasks/status/' => Http::response(['queued' => 0, 'running' => 0], 200),
+    ]);
+
+    PollCluster::dispatch();
+
+    expect(AuthentikMonitorStatus::where('service', 'authentik')->first()->status)->toBe('down');
+    expect(AuthentikMonitorStatus::where('service', 'nginx')->first()->status)->toBe('down');
+});
+
+test('without an api token, the workers and worker_queue rows are unknown rather than down', function () {
+    fakeAuthentikSettings(withToken: false);
+    Http::fake([
+        'https://10.23.2.71/-/health/live/' => Http::response('', 200),
+        'http://10.23.2.71:8080/nginx_status' => Http::response('Active connections: 1', 200),
+    ]);
+
+    PollCluster::dispatch();
+
+    expect(AuthentikMonitorStatus::where('service', 'workers')->first()->status)->toBe('unknown');
+    expect(AuthentikMonitorStatus::where('service', 'worker_queue')->first()->status)->toBe('unknown');
+});
+
+test('a rejected or errored task queue degrades or fails the worker_queue row', function () {
+    fakeAuthentikSettings();
+    Http::fake([
+        'https://10.23.2.71/-/health/live/' => Http::response('', 200),
+        'http://10.23.2.71:8080/nginx_status' => Http::response('Active connections: 1', 200),
+        'https://auth.uop.gr/api/v3/tasks/workers/' => Http::response([], 200),
+        'https://auth.uop.gr/api/v3/tasks/tasks/status/' => Http::response([
+            'queued' => 0, 'running' => 1, 'rejected' => 2, 'error' => 0, 'warning' => 0, 'done' => 10,
         ], 200),
-        'https://10.40.50.1/monitor' => Http::response('', 200),
-        'https://10.40.50.1:9443/-/health/live/' => Http::response('', 200),
-        'http://10.40.50.1:8080/nginx_status' => Http::response("Active connections: 1 \nReading: 0 Writing: 1 Waiting: 0\n", 200),
-        '*' => Http::response('', 200),
+    ]);
+
+    PollCluster::dispatch();
+
+    expect(AuthentikMonitorStatus::where('service', 'worker_queue')->first()->status)->toBe('degraded');
+});
+
+test('polling twice upserts the same row per service instead of accumulating duplicates', function () {
+    fakeAuthentikSettings(withToken: false);
+    Http::fake([
+        'https://10.23.2.71/-/health/live/' => Http::sequence()
+            ->push('', 200)
+            ->push('', 503),
+        'http://10.23.2.71:8080/nginx_status' => Http::response('Active connections: 1', 200),
     ]);
 
     PollCluster::dispatch();
@@ -102,6 +114,5 @@ test('polling twice upserts the same row per service+node_ip instead of accumula
     PollCluster::dispatch();
 
     expect(AuthentikMonitorStatus::count())->toBe($firstCount);
-    $haproxy = AuthentikMonitorStatus::where('service', 'haproxy')->where('node_ip', '10.40.50.1')->first();
-    expect($haproxy->status)->toBe('degraded');
+    expect(AuthentikMonitorStatus::where('service', 'authentik')->first()->status)->toBe('down');
 });

@@ -26,7 +26,7 @@ class AuthentikMonitorStatus extends Model
     {
         return match ($this->service) {
             'nginx' => "active: {$m['active']} (R={$m['reading']} W={$m['writing']} Wait={$m['waiting']})",
-            'workers' => "{$m['count']}/{$m['expected']} connected",
+            'workers' => "{$m['count']} connected",
             'worker_queue' => collect([
                 "running: {$m['running']}",
                 "queued: {$m['queued']}",

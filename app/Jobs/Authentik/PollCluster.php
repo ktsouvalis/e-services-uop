@@ -10,6 +10,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Scheduled every minute (routes/console.php) alongside Pangolin's own poll.
+ * Deliberately not IsMonitored (see the Pangolin module's CLAUDE.md note) —
+ * it would flood /jobs with a new row every 60s forever for no operational
+ * benefit.
+ */
 class PollCluster implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;

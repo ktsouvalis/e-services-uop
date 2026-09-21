@@ -3,8 +3,8 @@
 namespace App\Jobs\Authentik;
 
 use App\Models\AuthentikLogRun;
-use App\Services\Authentik\ConfigYamlWriter;
 use App\Services\Authentik\ScriptRunner;
+use App\Services\Concerns\EnsuresWritableDirectory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,7 +14,7 @@ use romanzipp\QueueMonitor\Traits\IsMonitored;
 
 class RunLogsFetch implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, IsMonitored, Queueable, SerializesModels;
+    use Dispatchable, EnsuresWritableDirectory, InteractsWithQueue, IsMonitored, Queueable, SerializesModels;
 
     public int $timeout = 900;
 
@@ -22,22 +22,22 @@ class RunLogsFetch implements ShouldQueue
     {
     }
 
-    public function handle(ConfigYamlWriter $configWriter, ScriptRunner $runner): void
+    public function handle(ScriptRunner $runner): void
     {
+        // config.yml is normally already staged into this run's directory by
+        // AuthentikController::logsFetch() before dispatch (the uploaded
+        // file the user submitted with the fetch request) — nothing to
+        // render here anymore now that config comes from the user, not
+        // env/config (see CLAUDE.md's Authentik module section). The is_dir
+        // guard is only a safety net for a job dispatched without going
+        // through that controller action (e.g. a direct retry).
         $runDir = storage_path("app/private/authentik/runs/{$this->run->id}");
-        // 0777: see ConfigYamlWriter for why (cross-uid access between
-        // queue-worker (root) and the web process (www-data)). is_dir()
-        // guard: a retried attempt hits an existing dir from the prior
-        // attempt — plain mkdir() throws "File exists".
-        if (! is_dir($runDir)) {
-            mkdir($runDir, 0777, true);
-        }
+        $this->ensureWritableDirectory(dirname($runDir));
+        $this->ensureWritableDirectory($runDir);
 
         $this->run->update(['status' => 'running', 'started_at' => now()]);
 
-        $configWriter->write("{$runDir}/config.yml");
-
-        $args = ['--config', 'config.yml', '--save', 'cluster_logs'];
+        $args = ['config.yml', '--save', 'cluster_logs'];
         if ($hours = $this->run->options['lookback_hours'] ?? null) {
             $args[] = '--last';
             $args[] = (string) $hours;

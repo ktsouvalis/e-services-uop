@@ -18,9 +18,6 @@
     .authentik-monitor .am-dot-warn { background:#d29922; }
     .authentik-monitor .am-dot-down { background:#f85149; }
     .authentik-monitor .am-dot-dim  { background:#8b949e; }
-    .authentik-monitor .am-ok-text   { color:#3fb950; }
-    .authentik-monitor .am-warn-text { color:#d29922; }
-    .authentik-monitor .am-down-text { color:#f85149; }
 </style>
 
 <script>
@@ -45,137 +42,78 @@
                     .catch(() => {});
             },
 
-            rows(service) {
-                const r = this.groups[service];
-                return Array.isArray(r) ? r : [];
-            },
-
             row(service) {
-                return this.rows(service)[0] || null;
-            },
-
-            hasRows(service) {
-                return this.rows(service).length > 0;
+                const r = this.groups[service];
+                return Array.isArray(r) && r.length ? r[0] : null;
             },
 
             hasAnyData() {
-                return ['keepalived', 'authentik', 'patroni', 'etcd', 'haproxy', 'nginx']
-                    .some((s) => this.hasRows(s));
+                return ['authentik', 'nginx', 'workers', 'worker_queue']
+                    .some((s) => this.row(s));
             },
 
-            fmtLag(bytes) {
-                if (bytes === null || bytes === undefined) return '';
-                if (bytes < 1024) return bytes + 'B';
-                if (bytes < 1024 * 1024) return Math.floor(bytes / 1024) + 'KB';
-                return Math.floor(bytes / (1024 * 1024)) + 'MB';
-            },
-
-            panelStatus(service, failStatuses = ['down']) {
-                const rs = this.rows(service);
-                if (!rs.length) return 'dim';
-                const bad = rs.filter((r) => failStatuses.includes(r.status)).length;
-                if (bad === 0) return 'ok';
-                if (bad >= rs.length) return 'down';
-                return 'warn';
-            },
-
-            singleStatus(service) {
+            rowClass(service, okStatuses = ['up']) {
                 const r = this.row(service);
-                if (!r || r.status === 'unknown') return 'dim';
-                if (r.status === 'down') return 'down';
-                if (r.status === 'degraded') return 'warn';
-                return 'ok';
-            },
-
-            // ---- VIP / Keepalived ----
-            keepalivedMaster() {
-                const up = this.rows('keepalived').filter((n) => n.status === 'up');
-                if (!up.length) return null;
-                return up.reduce((best, n) =>
-                    (n.metrics?.effective_priority ?? -Infinity) > (best.metrics?.effective_priority ?? -Infinity) ? n : best
-                );
-            },
-            keepalivedRowState(node) {
-                const master = this.keepalivedMaster();
-                if (master && master.node_ip === node.node_ip) return { label: 'MASTER', cls: 'ok' };
-                if (node.status === 'up') return { label: 'BACKUP', cls: 'dim' };
-                return { label: 'FAULT', cls: 'down' };
-            },
-
-            // ---- Authentik ----
-            authentikRowClass(row) {
-                return row.status === 'up' ? 'ok' : 'down';
-            },
-
-            // ---- Nginx ----
-            nginxMaxActive() {
-                const ok = this.rows('nginx').filter((n) => n.status === 'up');
-                return ok.length ? Math.max(...ok.map((n) => n.metrics?.active ?? 0)) : 0;
-            },
-            nginxBusiest(row) {
-                const max = this.nginxMaxActive();
-                return max > 1 && row.status === 'up' && (row.metrics?.active ?? 0) === max;
-            },
-
-            // ---- HAProxy ----
-            haproxyBackendSummary(row) {
-                const backends = row.metrics?.backends || {};
-                return Object.entries(backends).map(([pool, servers]) => ({
-                    pool,
-                    up: servers.filter((s) => s.status === 'UP').length,
-                    total: servers.length,
-                }));
-            },
-            haproxyRowClass(row) {
-                if (row.status === 'down') return 'down';
-                if (row.status === 'degraded') return 'warn';
-                return 'ok';
-            },
-
-            // ---- Patroni ----
-            patroniRowClass(row) {
-                if (row.status === 'down') return 'down';
-                if (row.metrics?.healthy === false) return 'warn';
-                return row.role === 'primary' ? 'ok' : 'dim';
-            },
-            patroniHistoryText() {
-                const h = this.row('patroni_history');
-                if (!h || !h.metrics) return null;
-                const ts = h.metrics.timestamp ? new Date(h.metrics.timestamp).toLocaleString() : 'unknown time';
-                return `last failover: TL ${h.metrics.timeline} — ${ts} → ${h.metrics.reason}`;
-            },
-
-            // ---- etcd ----
-            etcdRowClass(row) {
-                if (row.status !== 'up') return 'down';
-                return row.metrics?.leader ? 'ok' : 'dim';
+                if (!r) return 'dim';
+                if (r.status === 'unknown') return 'dim';
+                return okStatuses.includes(r.status) ? 'ok' : (r.status === 'degraded' ? 'warn' : 'down');
             },
 
             overallStatus() {
-                const singles = ['workers', 'worker_queue']
+                const rows = ['authentik', 'nginx', 'workers', 'worker_queue']
                     .map((s) => this.row(s))
                     .filter((r) => r && r.status !== 'unknown');
-                const all = [
-                    ...this.rows('keepalived'), ...this.rows('authentik'),
-                    ...this.rows('patroni'), ...this.rows('etcd'),
-                    ...this.rows('haproxy'), ...this.rows('nginx'),
-                    ...singles,
-                ];
-                if (!all.length) return 'dim';
-                const bad = all.filter((r) => r.status !== 'up').length;
+                if (!rows.length) return 'dim';
+                const bad = rows.filter((r) => r.status !== 'up').length;
                 if (bad === 0) return 'ok';
-                if (bad >= all.length) return 'down';
+                if (bad >= rows.length) return 'down';
                 return 'warn';
             },
         };
     }
 </script>
 
+<div class="bg-white shadow-sm sm:rounded-lg p-6 mb-4">
+    <h3 class="text-lg font-semibold mb-2">{{ __('Monitor settings') }}</h3>
+    <p class="text-sm text-gray-500 mb-4">{{ __('Saved until changed — no need to re-enter these on every visit.') }}</p>
+    <form action="{{ route('authentik.monitor.settings.update') }}" method="POST" class="flex flex-wrap items-end gap-4">
+        @csrf
+        <div>
+            <label for="node_ip" class="block text-sm font-medium text-gray-700">{{ __('Node IP') }}</label>
+            <input type="text" name="node_ip" id="node_ip" value="{{ old('node_ip', $settings?->node_ip) }}" required
+                   placeholder="10.23.2.71" class="mt-1 block w-40 border-gray-300 rounded-md shadow-sm font-mono text-sm">
+            @error('node_ip')
+                <span class="text-red-500 text-sm">{{ $message }}</span>
+            @enderror
+        </div>
+        <div>
+            <label for="authentik_url" class="block text-sm font-medium text-gray-700">{{ __('Authentik URL') }}</label>
+            <input type="text" name="authentik_url" id="authentik_url" value="{{ old('authentik_url', $settings?->authentik_url) }}"
+                   placeholder="https://auth.uop.gr" class="mt-1 block w-56 border-gray-300 rounded-md shadow-sm font-mono text-sm">
+            @error('authentik_url')
+                <span class="text-red-500 text-sm">{{ $message }}</span>
+            @enderror
+        </div>
+        <div>
+            <label for="api_token" class="block text-sm font-medium text-gray-700">
+                {{ __('API token') }}
+                <span class="text-gray-400 font-normal">({{ $settings?->api_token ? __('set — leave blank to keep it') : __('not set') }})</span>
+            </label>
+            <input type="password" name="api_token" id="api_token" autocomplete="new-password"
+                   placeholder="{{ $settings?->api_token ? '••••••••••••' : '' }}" class="mt-1 block w-56 border-gray-300 rounded-md shadow-sm font-mono text-sm">
+            @error('api_token')
+                <span class="text-red-500 text-sm">{{ $message }}</span>
+            @enderror
+        </div>
+        <x-primary-button type="submit">{{ __('Save') }}</x-primary-button>
+    </form>
+</div>
+
 <div class="authentik-monitor am-root" x-data="authentikMonitor(@js($statuses))">
     <div class="am-header flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div class="flex items-center gap-2">
             <span class="am-dot" :class="'am-dot-' + overallStatus()"></span>
-            <h3 class="am-title">{{ __('Authentik HA Cluster') }}</h3>
+            <h3 class="am-title">{{ __('Authentik') }}</h3>
         </div>
         <div class="flex items-center gap-4">
             <span class="am-meta" x-text="'Last refresh: ' + (lastRefresh || '—') + '   Auto-refresh: 15s'"></span>
@@ -186,217 +124,68 @@
         </div>
     </div>
 
-    <div class="p-3 space-y-3">
+    <div class="p-3 space-y-2">
         <template x-if="!hasAnyData()">
             <div class="am-panel p-6 text-center am-meta">
-                {{ __('No data yet — click Refresh now, or wait for the scheduled poll.') }}
+                {{ __('No data yet — save your Node IP above, then click Refresh now, or wait for the scheduled poll.') }}
             </div>
         </template>
 
-        <!-- VIP / Keepalived -->
-        <div class="am-panel p-3" x-show="hasRows('keepalived') || row('vip')">
-            <div class="am-panel-title mb-2 flex items-center gap-2">
-                <span class="am-dot" :class="'am-dot-' + panelStatus('keepalived', ['down', 'degraded'])"></span>
-                <span>{{ __('VIP / Keepalived') }}</span>
+        <template x-if="row('authentik')">
+            <div class="am-row" :class="'am-row-' + rowClass('authentik')">
+                <span class="am-dot" :class="'am-dot-' + rowClass('authentik')"></span>
+                <span class="am-name">{{ __('Authentik') }}</span>
+                <span x-text="row('authentik').status === 'up' ? 'UP' : (row('authentik').message || 'DOWN')"></span>
             </div>
-            <template x-if="row('vip')">
-                <div class="am-row" :class="'am-row-' + (row('vip').status === 'up' ? 'ok' : 'down')">
-                    <span class="am-dot" :class="'am-dot-' + (row('vip').status === 'up' ? 'ok' : 'down')"></span>
-                    <span class="am-name">VIP <span x-text="row('vip').node_ip"></span></span>
-                    <template x-if="row('vip').status === 'up'">
-                        <span>&rarr; MASTER: <span class="am-badge" x-text="row('vip').metrics?.holder_name ?? '—'"></span></span>
-                    </template>
-                    <template x-if="row('vip').status !== 'up'">
-                        <span class="am-badge">UNREACHABLE</span>
-                    </template>
-                </div>
-            </template>
-            <template x-for="node in rows('keepalived')" :key="node.node_ip">
-                <div class="am-row" :class="'am-row-' + keepalivedRowState(node).cls">
-                    <span class="am-dot" :class="'am-dot-' + keepalivedRowState(node).cls"></span>
-                    <span class="am-name" x-text="node.node_name"></span>
-                    <span class="am-meta" x-text="node.node_ip"></span>
-                    <span class="am-badge" x-text="keepalivedRowState(node).label"></span>
+        </template>
+
+        <template x-if="row('nginx')">
+            <div class="am-row" :class="'am-row-' + rowClass('nginx')">
+                <span class="am-dot" :class="'am-dot-' + rowClass('nginx')"></span>
+                <span class="am-name">{{ __('Nginx') }}</span>
+                <template x-if="row('nginx').status === 'up'">
                     <span class="am-meta">
-                        priority=<span x-text="node.metrics?.effective_priority"></span><template x-if="node.status !== 'up'"><span> (base <span x-text="node.metrics?.base_priority"></span>)</span></template>
+                        active=<span x-text="row('nginx').metrics?.active"></span>
+                        (R=<span x-text="row('nginx').metrics?.reading"></span>
+                        W=<span x-text="row('nginx').metrics?.writing"></span>
+                        Wait=<span x-text="row('nginx').metrics?.waiting"></span>)
                     </span>
-                </div>
-            </template>
-        </div>
-
-        <!-- Nginx connections -->
-        <div class="am-panel p-3" x-show="hasRows('nginx')">
-            <div class="am-panel-title mb-2 flex items-center gap-2">
-                <span class="am-dot" :class="'am-dot-' + panelStatus('nginx')"></span>
-                <span>{{ __('Nginx connections') }}</span>
-            </div>
-            <template x-for="node in rows('nginx')" :key="node.node_ip">
-                <div class="am-row" :class="node.status !== 'up' ? 'am-row-down' : (nginxBusiest(node) ? 'am-row-ok' : 'am-row-dim')">
-                    <span class="am-dot" :class="node.status !== 'up' ? 'am-dot-down' : (nginxBusiest(node) ? 'am-dot-ok' : 'am-dot-dim')"></span>
-                    <span class="am-name" x-text="node.node_name"></span>
-                    <template x-if="node.status !== 'up'">
-                        <span class="am-badge">UNREACHABLE</span>
-                    </template>
-                    <template x-if="node.status === 'up'">
-                        <span class="flex flex-wrap items-center gap-3">
-                            <span class="am-meta">active=<span class="am-badge" x-text="node.metrics?.active"></span></span>
-                            <span class="am-meta">R=<span x-text="node.metrics?.reading"></span></span>
-                            <span class="am-meta">W=<span x-text="node.metrics?.writing"></span></span>
-                            <span class="am-meta">Wait=<span x-text="node.metrics?.waiting"></span></span>
-                        </span>
-                    </template>
-                </div>
-            </template>
-        </div>
-
-        <!-- Authentik backends -->
-        <div class="am-panel p-3" x-show="hasRows('authentik')">
-            <div class="am-panel-title mb-2 flex items-center gap-2">
-                <span class="am-dot" :class="'am-dot-' + panelStatus('authentik')"></span>
-                <span>{{ __('Authentik backends') }}</span>
-            </div>
-            <template x-for="row in rows('authentik')" :key="row.node_ip">
-                <div class="am-row" :class="'am-row-' + authentikRowClass(row)">
-                    <span class="am-dot" :class="'am-dot-' + authentikRowClass(row)"></span>
-                    <span class="am-name" x-text="row.node_name"></span>
-                    <span :class="row.status === 'up' ? 'am-ok-text' : 'am-down-text'" x-text="row.status === 'up' ? 'server UP' : 'server DOWN'"></span>
-                </div>
-            </template>
-        </div>
-
-        <!-- Workers / Worker Queue -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div class="am-panel p-3" x-show="row('workers')">
-                <div class="am-panel-title mb-2 flex items-center gap-2">
-                    <span class="am-dot" :class="'am-dot-' + singleStatus('workers')"></span>
-                    <span>{{ __('Authentik workers') }}</span>
-                </div>
-                <template x-if="row('workers')">
-                    <div class="am-row" :class="'am-row-' + singleStatus('workers')">
-                        <span class="am-dot" :class="'am-dot-' + singleStatus('workers')"></span>
-                        <template x-if="row('workers').status === 'unknown'">
-                            <span class="am-meta" x-text="row('workers').message"></span>
-                        </template>
-                        <template x-if="row('workers').status !== 'unknown'">
-                            <span class="flex flex-wrap items-center gap-3">
-                                <span class="am-badge" x-text="(row('workers').metrics?.count ?? 0) + '/' + (row('workers').metrics?.expected ?? 0) + ' connected'"></span>
-                                <span class="am-meta" x-text="'present: ' + ((row('workers').metrics?.present || []).join(', ') || 'none')"></span>
-                            </span>
-                        </template>
-                    </div>
+                </template>
+                <template x-if="row('nginx').status !== 'up'">
+                    <span class="am-badge">DOWN</span>
                 </template>
             </div>
+        </template>
 
-            <div class="am-panel p-3" x-show="row('worker_queue')">
-                <div class="am-panel-title mb-2 flex items-center gap-2">
-                    <span class="am-dot" :class="'am-dot-' + singleStatus('worker_queue')"></span>
-                    <span>{{ __('Authentik worker queue') }}</span>
-                </div>
-                <template x-if="row('worker_queue')">
-                    <div class="am-row" :class="'am-row-' + singleStatus('worker_queue')">
-                        <span class="am-dot" :class="'am-dot-' + singleStatus('worker_queue')"></span>
-                        <template x-if="row('worker_queue').status === 'unknown'">
-                            <span class="am-meta" x-text="row('worker_queue').message"></span>
-                        </template>
-                        <template x-if="row('worker_queue').status !== 'unknown'">
-                            <span class="flex flex-wrap items-center gap-3 am-meta">
-                                <span>running=<span x-text="row('worker_queue').metrics?.running"></span></span>
-                                <span>queued=<span x-text="row('worker_queue').metrics?.queued"></span></span>
-                                <span>rejected=<span x-text="row('worker_queue').metrics?.rejected"></span></span>
-                                <span>error=<span x-text="row('worker_queue').metrics?.error"></span></span>
-                                <span>done=<span x-text="row('worker_queue').metrics?.done"></span></span>
-                            </span>
-                        </template>
-                    </div>
+        <template x-if="row('workers')">
+            <div class="am-row" :class="'am-row-' + rowClass('workers')">
+                <span class="am-dot" :class="'am-dot-' + rowClass('workers')"></span>
+                <span class="am-name">{{ __('Workers') }}</span>
+                <template x-if="row('workers').status === 'unknown'">
+                    <span class="am-meta" x-text="row('workers').message"></span>
+                </template>
+                <template x-if="row('workers').status !== 'unknown'">
+                    <span class="am-meta" x-text="(row('workers').metrics?.count ?? 0) + ' connected'"></span>
                 </template>
             </div>
-        </div>
+        </template>
 
-        <!-- HAProxy -->
-        <div class="am-panel p-3" x-show="hasRows('haproxy')">
-            <div class="am-panel-title mb-2 flex items-center gap-2">
-                <span class="am-dot" :class="'am-dot-' + panelStatus('haproxy')"></span>
-                <span>{{ __('HAProxy backends') }}</span>
-            </div>
-            <template x-for="row in rows('haproxy')" :key="row.node_ip">
-                <div class="am-row" :class="'am-row-' + haproxyRowClass(row)">
-                    <span class="am-dot" :class="'am-dot-' + haproxyRowClass(row)"></span>
-                    <span class="am-name" x-text="row.node_name"></span>
-                    <template x-if="row.status === 'down'">
-                        <span class="am-badge">STATS UNREACHABLE</span>
-                    </template>
-                    <template x-if="row.status !== 'down'">
-                        <span class="flex flex-wrap gap-3">
-                            <template x-for="b in haproxyBackendSummary(row)" :key="b.pool">
-                                <span :class="b.up === 0 ? 'am-down-text' : 'am-meta'">
-                                    <span x-text="b.pool"></span>: <span x-text="b.up + '/' + b.total"></span>
-                                </span>
-                            </template>
-                        </span>
-                    </template>
-                </div>
-            </template>
-        </div>
-
-        <!-- Patroni + etcd -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div class="am-panel p-3" x-show="hasRows('patroni')">
-                <div class="am-panel-title mb-2 flex items-center gap-2">
-                    <span class="am-dot" :class="'am-dot-' + panelStatus('patroni', ['down', 'degraded'])"></span>
-                    <span>{{ __('PostgreSQL / Patroni') }}</span>
-                </div>
-                <template x-for="row in rows('patroni')" :key="row.node_ip">
-                    <div class="am-row" :class="'am-row-' + patroniRowClass(row)">
-                        <span class="am-dot" :class="'am-dot-' + patroniRowClass(row)"></span>
-                        <span class="am-name" x-text="row.node_name"></span>
-                        <template x-if="row.status === 'down'">
-                            <span class="am-badge">UNREACHABLE</span>
-                        </template>
-                        <template x-if="row.status !== 'down'">
-                            <span class="flex flex-wrap items-center gap-3">
-                                <span class="am-badge" x-text="row.role === 'primary' ? 'LEADER' : 'REPLICA'"></span>
-                                <span class="am-meta">state=<span x-text="row.metrics?.state"></span></span>
-                                <span class="am-meta">TL=<span x-text="row.metrics?.timeline"></span></span>
-                                <template x-if="row.role !== 'primary' && row.metrics?.lag_bytes !== null && row.metrics?.lag_bytes !== undefined">
-                                    <span class="am-meta">lag=<span x-text="fmtLag(row.metrics.lag_bytes)"></span></span>
-                                </template>
-                                <template x-if="row.metrics?.pending_restart">
-                                    <span class="am-warn-text">restart pending</span>
-                                </template>
-                                <template x-if="row.metrics?.healthy === false">
-                                    <span class="am-warn-text">⚠ stuck (not streaming)</span>
-                                </template>
-                            </span>
-                        </template>
-                    </div>
+        <template x-if="row('worker_queue')">
+            <div class="am-row" :class="'am-row-' + rowClass('worker_queue')">
+                <span class="am-dot" :class="'am-dot-' + rowClass('worker_queue')"></span>
+                <span class="am-name">{{ __('Worker queue') }}</span>
+                <template x-if="row('worker_queue').status === 'unknown'">
+                    <span class="am-meta" x-text="row('worker_queue').message"></span>
                 </template>
-                <template x-if="patroniHistoryText()">
-                    <div class="am-meta mt-2 px-1" x-text="patroniHistoryText()"></div>
+                <template x-if="row('worker_queue').status !== 'unknown'">
+                    <span class="flex flex-wrap items-center gap-3 am-meta">
+                        <span>running=<span x-text="row('worker_queue').metrics?.running"></span></span>
+                        <span>queued=<span x-text="row('worker_queue').metrics?.queued"></span></span>
+                        <span>rejected=<span x-text="row('worker_queue').metrics?.rejected"></span></span>
+                        <span>error=<span x-text="row('worker_queue').metrics?.error"></span></span>
+                    </span>
                 </template>
             </div>
-
-            <div class="am-panel p-3" x-show="hasRows('etcd')">
-                <div class="am-panel-title mb-2 flex items-center gap-2">
-                    <span class="am-dot" :class="'am-dot-' + panelStatus('etcd')"></span>
-                    <span>{{ __('etcd cluster') }}</span>
-                </div>
-                <template x-for="row in rows('etcd')" :key="row.node_ip">
-                    <div class="am-row" :class="'am-row-' + etcdRowClass(row)">
-                        <span class="am-dot" :class="'am-dot-' + etcdRowClass(row)"></span>
-                        <span class="am-name" x-text="row.node_name"></span>
-                        <template x-if="row.status !== 'up'">
-                            <span class="am-badge">UNREACHABLE</span>
-                        </template>
-                        <template x-if="row.status === 'up'">
-                            <span class="flex flex-wrap items-center gap-3">
-                                <span class="am-badge" x-text="row.metrics?.leader ? 'LEADER' : 'FOLLOWER'"></span>
-                                <span class="am-meta">term=<span x-text="row.metrics?.raft_term"></span></span>
-                                <span class="am-meta">db=<span x-text="row.metrics?.db_kb"></span>KB</span>
-                            </span>
-                        </template>
-                    </div>
-                </template>
-            </div>
-        </div>
+        </template>
     </div>
 </div>
