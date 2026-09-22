@@ -20,9 +20,9 @@ use Throwable;
 /**
  * One job per L2 device (fan-out, not a loop over all switches in one job) -
  * at ~49 switches over synchronous SSH, a single job looping through all of
- * them the way Pangolin/Authentik's PollCluster loops 3 HTTP nodes would blow
- * past any reasonable $timeout. Deliberately NOT using IsMonitored - see
- * PollAllDevices for why (would flood /jobs every poll cycle x 49 devices).
+ * them would blow past any reasonable $timeout. Deliberately NOT using
+ * IsMonitored - see PollAllDevices for why (would flood /jobs every poll
+ * cycle x 49 devices).
  */
 class PollSwitchMacTable implements ShouldQueue
 {

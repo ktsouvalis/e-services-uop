@@ -16,7 +16,7 @@ class PangolinRunFactory extends Factory
     public function definition(): array
     {
         return [
-            'type' => 'logs',
+            'type' => 'import',
             'user_id' => User::factory(),
             'status' => 'queued',
             'options' => [],

@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\AuthentikLogRun;
 use App\Models\PangolinRun;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
@@ -108,26 +107,20 @@ test('admin can delete a user', function () {
     $this->assertModelMissing($target);
 });
 
-test('deleting a user cleans up their pangolin and authentik run directories on disk, not just the DB rows', function () {
+test('deleting a user cleans up their pangolin run directories on disk, not just the DB rows', function () {
     $admin = User::factory()->admin()->create();
     $target = User::factory()->create();
 
-    $pangolinRun = PangolinRun::factory()->create(['type' => 'logs', 'user_id' => $target->id]);
+    $pangolinRun = PangolinRun::factory()->create(['type' => 'import', 'user_id' => $target->id]);
     $pangolinDir = storage_path("app/private/pangolin/runs/{$pangolinRun->id}");
     File::ensureDirectoryExists($pangolinDir);
-    File::put("{$pangolinDir}/cluster_logs.log", 'log contents');
-
-    $authentikRun = AuthentikLogRun::factory()->create(['user_id' => $target->id]);
-    $authentikDir = storage_path("app/private/authentik/runs/{$authentikRun->id}");
-    File::ensureDirectoryExists($authentikDir);
-    File::put("{$authentikDir}/cluster_logs.log", 'log contents');
+    File::put("{$pangolinDir}/input_results.xlsx", 'report contents');
 
     $this->actingAs($admin)->delete(route('users.destroy', $target));
 
     $this->assertModelMissing($target);
-    // pangolin_runs/authentik_log_runs both cascadeOnDelete() on user_id, so the
-    // DB rows go away for free — the point of this test is the on-disk directories,
-    // which nothing else ever cleans up.
+    // pangolin_runs cascadeOnDelete()s on user_id, so the DB row goes away for
+    // free — the point of this test is the on-disk directory, which nothing
+    // else ever cleans up.
     expect(File::isDirectory($pangolinDir))->toBeFalse();
-    expect(File::isDirectory($authentikDir))->toBeFalse();
 });

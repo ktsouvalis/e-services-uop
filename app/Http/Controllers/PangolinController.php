@@ -2,122 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\Pangolin\PollCluster;
 use App\Jobs\Pangolin\RunImport;
-use App\Jobs\Pangolin\RunLogsFetch;
 use App\Jobs\Pangolin\RunNormalize;
-use App\Models\PangolinMonitorSettings;
-use App\Models\PangolinMonitorStatus;
-use App\Models\PangolinNewtAgent;
 use App\Models\PangolinRun;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
 
 class PangolinController extends Controller
 {
     public function index()
     {
-        $statuses = PangolinMonitorStatus::orderBy('service')->orderBy('node_name')->get()->groupBy('service');
-        $settings = PangolinMonitorSettings::first();
-        $newtAgents = PangolinNewtAgent::orderBy('name')->get();
-
-        $logRuns = PangolinRun::ofType('logs')->with('user')->latest()->take(10)->get();
         $importRuns = PangolinRun::ofType('import')->with('user')->latest()->take(10)->get();
         $normalizeRuns = PangolinRun::ofType('normalize')->with('user')->latest()->take(10)->get();
 
-        return view('pangolin.index', compact('statuses', 'settings', 'newtAgents', 'logRuns', 'importRuns', 'normalizeRuns'));
-    }
-
-    public function monitorData()
-    {
-        $statuses = PangolinMonitorStatus::orderBy('service')->orderBy('node_name')->get()->groupBy('service');
-
-        return response()->json($statuses);
-    }
-
-    public function monitorRefresh()
-    {
-        PollCluster::dispatch();
-
-        return redirect()->route('pangolin.index', ['tab' => 'monitor'])->with('success', 'Cluster refresh queued.');
-    }
-
-    public function monitorSettingsUpdate(Request $request)
-    {
-        $request->validate([
-            'node_ip' => 'required|ip',
-            'pangolin_url' => 'nullable|url',
-            'api_key' => 'nullable|string',
-        ]);
-
-        $settings = PangolinMonitorSettings::first() ?? new PangolinMonitorSettings();
-        $settings->node_ip = $request->input('node_ip');
-        $settings->pangolin_url = $request->input('pangolin_url') ? rtrim($request->input('pangolin_url'), '/') : null;
-        // Blank means "leave the current key alone" — the field is never
-        // pre-filled with the decrypted value (see _monitor.blade.php), so
-        // there's no other way to distinguish "didn't touch it" from
-        // "wants it cleared"; clearing is intentionally not supported here.
-        if ($request->filled('api_key')) {
-            $settings->api_key = Crypt::encryptString($request->input('api_key'));
-        }
-        $settings->save();
-
-        PollCluster::dispatch();
-
-        return redirect()->route('pangolin.index', ['tab' => 'monitor'])->with('success', 'Monitor settings saved.');
-    }
-
-    public function newtAgentsStore(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'ip' => 'required|ip|unique:pangolin_newt_agents,ip',
-        ]);
-
-        PangolinNewtAgent::create($request->only('name', 'ip'));
-
-        PollCluster::dispatch();
-
-        return redirect()->route('pangolin.index', ['tab' => 'monitor'])->with('success', 'Newt agent added.');
-    }
-
-    public function newtAgentsDestroy(PangolinNewtAgent $agent)
-    {
-        $agent->delete();
-
-        return redirect()->route('pangolin.index', ['tab' => 'monitor'])->with('success', 'Newt agent removed.');
-    }
-
-    public function logsFetch(Request $request)
-    {
-        $request->validate([
-            'lookback_hours' => 'nullable|integer|min:1|max:168',
-            'level' => 'nullable|in:error,warning,info,debug',
-        ]);
-
-        $run = PangolinRun::create([
-            'type' => 'logs',
-            'user_id' => auth()->id(),
-            'status' => 'queued',
-            'options' => [
-                'lookback_hours' => $request->input('lookback_hours'),
-                'level' => $request->input('level'),
-            ],
-        ]);
-
-        RunLogsFetch::dispatch($run);
-
-        return redirect()->route('pangolin.index', ['tab' => 'logs'])->with('success', 'Log fetch queued.');
-    }
-
-    public function logsDownload(PangolinRun $run, Request $request)
-    {
-        abort_unless($run->type === 'logs', 404);
-
-        $path = $request->query('file') === 'newt' ? $run->extra_path : $run->report_path;
-        abort_unless($path && file_exists($path), 404);
-
-        return response()->download($path);
+        return view('pangolin.index', compact('importRuns', 'normalizeRuns'));
     }
 
     public function resourcesImport(Request $request)

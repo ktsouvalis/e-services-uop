@@ -7,10 +7,9 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Password-auth SSH command runner for the network switches/core, distinct
- * from Pangolin/Authentik's ClusterMonitor SSH code (key-based login only,
- * no exec) - see config/network-lookup.php for why these devices need
- * username+password instead.
+ * Password-auth SSH command runner for the network switches/core - see
+ * config/network-lookup.php for why these devices need username+password
+ * instead of key-based login.
  */
 class SshCommandRunner implements DeviceCommandRunnerContract
 {

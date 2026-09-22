@@ -13,7 +13,6 @@ use App\Http\Controllers\MenuController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\LogReaderEnabled;
 use App\Http\Middleware\PangolinEnabled;
-use App\Http\Middleware\AuthentikEnabled;
 use App\Http\Middleware\NetworkLookupEnabled;
 use App\Http\Controllers\MailerController;
 use App\Http\Controllers\AImodelController;
@@ -21,7 +20,6 @@ use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogReaderController;
 use App\Http\Controllers\PangolinController;
-use App\Http\Controllers\AuthentikController;
 use App\Http\Controllers\NetworkLookupController;
 use App\Http\Controllers\NetworkDeviceController;
 use App\Http\Controllers\SheetmailerController;
@@ -111,25 +109,9 @@ Route::group(['prefix' => 'log-reader', 'middleware' => ['auth', LogReaderEnable
 
 Route::prefix('pangolin')->middleware(['auth', PangolinEnabled::class])->name('pangolin.')->group(function () {
     Route::get('/', [PangolinController::class, 'index'])->name('index');
-    Route::get('/monitor/data', [PangolinController::class, 'monitorData'])->name('monitor.data');
-    Route::post('/monitor/refresh', [PangolinController::class, 'monitorRefresh'])->name('monitor.refresh');
-    Route::post('/monitor/settings', [PangolinController::class, 'monitorSettingsUpdate'])->name('monitor.settings.update');
-    Route::post('/monitor/newt-agents', [PangolinController::class, 'newtAgentsStore'])->name('monitor.newt-agents.store');
-    Route::delete('/monitor/newt-agents/{agent}', [PangolinController::class, 'newtAgentsDestroy'])->name('monitor.newt-agents.destroy');
-    Route::post('/logs/fetch', [PangolinController::class, 'logsFetch'])->name('logs.fetch');
-    Route::get('/logs/{run}/download', [PangolinController::class, 'logsDownload'])->name('logs.download');
     Route::post('/resources/import', [PangolinController::class, 'resourcesImport'])->name('resources.import');
     Route::post('/resources/normalize', [PangolinController::class, 'resourcesNormalize'])->name('resources.normalize');
     Route::get('/resources/{run}/download', [PangolinController::class, 'resourcesDownload'])->name('resources.download');
-});
-
-Route::prefix('authentik')->middleware(['auth', AuthentikEnabled::class])->name('authentik.')->group(function () {
-    Route::get('/', [AuthentikController::class, 'index'])->name('index');
-    Route::get('/monitor/data', [AuthentikController::class, 'monitorData'])->name('monitor.data');
-    Route::post('/monitor/refresh', [AuthentikController::class, 'monitorRefresh'])->name('monitor.refresh');
-    Route::post('/monitor/settings', [AuthentikController::class, 'monitorSettingsUpdate'])->name('monitor.settings.update');
-    Route::post('/logs/fetch', [AuthentikController::class, 'logsFetch'])->name('logs.fetch');
-    Route::get('/logs/{run}/download', [AuthentikController::class, 'logsDownload'])->name('logs.download');
 });
 
 Route::prefix('network-lookup')->middleware(['auth', NetworkLookupEnabled::class])->name('network-lookup.')->group(function () {

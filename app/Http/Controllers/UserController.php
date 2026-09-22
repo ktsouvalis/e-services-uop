@@ -49,15 +49,12 @@ class UserController extends Controller
     {
         Gate::authorize('delete', $user);
 
-        // pangolin_runs/authentik_log_runs both cascadeOnDelete() on user_id,
-        // but that only removes the DB rows — their per-run directories under
-        // storage/app/private/{pangolin,authentik}/runs/{id}/ are otherwise
-        // orphaned on disk forever, since nothing else ever cleans them up.
+        // pangolin_runs cascadeOnDelete()s on user_id, but that only removes
+        // the DB rows — their per-run directories under
+        // storage/app/private/pangolin/runs/{id}/ are otherwise orphaned on
+        // disk forever, since nothing else ever cleans them up.
         foreach ($user->pangolinRuns as $run) {
             File::deleteDirectory(storage_path("app/private/pangolin/runs/{$run->id}"));
-        }
-        foreach ($user->authentikLogRuns as $run) {
-            File::deleteDirectory(storage_path("app/private/authentik/runs/{$run->id}"));
         }
 
         $user->delete();

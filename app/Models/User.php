@@ -61,8 +61,4 @@ class User extends Authenticatable
     public function pangolinRuns(){
         return $this->hasMany(PangolinRun::class);
     }
-
-    public function authentikLogRuns(){
-        return $this->hasMany(AuthentikLogRun::class);
-    }
 }

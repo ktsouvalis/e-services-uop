@@ -30,11 +30,11 @@ final class DeliveryLog
         if (! is_dir($dir)) {
             // 0777: written by the queue-worker container (runs as root) and
             // read back for download by the web container (runs as
-            // www-data) - same cross-uid rationale as the Pangolin/Authentik
-            // storage trees, see ConfigYamlWriter. mkdir()'s mode is masked
-            // by the process umask (0022 here), so an explicit chmod is
-            // needed too - mkdir(..., 0777) alone silently only produces
-            // 0755.
+            // www-data) - same cross-uid rationale as Pangolin's runs/
+            // storage tree, see CLAUDE.md's Pangolin module section.
+            // mkdir()'s mode is masked by the process umask (0022 here), so
+            // an explicit chmod is needed too - mkdir(..., 0777) alone
+            // silently only produces 0755.
             mkdir($dir, 0777, true);
             chmod($dir, 0777);
         }
