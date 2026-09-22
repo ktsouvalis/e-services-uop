@@ -5,12 +5,130 @@ namespace App\Services\Pangolin;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Minimal PHP client for the Pangolin Integration API — only what's needed
- * to resolve a niceId to the numeric siteResourceId normalize_private_resources.py's
- * --resource-id expects (see its get_site_resources()/api_headers() in pangolin-utils).
+ * PHP client for the Pangolin Integration API, ported from create_private_resources.py
+ * / normalize_private_resources.py's shared request helpers (api_headers(),
+ * get_all_pages(), verify_org(), get_sites(), etc. — see pangolin-utils'
+ * CLAUDE.md for the Integration API's own background: a separate, opt-in
+ * service from the dashboard/monitoring endpoints, base_url already includes
+ * the org's own /int-api-style path prefix up to (not including) "/v1").
  */
 class PangolinApiClient
 {
+    private function baseUrl(): string
+    {
+        return rtrim(config('pangolin.base_url'), '/');
+    }
+
+    private function orgSlug(): string
+    {
+        return config('pangolin.org_slug');
+    }
+
+    private function http()
+    {
+        return Http::withToken(config('pangolin.api_key'));
+    }
+
+    /** GET /v1/org/{orgSlug} — sanity-checks the org/api key before anything else. */
+    public function verifyOrg(): array
+    {
+        return $this->http()->get("{$this->baseUrl()}/v1/org/{$this->orgSlug()}")->throw()->json('data');
+    }
+
+    /**
+     * Every private resource this tooling creates spans every site in the
+     * org (via siteIds) for HA — same call create_/normalize_ both make.
+     */
+    public function listSites(): array
+    {
+        return $this->getAllPages("/org/{$this->orgSlug()}/sites", 'sites');
+    }
+
+    public function listUsers(): array
+    {
+        return $this->getAllPages("/org/{$this->orgSlug()}/users", 'users');
+    }
+
+    /**
+     * sanitized local-part -> [[email, userId], ...] across every org user —
+     * ported from normalize_private_resources.py's build_org_email_index().
+     * Unlike buildUserIndex() (flat email->userId, used by Import), this
+     * groups by *sanitized* local part and keeps every match, since more
+     * than one org account can share one (see NormalizeResolver's own
+     * EMAIL_DOMAIN_PRIORITY tie-break for why).
+     */
+    public function buildOrgEmailIndex(): array
+    {
+        $index = [];
+        foreach ($this->listUsers() as $u) {
+            $email = strtolower((string) ($u['email'] ?? $u['user']['email'] ?? ''));
+            $uid = $u['id'] ?? $u['user']['id'] ?? null;
+            if ($email === '' || $uid === null) {
+                continue;
+            }
+            $index[ResourceNaming::sanitizeUsername($email)][] = [$email, $uid];
+        }
+
+        return $index;
+    }
+
+    /** GET /v1/site-resource/{id}/users */
+    public function getResourceUsers(int $siteResourceId): array
+    {
+        return $this->http()
+            ->get("{$this->baseUrl()}/v1/site-resource/{$siteResourceId}/users")
+            ->throw()->json('data.users') ?? [];
+    }
+
+    /** GET /v1/site-resource/{id}/roles */
+    public function getResourceRoles(int $siteResourceId): array
+    {
+        return $this->http()
+            ->get("{$this->baseUrl()}/v1/site-resource/{$siteResourceId}/roles")
+            ->throw()->json('data.roles') ?? [];
+    }
+
+    /**
+     * GET /v1/site-resource/{id}/clients — never reported/checked (every
+     * resource observed has had zero), fetched only to echo `clientIds`
+     * back unchanged on updateSiteResource() calls (same reasoning as
+     * tcpPortRangeString/udpPortRangeString, see its own docblock).
+     */
+    public function getResourceClients(int $siteResourceId): array
+    {
+        return $this->http()
+            ->get("{$this->baseUrl()}/v1/site-resource/{$siteResourceId}/clients")
+            ->throw()->json('data.clients') ?? [];
+    }
+
+    /** POST /v1/site-resource/{id}/users — replaces the resource's access list wholesale. */
+    public function setResourceUsers(int $siteResourceId, array $userIds): void
+    {
+        $this->http()
+            ->post("{$this->baseUrl()}/v1/site-resource/{$siteResourceId}/users", ['userIds' => $userIds])
+            ->throw();
+    }
+
+    /**
+     * email(lower) -> userId map, built from listUsers(). The API's user
+     * rows show up either flat ({email, id}) or nested under {user: {email,
+     * id}} depending on the endpoint/Pangolin version — both shapes handled,
+     * matching build_user_index()'s own defensive `.get()` fallback.
+     */
+    public function buildUserIndex(): array
+    {
+        $index = [];
+        foreach ($this->listUsers() as $u) {
+            $email = strtolower((string) ($u['email'] ?? $u['user']['email'] ?? ''));
+            $uid = $u['id'] ?? $u['user']['id'] ?? null;
+            if ($email !== '' && $uid !== null) {
+                $index[$email] = $uid;
+            }
+        }
+
+        return $index;
+    }
+
     /**
      * Resolve a mix of numeric siteResourceIds and niceIds into numeric
      * siteResourceIds. Tokens that are already numeric pass through as-is;
@@ -43,26 +161,55 @@ class PangolinApiClient
         return array_values(array_unique($numeric));
     }
 
-    private function listSiteResources(): array
+    public function listSiteResources(): array
     {
-        $baseUrl = config('pangolin.base_url');
-        $orgSlug = config('pangolin.org_slug');
-        $apiKey = config('pangolin.api_key');
+        return $this->getAllPages("/org/{$this->orgSlug()}/site-resources", 'siteResources');
+    }
 
+    /**
+     * PUT /v1/org/{orgSlug}/site-resource — the create endpoint's schema
+     * rejects an "enabled" key outright (400 "Unrecognized key"), unlike the
+     * update endpoint. Callers must never include it here; set it via a
+     * follow-up updateSiteResource() call once the resource exists (see
+     * create_site_resource()'s own comment in create_private_resources.py).
+     * Returns the created resource's data (siteResourceId, niceId, ...).
+     */
+    public function createSiteResource(array $payload): array
+    {
+        return $this->http()
+            ->put("{$this->baseUrl()}/v1/org/{$this->orgSlug()}/site-resource", $payload)
+            ->throw()
+            ->json('data');
+    }
+
+    /**
+     * POST /v1/site-resource/{id} — confirmed live (see CLAUDE.md) that
+     * omitting tcpPortRangeString/udpPortRangeString/disableIcmp doesn't
+     * leave them alone, it resets udpPortRangeString back to "*" (all) on
+     * the resource being edited. Callers that only intend to change one
+     * field (e.g. just "enabled") must still echo back the resource's own
+     * current values for the others explicitly — this method doesn't do
+     * that merging itself, same as the Python original's update_resource().
+     */
+    public function updateSiteResource(int $siteResourceId, array $fields): void
+    {
+        $this->http()
+            ->post("{$this->baseUrl()}/v1/site-resource/{$siteResourceId}", $fields)
+            ->throw();
+    }
+
+    private function getAllPages(string $path, string $dataKey, int $pageSize = 1000): array
+    {
         $items = [];
         $page = 1;
-        $pageSize = 1000;
 
         do {
-            $response = Http::withToken($apiKey)
-                ->get("{$baseUrl}/v1/org/{$orgSlug}/site-resources", [
-                    'pageSize' => $pageSize,
-                    'page' => $page,
-                ])
+            $response = $this->http()
+                ->get("{$this->baseUrl()}/v1{$path}", ['pageSize' => $pageSize, 'page' => $page])
                 ->throw()
                 ->json();
 
-            $pageItems = $response['data']['siteResources'] ?? [];
+            $pageItems = $response['data'][$dataKey] ?? [];
             $items = array_merge($items, $pageItems);
             $total = $response['data']['pagination']['total'] ?? count($items);
             $page++;

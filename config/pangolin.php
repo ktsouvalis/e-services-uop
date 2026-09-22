@@ -2,34 +2,38 @@
 
 return [
 
-    // Pangolin Integration API — used by create_private_resources.py / normalize_private_resources.py
+    // Pangolin Integration API — used by ImportResourceCreator/NormalizeProcessor
+    // (App\Services\Pangolin\PangolinApiClient) for the Import/Normalize tabs.
     'base_url' => env('PANGOLIN_API_BASE_URL'),
     'org_slug' => env('PANGOLIN_ORG_SLUG'),
     'api_key' => env('PANGOLIN_API_KEY'),
 
     'http_timeout' => (int) env('PANGOLIN_HTTP_TIMEOUT', 5),
-    'refresh_interval' => (int) env('PANGOLIN_REFRESH_INTERVAL', 20),
-    'unicode_bullets' => true,
 
-    // VIP managed by keepalived across the cluster nodes below
+    // VIP managed by keepalived across the cluster nodes below. Not read by
+    // the Monitor tab (single-node/DB-configurable — see App\Services\
+    // Pangolin\ClusterMonitor + pangolin_monitor_settings); kept for
+    // possible future HA-aware tooling, currently unused.
     'vip' => env('PANGOLIN_VIP'),
 
+    // Cluster-node SSH credentials — used by the Logs tab's LogFetcher for
+    // docker/journalctl log fetching (App\Services\Pangolin\LogsNodeMap).
     'ssh' => [
         'username' => env('PANGOLIN_SSH_USERNAME'),
         'key_path' => env('PANGOLIN_SSH_KEY_PATH', storage_path('app/private/pangolin/ssh_key')),
     ],
 
     'ports' => [
+        // Monitor tab's direct pangolin API health check.
         'pangolin' => 3001,
-        'patroni' => 8008,
-        'haproxy_stats' => 9000,
-        'etcd' => 2379,
+        // NewtAccessLogResolver's direct Postgres connection for the Logs
+        // tab's Newt access-log resolution.
         'postgres' => 5432,
     ],
 
-    // Used by logs_viewer.py to resolve Newt access-log sessions (site/client/
-    // resource IDs) into human-readable names — without this it silently
-    // falls back to raw IPs/IDs (get_pg_connection() in that script).
+    // NewtAccessLogResolver's direct Postgres connection (see 'ports.postgres'
+    // above) — without this it silently falls back to raw IPs/IDs in the
+    // Newt access-log CSV.
     'postgres' => [
         'user' => env('PANGOLIN_POSTGRES_USER', 'postgres'),
         'password' => env('PANGOLIN_POSTGRES_PASSWORD'),
@@ -37,34 +41,32 @@ return [
     ],
 
     /*
-     * The 3 Pangolin HA nodes. Reused for the pangolin/patroni/etcd/haproxy
-     * checks and for keepalived priority calculation — same shape as
-     * pangolin-utils/config.yml.example, which lists identical entries per
-     * group in this cluster's actual topology.
+     * The 3 Pangolin HA nodes — read by LogsNodeMap for the Logs tab, which
+     * genuinely fetches from every physical node in the real cluster (the
+     * Monitor tab no longer reads this at all, see App\Services\Pangolin\
+     * ClusterMonitor's docblock).
      *
-     * Sourced from an env JSON blob rather than hardcoded here: pangolin-utils
-     * itself treats real node IPs as sensitive (its own config.yml, unlike
-     * config.yml.example, is git-ignored) — this app follows the same
-     * convention, so real topology only ever lives in the git-ignored .env.
-     * Shape: [{"ip":"10.x.x.x","name":"pangolin-node-1","base_priority":100}, ...]
+     * Sourced from an env JSON blob rather than hardcoded here: real node
+     * IPs are only ever kept in the git-ignored outer .env, never committed
+     * here.
+     * Shape: [{"ip":"10.x.x.x","name":"pangolin-node-1"}, ...]
      */
     'nodes' => json_decode(env('PANGOLIN_NODES_JSON', '[]'), true),
 
-    'keepalived' => [
-        'track_weight' => (int) env('PANGOLIN_VRRP_TRACK_WEIGHT', -25),
-    ],
-
-    // Newt agent hosts — reachability checked via SSH only, no container inspection.
+    // Newt agent SSH credentials — reachability checked via SSH only, no
+    // container inspection. The agents themselves (which hosts exist) are
+    // admin-managed in the pangolin_newt_agents table, not a fixed env
+    // list — the count isn't stable, so it needs to be addable/removable at
+    // runtime. See App\Models\PangolinNewtAgent.
     'newt' => [
         'ssh' => [
             'username' => env('PANGOLIN_NEWT_SSH_USERNAME'),
             'key_path' => env('PANGOLIN_NEWT_SSH_KEY_PATH'),
         ],
-        // Shape: [{"ip":"10.x.x.x","name":"patra"}, ...]
-        'hosts' => json_decode(env('PANGOLIN_NEWT_HOSTS_JSON', '[]'), true),
     ],
 
-    // Services polled by logs_viewer.py — label/nodes-group/type/container-or-unit.
+    // Services polled by the Logs tab (App\Services\Pangolin\LogsNodeMap/
+    // LogFetcher) — label/nodes-group/type/container-or-unit.
     'services' => [
         ['label' => 'Pangolin', 'nodes' => 'pangolin', 'type' => 'docker', 'container' => 'pangolin'],
         ['label' => 'Gerbil', 'nodes' => 'pangolin', 'type' => 'docker', 'container' => 'gerbil'],
@@ -74,12 +76,6 @@ return [
         ['label' => 'HAProxy', 'nodes' => 'haproxy', 'type' => 'docker', 'container' => 'haproxy'],
         ['label' => 'Keepalived', 'nodes' => 'keepalived', 'type' => 'systemd', 'unit' => 'keepalived'],
         ['label' => 'Newt', 'nodes' => 'newt', 'type' => 'docker', 'container' => 'newt'],
-    ],
-
-    'python' => [
-        'bin' => env('PANGOLIN_PYTHON_BIN', '/opt/pangolin-venv/bin/python3'),
-        'scripts_path' => env('PANGOLIN_SCRIPTS_PATH', base_path('pangolin-utils')),
-        'timeout' => (int) env('PANGOLIN_PROCESS_TIMEOUT', 600),
     ],
 
 ];

@@ -21,4 +21,12 @@ class PangolinMonitorStatus extends Model
             'checked_at' => 'datetime',
         ];
     }
+
+    private function summarizeExtraMetrics(array $m): ?string
+    {
+        return match ($this->service) {
+            'api' => isset($m['total_resources']) ? "{$m['total_resources']} resources" : null,
+            default => null,
+        };
+    }
 }

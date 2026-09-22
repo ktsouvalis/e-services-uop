@@ -6,21 +6,26 @@ use App\Jobs\Pangolin\PollCluster;
 use App\Jobs\Pangolin\RunImport;
 use App\Jobs\Pangolin\RunLogsFetch;
 use App\Jobs\Pangolin\RunNormalize;
+use App\Models\PangolinMonitorSettings;
 use App\Models\PangolinMonitorStatus;
+use App\Models\PangolinNewtAgent;
 use App\Models\PangolinRun;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 
 class PangolinController extends Controller
 {
     public function index()
     {
         $statuses = PangolinMonitorStatus::orderBy('service')->orderBy('node_name')->get()->groupBy('service');
+        $settings = PangolinMonitorSettings::first();
+        $newtAgents = PangolinNewtAgent::orderBy('name')->get();
 
         $logRuns = PangolinRun::ofType('logs')->with('user')->latest()->take(10)->get();
         $importRuns = PangolinRun::ofType('import')->with('user')->latest()->take(10)->get();
         $normalizeRuns = PangolinRun::ofType('normalize')->with('user')->latest()->take(10)->get();
 
-        return view('pangolin.index', compact('statuses', 'logRuns', 'importRuns', 'normalizeRuns'));
+        return view('pangolin.index', compact('statuses', 'settings', 'newtAgents', 'logRuns', 'importRuns', 'normalizeRuns'));
     }
 
     public function monitorData()
@@ -35,6 +40,52 @@ class PangolinController extends Controller
         PollCluster::dispatch();
 
         return redirect()->route('pangolin.index', ['tab' => 'monitor'])->with('success', 'Cluster refresh queued.');
+    }
+
+    public function monitorSettingsUpdate(Request $request)
+    {
+        $request->validate([
+            'node_ip' => 'required|ip',
+            'pangolin_url' => 'nullable|url',
+            'api_key' => 'nullable|string',
+        ]);
+
+        $settings = PangolinMonitorSettings::first() ?? new PangolinMonitorSettings();
+        $settings->node_ip = $request->input('node_ip');
+        $settings->pangolin_url = $request->input('pangolin_url') ? rtrim($request->input('pangolin_url'), '/') : null;
+        // Blank means "leave the current key alone" — the field is never
+        // pre-filled with the decrypted value (see _monitor.blade.php), so
+        // there's no other way to distinguish "didn't touch it" from
+        // "wants it cleared"; clearing is intentionally not supported here.
+        if ($request->filled('api_key')) {
+            $settings->api_key = Crypt::encryptString($request->input('api_key'));
+        }
+        $settings->save();
+
+        PollCluster::dispatch();
+
+        return redirect()->route('pangolin.index', ['tab' => 'monitor'])->with('success', 'Monitor settings saved.');
+    }
+
+    public function newtAgentsStore(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'ip' => 'required|ip|unique:pangolin_newt_agents,ip',
+        ]);
+
+        PangolinNewtAgent::create($request->only('name', 'ip'));
+
+        PollCluster::dispatch();
+
+        return redirect()->route('pangolin.index', ['tab' => 'monitor'])->with('success', 'Newt agent added.');
+    }
+
+    public function newtAgentsDestroy(PangolinNewtAgent $agent)
+    {
+        $agent->delete();
+
+        return redirect()->route('pangolin.index', ['tab' => 'monitor'])->with('success', 'Newt agent removed.');
     }
 
     public function logsFetch(Request $request)

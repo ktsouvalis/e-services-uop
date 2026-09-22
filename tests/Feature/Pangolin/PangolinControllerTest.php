@@ -4,9 +4,12 @@ use App\Jobs\Pangolin\PollCluster;
 use App\Jobs\Pangolin\RunImport;
 use App\Jobs\Pangolin\RunLogsFetch;
 use App\Jobs\Pangolin\RunNormalize;
+use App\Models\PangolinMonitorSettings;
+use App\Models\PangolinNewtAgent;
 use App\Models\PangolinRun;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -15,7 +18,6 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 beforeEach(function () {
     config([
         'pangolin.nodes' => [],
-        'pangolin.newt.hosts' => [],
         'pangolin.vip' => null,
     ]);
     enableMenu('pangolin');
@@ -47,6 +49,93 @@ test('monitor data returns statuses grouped by service as json', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)->getJson(route('pangolin.monitor.data'))->assertOk();
+});
+
+test('monitor settings update saves the node ip and url, encrypts the key, and re-polls', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('pangolin.monitor.settings.update'), [
+        'node_ip' => '10.23.2.71',
+        'pangolin_url' => 'https://pangolin.uop.gr/',
+        'api_key' => 'super-secret-key',
+    ])
+        ->assertRedirect(route('pangolin.index', ['tab' => 'monitor']))
+        ->assertSessionHas('success');
+
+    $settings = PangolinMonitorSettings::first();
+    expect($settings->node_ip)->toBe('10.23.2.71');
+    // Trailing slash stripped for consistent concatenation in ClusterMonitor.
+    expect($settings->pangolin_url)->toBe('https://pangolin.uop.gr');
+    expect($settings->api_key)->not->toBe('super-secret-key');
+    expect(Crypt::decryptString($settings->api_key))->toBe('super-secret-key');
+
+    Queue::assertPushed(PollCluster::class, 1);
+});
+
+test('monitor settings update leaves the key untouched when the field is left blank', function () {
+    Queue::fake(); // monitorSettingsUpdate() re-polls on save — without this, PollCluster::dispatch() runs for real under QUEUE_CONNECTION=sync and hits the real network.
+    $user = User::factory()->create();
+    PangolinMonitorSettings::create([
+        'node_ip' => '10.23.2.71',
+        'pangolin_url' => 'https://pangolin.uop.gr',
+        'api_key' => Crypt::encryptString('original-key'),
+    ]);
+
+    $this->actingAs($user)->post(route('pangolin.monitor.settings.update'), [
+        'node_ip' => '10.23.2.72',
+        'pangolin_url' => 'https://pangolin.uop.gr',
+    ])->assertRedirect(route('pangolin.index', ['tab' => 'monitor']));
+
+    $settings = PangolinMonitorSettings::first();
+    expect($settings->node_ip)->toBe('10.23.2.72');
+    expect(Crypt::decryptString($settings->api_key))->toBe('original-key');
+});
+
+test('monitor settings update requires a valid ip', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('pangolin.monitor.settings.update'), ['node_ip' => 'not-an-ip'])
+        ->assertSessionHasErrors('node_ip');
+});
+
+test('newt agents can be added, re-polling immediately, and duplicate ips are rejected', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('pangolin.monitor.newt-agents.store'), [
+        'name' => 'patra',
+        'ip' => '10.23.2.60',
+    ])->assertRedirect(route('pangolin.index', ['tab' => 'monitor']));
+
+    expect(PangolinNewtAgent::where('ip', '10.23.2.60')->first()?->name)->toBe('patra');
+    Queue::assertPushed(PollCluster::class, 1);
+
+    $this->actingAs($user)->post(route('pangolin.monitor.newt-agents.store'), [
+        'name' => 'patra-again',
+        'ip' => '10.23.2.60',
+    ])->assertSessionHasErrors('ip');
+});
+
+test('newt agents require a name and a valid ip', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('pangolin.monitor.newt-agents.store'), [])
+        ->assertSessionHasErrors(['name', 'ip']);
+
+    $this->actingAs($user)->post(route('pangolin.monitor.newt-agents.store'), [
+        'name' => 'patra', 'ip' => 'not-an-ip',
+    ])->assertSessionHasErrors('ip');
+});
+
+test('a newt agent can be removed', function () {
+    $user = User::factory()->create();
+    $agent = PangolinNewtAgent::create(['name' => 'patra', 'ip' => '10.23.2.60']);
+
+    $this->actingAs($user)->delete(route('pangolin.monitor.newt-agents.destroy', $agent))
+        ->assertRedirect(route('pangolin.index', ['tab' => 'monitor']));
+
+    expect(PangolinNewtAgent::find($agent->id))->toBeNull();
 });
 
 test('logs fetch rejects an out-of-range lookback and otherwise queues a run', function () {

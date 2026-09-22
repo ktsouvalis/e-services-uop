@@ -113,6 +113,9 @@ Route::prefix('pangolin')->middleware(['auth', PangolinEnabled::class])->name('p
     Route::get('/', [PangolinController::class, 'index'])->name('index');
     Route::get('/monitor/data', [PangolinController::class, 'monitorData'])->name('monitor.data');
     Route::post('/monitor/refresh', [PangolinController::class, 'monitorRefresh'])->name('monitor.refresh');
+    Route::post('/monitor/settings', [PangolinController::class, 'monitorSettingsUpdate'])->name('monitor.settings.update');
+    Route::post('/monitor/newt-agents', [PangolinController::class, 'newtAgentsStore'])->name('monitor.newt-agents.store');
+    Route::delete('/monitor/newt-agents/{agent}', [PangolinController::class, 'newtAgentsDestroy'])->name('monitor.newt-agents.destroy');
     Route::post('/logs/fetch', [PangolinController::class, 'logsFetch'])->name('logs.fetch');
     Route::get('/logs/{run}/download', [PangolinController::class, 'logsDownload'])->name('logs.download');
     Route::post('/resources/import', [PangolinController::class, 'resourcesImport'])->name('resources.import');
