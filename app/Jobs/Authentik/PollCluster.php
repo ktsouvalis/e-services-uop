@@ -26,7 +26,7 @@ class PollCluster implements ShouldQueue
     {
         foreach ($monitor->run() as $row) {
             AuthentikMonitorStatus::updateOrCreate(
-                ['service' => $row['service'], 'node_ip' => $row['node_ip']],
+                ['service' => $row['service']],
                 $row,
             );
         }

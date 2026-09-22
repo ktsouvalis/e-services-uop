@@ -99,6 +99,28 @@ test('a rejected or errored task queue degrades or fails the worker_queue row', 
     expect(AuthentikMonitorStatus::where('service', 'worker_queue')->first()->status)->toBe('degraded');
 });
 
+test('polling before and after settings are first saved does not fork the authentik row', function () {
+    // Regression: the upsert used to key on ['service', 'node_ip'], and the
+    // pre-config poll writes node_ip '-'. Once real settings are saved, a
+    // later poll uses the real IP, which used to insert a second
+    // 'authentik' row instead of updating the placeholder one.
+    PollCluster::dispatch();
+    expect(AuthentikMonitorStatus::where('service', 'authentik')->count())->toBe(1);
+
+    fakeAuthentikSettings(withToken: false);
+    Http::fake([
+        'https://10.23.2.71/-/health/live/' => Http::response('', 200),
+        'http://10.23.2.71:8080/nginx_status' => Http::response('Active connections: 1', 200),
+    ]);
+
+    PollCluster::dispatch();
+
+    expect(AuthentikMonitorStatus::where('service', 'authentik')->count())->toBe(1);
+    $row = AuthentikMonitorStatus::where('service', 'authentik')->first();
+    expect($row->node_ip)->toBe('10.23.2.71');
+    expect($row->status)->toBe('up');
+});
+
 test('polling twice upserts the same row per service instead of accumulating duplicates', function () {
     fakeAuthentikSettings(withToken: false);
     Http::fake([
