@@ -163,7 +163,7 @@ test('a resource with real UDP ports gets a niceId that incorporates them alongs
         && $request['udpPortRangeString'] === '53');
 });
 
-test('a UDP wildcard ("*") skips niceId enforcement entirely, same as a TCP wildcard would', function () {
+test('a UDP value that is not a parseable port list (e.g. "*") is forced blocked, not left open', function () {
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'whatever', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '*', 'disableIcmp' => true,
@@ -174,11 +174,38 @@ test('a UDP wildcard ("*") skips niceId enforcement entirely, same as a TCP wild
 
     RunNormalize::dispatch($run);
 
-    // Nothing else about this resource needs fixing (name/access/enable/icmp
-    // are all already correct) — with niceId enforcement skipped, that means
-    // a true no-op, not just "niceId untouched".
+    // A wildcard/garbage udpPortRangeString means "nobody deliberately
+    // assigned UDP ports", not "unknown, skip enforcement" — TCP is still a
+    // plain single-port list here, so niceId IS computed and fixed, with an
+    // empty UDP segment (not skipped as it would be for a TCP wildcard).
     expect($run->fresh()->summary)->toBe(['OK' => 1]);
-    Http::assertNotSent(fn ($request) => in_array($request->method(), ['PUT', 'POST'], true));
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
+        && $request->method() === 'POST'
+        && $request['niceId'] === 'ktsouvalis-2302-50-p22'
+        // and the stored wildcard is actively replaced with blank, not
+        // echoed back unchanged the way tcpPortRangeString always is.
+        && $request['udpPortRangeString'] === '');
+});
+
+test('UDP is still forced blocked even when TCP is a wildcard that skips niceId enforcement', function () {
+    fakePangolinNormalizeApi([
+        ['siteResourceId' => 100, 'niceId' => 'whatever', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',
+            'destination' => '10.23.2.50', 'tcpPortRangeString' => '*', 'udpPortRangeString' => '*', 'disableIcmp' => true,
+            'enabled' => true, 'siteIds' => [5]],
+    ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
+
+    $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
+
+    RunNormalize::dispatch($run);
+
+    // TCP's own wildcard still has no discrete ports segment to compute, so
+    // niceId enforcement stays skipped for it — but that's independent of
+    // the UDP fix, which fires regardless of whether TCP is resolvable.
+    expect($run->fresh()->summary)->toBe(['OK' => 1]);
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
+        && $request->method() === 'POST'
+        && ! array_key_exists('niceId', $request->data())
+        && $request['udpPortRangeString'] === '');
 });
 
 test('a 0-user resource with real UDP ports resolves via the dual-protocol niceId reversal', function () {

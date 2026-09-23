@@ -65,14 +65,21 @@ class NormalizeProcessor
 
         $tcpPorts = ResourceNaming::expectedPorts($res['tcpPortRangeString'] ?? null);
         // A blank/empty udpPortRangeString means "no UDP ports" (the common
-        // case — most private resources still block UDP entirely), not
-        // "unparseable" — treated as an empty list, not null, so it alone
-        // never disables niceId enforcement the way a genuine wildcard
-        // (e.g. "*") does. expectedPorts() itself can't tell those apart
-        // (both are "" to it), so that distinction is made here instead.
+        // case — most private resources still block UDP entirely). Anything
+        // else that isn't a plain comma-separated port/range list — in
+        // practice almost always a "*" wildcard — is treated the same way,
+        // not as "unparseable, skip enforcement": unlike TCP (where a
+        // wildcard can be a deliberate wide-open resource this tooling
+        // leaves alone), there's no legitimate reason a resource should have
+        // literal "all UDP ports" open, so a non-list value here just means
+        // nobody has deliberately assigned UDP ports and it should be forced
+        // back to blank — actively enforced below, the same way disableIcmp
+        // always is, not just echoed back unchanged like tcpPortRangeString.
         $rawUdp = trim((string) ($res['udpPortRangeString'] ?? ''));
-        $udpPorts = $rawUdp === '' ? [] : ResourceNaming::expectedPorts($res['udpPortRangeString']);
-        $portsKnown = $tcpPorts !== null && $udpPorts !== null;
+        $parsedUdp = $rawUdp === '' ? [] : ResourceNaming::expectedPorts($res['udpPortRangeString']);
+        $udpPorts = $parsedUdp ?? [];
+        $needsUdpBlockFix = $rawUdp !== '' && $parsedUdp === null;
+        $portsKnown = $tcpPorts !== null;
 
         $users = $this->api->getResourceUsers($resourceId);
         $row['current_users'] = implode(', ', array_map(
@@ -92,7 +99,7 @@ class NormalizeProcessor
             $notes[] = 'unexpected role(s) attached (roles='.json_encode($roleNames).') -- not modified, review manually';
         }
         if (! $portsKnown) {
-            $notes[] = "niceId not checked: tcpPortRangeString '".($res['tcpPortRangeString'] ?? '')."' / udpPortRangeString '".($res['udpPortRangeString'] ?? '')."' isn't a plain comma-separated list of ports/ranges";
+            $notes[] = "niceId not checked: tcpPortRangeString '".($res['tcpPortRangeString'] ?? '')."' isn't a plain comma-separated list of ports/ranges";
         }
 
         if (count($users) === 0) {
@@ -148,7 +155,7 @@ class NormalizeProcessor
                         'destination' => $res['destination'],
                         'siteIds' => $res['siteIds'],
                         'tcpPortRangeString' => $res['tcpPortRangeString'] ?? '',
-                        'udpPortRangeString' => $res['udpPortRangeString'] ?? '',
+                        'udpPortRangeString' => $needsUdpBlockFix ? '' : ($res['udpPortRangeString'] ?? ''),
                         // Actively enforced (always true), not just echoed
                         // back — ICMP is meant to always be blocked.
                         'disableIcmp' => true,
@@ -211,7 +218,7 @@ class NormalizeProcessor
 
         $reason = $notes ? implode('; ', $notes) : null;
 
-        if (! ($needsRename || $needsNiceIdFix || $needsAccessFix || $needsEnableFix || $needsIcmpFix)) {
+        if (! ($needsRename || $needsNiceIdFix || $needsAccessFix || $needsEnableFix || $needsIcmpFix || $needsUdpBlockFix)) {
             $row['status'] = 'OK';
             $row['reason'] = $reason;
 
@@ -227,6 +234,9 @@ class NormalizeProcessor
         }
         if ($needsIcmpFix) {
             $actions[] = 'block_icmp';
+        }
+        if ($needsUdpBlockFix) {
+            $actions[] = 'block_udp';
         }
         if ($needsEnableFix) {
             $actions[] = 'enable';
@@ -263,7 +273,7 @@ class NormalizeProcessor
                     array_map(fn ($u) => "<no-email:{$u}> -> dropped (no email to split to)", $unsplittableUsers)));
             }
 
-            if ($needsRename || $needsNiceIdFix || $needsEnableFix || $needsIcmpFix) {
+            if ($needsRename || $needsNiceIdFix || $needsEnableFix || $needsIcmpFix || $needsUdpBlockFix) {
                 $updateFields = [];
                 if ($needsRename) {
                     $updateFields['name'] = $expectedName;
@@ -283,9 +293,11 @@ class NormalizeProcessor
                 $updateFields['siteIds'] = $res['siteIds'];
                 // Confirmed live Pangolin behavior: omitting tcp/udp on an
                 // update doesn't leave them alone, it resets udp back to
-                // "all". Always re-assert current values.
+                // "all". Always re-assert current values -- except udp when
+                // it needs blocking, where the point is to actively replace
+                // whatever's currently stored (e.g. "*") with blank.
                 $updateFields['tcpPortRangeString'] = $res['tcpPortRangeString'] ?? '';
-                $updateFields['udpPortRangeString'] = $res['udpPortRangeString'] ?? '';
+                $updateFields['udpPortRangeString'] = $needsUdpBlockFix ? '' : ($res['udpPortRangeString'] ?? '');
                 // Unlike tcp/udp (only ever echoed back), disableIcmp is
                 // actively enforced — always sent as true.
                 $updateFields['disableIcmp'] = true;
