@@ -8,9 +8,19 @@ use Illuminate\Support\Facades\Http;
  * PHP client for the Pangolin Integration API, ported from create_private_resources.py
  * / normalize_private_resources.py's shared request helpers (api_headers(),
  * get_all_pages(), verify_org(), get_sites(), etc. — see pangolin-utils'
- * CLAUDE.md for the Integration API's own background: a separate, opt-in
- * service from the dashboard/monitoring endpoints, base_url already includes
- * the org's own /int-api-style path prefix up to (not including) "/v1").
+ * CLAUDE.md for the Integration API's own background: a genuinely separate
+ * backend process (port 3003 on the `pangolin` container on akropolis-2),
+ * distinct from both the Next.js dashboard (port 3002) and the dashboard's
+ * own session-cookie-authenticated "Dashboard API server" (port 3000, the
+ * only one Traefik actually publishes externally, at /api/v1 on
+ * pangolin.uop.gr — NOT this Integration API, even though both are
+ * versioned under /v1 and a Bearer API key gets an identical generic 401
+ * from port 3000 whether the key is valid, garbage, or absent). Port 3003
+ * isn't exposed publicly at all (confirmed live 2026-09-23 after a Pangolin
+ * node migration dropped the old /int-api Traefik rule that used to proxy
+ * it) — reached instead via the `pangolin-tunnel` compose service's SSH
+ * local-forward, so base_url is that container's own host:port and has no
+ * path prefix at all; this class appends "/v1/..." itself.
  */
 class PangolinApiClient
 {
