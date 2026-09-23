@@ -115,6 +115,7 @@ Route::prefix('pangolin')->middleware(['auth', PangolinEnabled::class])->name('p
     Route::get('/resources/{run}/download', [PangolinController::class, 'resourcesDownload'])->name('resources.download');
 
     Route::post('/newt-connections/fetch', [PangolinController::class, 'newtConnectionsFetch'])->name('newt-connections.fetch');
+    Route::get('/newt-connections/export', [PangolinController::class, 'connectionsExport'])->name('newt-connections.export');
     Route::resource('newt-agents', PangolinNewtAgentController::class)->except(['index', 'show']);
 });
 

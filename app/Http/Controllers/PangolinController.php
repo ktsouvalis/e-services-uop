@@ -10,6 +10,9 @@ use App\Models\PangolinNewtConnection;
 use App\Models\PangolinRun;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Ods;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class PangolinController extends Controller
 {
@@ -20,10 +23,15 @@ class PangolinController extends Controller
 
         $newtAgents = PangolinNewtAgent::orderBy('name')->get();
         $newtConnectionRuns = PangolinRun::ofType('newt_connections')->with('user')->latest()->take(10)->get();
-        $connections = $this->filteredConnections($request);
+        $connections = $this->connectionsQuery($request)->paginate(25)->withQueryString();
+        // Sourced from the connections themselves (not a live Pangolin
+        // Postgres query on every page load) — same site_name values the
+        // Site column already displays. A newly added agent with no fetch
+        // yet just won't have a site to filter by until one runs.
+        $sites = PangolinNewtConnection::whereNotNull('site_name')->distinct()->orderBy('site_name')->pluck('site_name');
 
         return view('pangolin.index', compact(
-            'importRuns', 'normalizeRuns', 'newtAgents', 'newtConnectionRuns', 'connections',
+            'importRuns', 'normalizeRuns', 'newtAgents', 'newtConnectionRuns', 'connections', 'sites',
         ));
     }
 
@@ -40,15 +48,20 @@ class PangolinController extends Controller
         return redirect()->route('pangolin.index', ['tab' => 'connections'])->with('success', 'Fetch queued.');
     }
 
-    private function filteredConnections(Request $request)
+    /**
+     * Shared by index() (paginated) and connectionsExport() (the full
+     * matching set) — same filters apply to both, so "export" genuinely
+     * means "export what you're looking at."
+     */
+    private function connectionsQuery(Request $request)
     {
         return PangolinNewtConnection::query()
             ->when($request->filled('user'), function ($q) use ($request) {
                 $term = "%{$request->input('user')}%";
                 $q->where(fn ($q) => $q->where('user_name', 'like', $term)->orWhere('user_email', 'like', $term));
             })
-            ->when($request->filled('agent_id'), fn ($q) => $q->where('newt_agent_id', $request->input('agent_id')))
-            ->when($request->filled('proto'), fn ($q) => $q->where('proto', $request->input('proto')))
+            ->when($request->filled('site'), fn ($q) => $q->where('site_name', $request->input('site')))
+            ->when($request->filled('resource'), fn ($q) => $q->where('resource_name', 'like', "%{$request->input('resource')}%"))
             // The date inputs are calendar days as the (Athens-based) user
             // reads them, not UTC — started_at is stored/queried in UTC, so
             // a naive string comparison would be off by the UTC offset
@@ -66,9 +79,54 @@ class PangolinController extends Controller
             // real fetch), so without it ties have no guaranteed order and
             // can appear to shuffle between page loads.
             ->orderByDesc('started_at')
-            ->orderByDesc('id')
-            ->paginate(25)
-            ->withQueryString();
+            ->orderByDesc('id');
+    }
+
+    public function connectionsExport(Request $request)
+    {
+        $format = $request->query('format', 'xlsx');
+        abort_unless(in_array($format, ['xlsx', 'ods'], true), 404);
+
+        $connections = $this->connectionsQuery($request)->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Newt connections');
+        $sheet->fromArray(['Started (Athens time)', 'Duration', 'Who', 'Client', 'Site', 'Resource', 'Destination'], null, 'A1');
+
+        $row = 2;
+        foreach ($connections as $connection) {
+            $sheet->fromArray([
+                $connection->started_at_local->format('Y-m-d H:i:s'),
+                $connection->ended_at
+                    ? $connection->started_at->diffForHumans($connection->ended_at, true)
+                    : 'ongoing',
+                $connection->user_name ?: ($connection->user_email ?: $connection->src_ip),
+                $connection->client_name ?: '—',
+                $connection->site_name ?: "site#{$connection->resource_id}",
+                $connection->resource_name ?: '—',
+                "{$connection->dst_ip}:{$connection->dst_port}",
+            ], null, "A{$row}");
+            $row++;
+        }
+        foreach (range('A', 'G') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        $writer = $format === 'ods' ? new Ods($spreadsheet) : new Xlsx($spreadsheet);
+        $mimeType = $format === 'ods'
+            ? 'application/vnd.oasis.opendocument.spreadsheet'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+        $filename = 'newt-connections-'.now()->format('Y-m-d').".{$format}";
+        $directory = storage_path('app/private/pangolin/exports');
+        if (! is_dir($directory)) {
+            mkdir($directory, 0777, true);
+        }
+        $path = "{$directory}/{$filename}";
+        $writer->save($path);
+
+        return response()->download($path, $filename, ['Content-Type' => $mimeType])->deleteFileAfterSend();
     }
 
     public function resourcesImport(Request $request)

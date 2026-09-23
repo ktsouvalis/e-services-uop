@@ -17,21 +17,17 @@
             <input type="text" name="user" id="filter_user" value="{{ request('user') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
         </div>
         <div>
-            <label for="filter_agent" class="block text-xs font-medium text-gray-700">{{ __('Agent') }}</label>
-            <select name="agent_id" id="filter_agent" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
+            <label for="filter_site" class="block text-xs font-medium text-gray-700">{{ __('Site') }}</label>
+            <select name="site" id="filter_site" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
                 <option value="">{{ __('Any') }}</option>
-                @foreach ($newtAgents as $agent)
-                    <option value="{{ $agent->id }}" {{ (string) request('agent_id') === (string) $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
+                @foreach ($sites as $site)
+                    <option value="{{ $site }}" {{ request('site') === $site ? 'selected' : '' }}>{{ $site }}</option>
                 @endforeach
             </select>
         </div>
         <div>
-            <label for="filter_proto" class="block text-xs font-medium text-gray-700">{{ __('Protocol') }}</label>
-            <select name="proto" id="filter_proto" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                <option value="">{{ __('Any') }}</option>
-                <option value="tcp" {{ request('proto') === 'tcp' ? 'selected' : '' }}>TCP</option>
-                <option value="udp" {{ request('proto') === 'udp' ? 'selected' : '' }}>UDP</option>
-            </select>
+            <label for="filter_resource" class="block text-xs font-medium text-gray-700">{{ __('Resource') }}</label>
+            <input type="text" name="resource" id="filter_resource" value="{{ request('resource') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
         </div>
         <div>
             <label for="filter_from" class="block text-xs font-medium text-gray-700">{{ __('From') }}</label>
@@ -41,10 +37,13 @@
             <label for="filter_to" class="block text-xs font-medium text-gray-700">{{ __('To') }}</label>
             <input type="date" name="to" id="filter_to" value="{{ request('to') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
         </div>
-        <div class="sm:col-span-6 flex justify-end gap-3">
-            @if (request()->hasAny(['user', 'agent_id', 'proto', 'from', 'to']))
-                <a href="{{ route('pangolin.index', ['tab' => 'connections']) }}" class="text-sm text-gray-500 self-center hover:underline">{{ __('Clear filters') }}</a>
+        <div class="sm:col-span-6 flex items-center justify-end gap-3">
+            @if (request()->hasAny(['user', 'site', 'resource', 'from', 'to']))
+                <a href="{{ route('pangolin.index', ['tab' => 'connections']) }}" class="text-sm text-gray-500 hover:underline">{{ __('Clear filters') }}</a>
             @endif
+            <span class="text-sm text-gray-500">{{ __('Export') }}:</span>
+            <a href="{{ route('pangolin.newt-connections.export', array_merge(request()->only(['user', 'site', 'resource', 'from', 'to']), ['format' => 'xlsx'])) }}" class="text-sm text-blue-600 hover:underline">xlsx</a>
+            <a href="{{ route('pangolin.newt-connections.export', array_merge(request()->only(['user', 'site', 'resource', 'from', 'to']), ['format' => 'ods'])) }}" class="text-sm text-blue-600 hover:underline">ods</a>
             <x-primary-button>{{ __('Filter') }}</x-primary-button>
         </div>
     </form>
@@ -59,7 +58,7 @@
                     <th class="px-3 py-2">{{ __('Client') }}</th>
                     <th class="px-3 py-2">{{ __('Site') }}</th>
                     <th class="px-3 py-2">{{ __('Resource') }}</th>
-                    <th class="px-3 py-2">{{ __('Proto') }}</th>
+                    {{-- <th class="px-3 py-2">{{ __('Proto') }}</th> --}}
                     <th class="px-3 py-2">{{ __('Destination') }}</th>
                 </tr>
             </thead>
@@ -78,12 +77,12 @@
                         <td class="px-3 py-2 text-gray-500">{{ $connection->client_name ?: '—' }}</td>
                         <td class="px-3 py-2">{{ $connection->site_name ?: "site#{$connection->resource_id}" }}</td>
                         <td class="px-3 py-2 text-gray-500">{{ $connection->resource_name ?: '—' }}</td>
-                        <td class="px-3 py-2 uppercase text-gray-500">{{ $connection->proto }}</td>
+                        {{-- <td class="px-3 py-2 uppercase text-gray-500">{{ $connection->proto }}</td> --}}
                         <td class="px-3 py-2 text-gray-500">{{ $connection->dst_ip }}:{{ $connection->dst_port }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-3 py-6 text-center text-gray-500">{{ __('No connections recorded yet — click "Fetch now" to pull from the configured Newt agents.') }}</td>
+                        <td colspan="7" class="px-3 py-6 text-center text-gray-500">{{ __('No connections recorded yet — click "Fetch now" to pull from the configured Newt agents.') }}</td>
                     </tr>
                 @endforelse
             </tbody>

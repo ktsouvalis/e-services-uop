@@ -120,6 +120,43 @@ test('the index page lists newt agents and filters the connections list by user'
     expect($response['connections']->first()->user_name)->toBe('Kostas Tsouvalis');
 });
 
+test('the connections list is filtered by resource name', function () {
+    $user = User::factory()->create();
+    $agent = PangolinNewtAgent::factory()->create();
+    $wanted = PangolinNewtConnection::factory()->create([
+        'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+        'resource_name' => 'patra-ktsouvalis-2302-50', 'started_at' => now(),
+    ]);
+    PangolinNewtConnection::factory()->create([
+        'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+        'resource_name' => 'rustdesk-telefos', 'started_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user)->get(route('pangolin.index', ['tab' => 'connections', 'resource' => 'ktsouvalis']));
+
+    expect($response['connections']->total())->toBe(1);
+    expect($response['connections']->first()->id)->toBe($wanted->id);
+});
+
+test('the connections list is filtered by site, and the site dropdown is sourced from distinct site names on the connections themselves', function () {
+    $user = User::factory()->create();
+    $agent = PangolinNewtAgent::factory()->create();
+    $wanted = PangolinNewtConnection::factory()->create([
+        'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+        'site_name' => 'Patras', 'started_at' => now(),
+    ]);
+    PangolinNewtConnection::factory()->create([
+        'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+        'site_name' => 'Kalamata', 'started_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user)->get(route('pangolin.index', ['tab' => 'connections', 'site' => 'Patras']));
+
+    expect($response['sites']->all())->toEqualCanonicalizing(['Kalamata', 'Patras']);
+    expect($response['connections']->total())->toBe(1);
+    expect($response['connections']->first()->id)->toBe($wanted->id);
+});
+
 test('the from/to date filters treat the picked dates as Athens calendar days, not UTC ones', function () {
     $user = User::factory()->create();
     $agent = PangolinNewtAgent::factory()->create();
