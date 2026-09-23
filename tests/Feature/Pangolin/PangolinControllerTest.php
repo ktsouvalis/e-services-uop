@@ -1,7 +1,10 @@
 <?php
 
+use App\Jobs\Pangolin\FetchNewtConnections;
 use App\Jobs\Pangolin\RunImport;
 use App\Jobs\Pangolin\RunNormalize;
+use App\Models\PangolinNewtAgent;
+use App\Models\PangolinNewtConnection;
 use App\Models\PangolinRun;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -82,4 +85,72 @@ test('resources download 404s for a run of the wrong type or a missing file', fu
 
     $normalizeRun = PangolinRun::factory()->create(['type' => 'normalize', 'user_id' => $user->id, 'report_path' => null]);
     $this->actingAs($user)->get(route('pangolin.resources.download', $normalizeRun))->assertNotFound();
+});
+
+test('newt connections fetch creates a queued run and dispatches the job', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('pangolin.newt-connections.fetch'))
+        ->assertRedirect(route('pangolin.index', ['tab' => 'connections']));
+
+    $run = PangolinRun::first();
+    expect($run->type)->toBe('newt_connections');
+    expect($run->status)->toBe('queued');
+    Queue::assertPushed(FetchNewtConnections::class, 1);
+});
+
+test('the index page lists newt agents and filters the connections list by user', function () {
+    $user = User::factory()->create();
+    $agent = PangolinNewtAgent::factory()->create(['name' => 'patra']);
+    PangolinNewtConnection::factory()->create([
+        'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+        'user_name' => 'Kostas Tsouvalis', 'started_at' => now(),
+    ]);
+    PangolinNewtConnection::factory()->create([
+        'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+        'user_name' => 'Someone Else', 'started_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user)->get(route('pangolin.index', ['tab' => 'connections', 'user' => 'Tsouvalis']));
+
+    $response->assertOk();
+    expect($response['newtAgents']->pluck('name'))->toContain('patra');
+    expect($response['connections']->total())->toBe(1);
+    expect($response['connections']->first()->user_name)->toBe('Kostas Tsouvalis');
+});
+
+test('the from/to date filters treat the picked dates as Athens calendar days, not UTC ones', function () {
+    $user = User::factory()->create();
+    $agent = PangolinNewtAgent::factory()->create();
+
+    // 2026-09-21 20:00 UTC is still 2026-09-21 23:00 in Athens (UTC+3, ahead
+    // of UTC) — a naive string comparison against 'from=2026-09-22' would
+    // wrongly exclude the row below (true Athens midnight) while a UTC-only
+    // comparison against 'to=2026-09-22' would wrongly include this one.
+    $stillAthensSept21 = PangolinNewtConnection::factory()->create([
+        'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+        'started_at' => '2026-09-21 20:00:00',
+    ]);
+    // 2026-09-21 22:00 UTC is 2026-09-22 01:00 in Athens — must be included.
+    $justAfterAthensMidnight = PangolinNewtConnection::factory()->create([
+        'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+        'started_at' => '2026-09-21 22:00:00',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('pangolin.index', [
+        'tab' => 'connections', 'from' => '2026-09-22', 'to' => '2026-09-22',
+    ]));
+
+    $ids = $response['connections']->pluck('id');
+    expect($ids)->not->toContain($stillAthensSept21->id);
+    expect($ids)->toContain($justAfterAthensMidnight->id);
+});
+
+test('started_at_local converts the stored UTC timestamp to Europe/Athens', function () {
+    $connection = PangolinNewtConnection::factory()->create(['started_at' => '2026-09-22 10:00:00']);
+
+    expect($connection->started_at_local->format('Y-m-d H:i:s'))->toBe('2026-09-22 13:00:00');
+    // The original UTC value is untouched by reading the local accessor.
+    expect($connection->started_at->format('Y-m-d H:i:s'))->toBe('2026-09-22 10:00:00');
 });

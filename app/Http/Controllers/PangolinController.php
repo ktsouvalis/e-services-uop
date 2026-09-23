@@ -2,19 +2,73 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\Pangolin\FetchNewtConnections;
 use App\Jobs\Pangolin\RunImport;
 use App\Jobs\Pangolin\RunNormalize;
+use App\Models\PangolinNewtAgent;
+use App\Models\PangolinNewtConnection;
 use App\Models\PangolinRun;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class PangolinController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $importRuns = PangolinRun::ofType('import')->with('user')->latest()->take(10)->get();
         $normalizeRuns = PangolinRun::ofType('normalize')->with('user')->latest()->take(10)->get();
 
-        return view('pangolin.index', compact('importRuns', 'normalizeRuns'));
+        $newtAgents = PangolinNewtAgent::orderBy('name')->get();
+        $newtConnectionRuns = PangolinRun::ofType('newt_connections')->with('user')->latest()->take(10)->get();
+        $connections = $this->filteredConnections($request);
+
+        return view('pangolin.index', compact(
+            'importRuns', 'normalizeRuns', 'newtAgents', 'newtConnectionRuns', 'connections',
+        ));
+    }
+
+    public function newtConnectionsFetch()
+    {
+        $run = PangolinRun::create([
+            'type' => 'newt_connections',
+            'user_id' => auth()->id(),
+            'status' => 'queued',
+        ]);
+
+        FetchNewtConnections::dispatch($run);
+
+        return redirect()->route('pangolin.index', ['tab' => 'connections'])->with('success', 'Fetch queued.');
+    }
+
+    private function filteredConnections(Request $request)
+    {
+        return PangolinNewtConnection::query()
+            ->when($request->filled('user'), function ($q) use ($request) {
+                $term = "%{$request->input('user')}%";
+                $q->where(fn ($q) => $q->where('user_name', 'like', $term)->orWhere('user_email', 'like', $term));
+            })
+            ->when($request->filled('agent_id'), fn ($q) => $q->where('newt_agent_id', $request->input('agent_id')))
+            ->when($request->filled('proto'), fn ($q) => $q->where('proto', $request->input('proto')))
+            // The date inputs are calendar days as the (Athens-based) user
+            // reads them, not UTC — started_at is stored/queried in UTC, so
+            // a naive string comparison would be off by the UTC offset
+            // (currently +3h) from what the picked date actually means
+            // locally. Matches started_at_local's display conversion on
+            // App\Models\PangolinNewtConnection.
+            ->when($request->filled('from'), fn ($q) => $q->where(
+                'started_at', '>=', Carbon::parse($request->input('from'), 'Europe/Athens')->startOfDay()->timezone('UTC'),
+            ))
+            ->when($request->filled('to'), fn ($q) => $q->where(
+                'started_at', '<=', Carbon::parse($request->input('to'), 'Europe/Athens')->endOfDay()->timezone('UTC'),
+            ))
+            // id desc as a tiebreaker: started_at alone isn't unique (several
+            // sessions can share the same second, see e.g. rows 89-91 in a
+            // real fetch), so without it ties have no guaranteed order and
+            // can appear to shuffle between page loads.
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
     }
 
     public function resourcesImport(Request $request)

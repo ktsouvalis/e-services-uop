@@ -6,6 +6,7 @@ test('guests are redirected to login rather than reaching any pangolin route una
     $this->get(route('pangolin.index'))->assertRedirect(route('login'));
     $this->post(route('pangolin.resources.import'))->assertRedirect(route('login'));
     $this->post(route('pangolin.resources.normalize'))->assertRedirect(route('login'));
+    $this->post(route('pangolin.newt-connections.fetch'))->assertRedirect(route('login'));
 });
 
 test('menu disabled forbids every pangolin route even for an authenticated user', function () {
@@ -15,6 +16,7 @@ test('menu disabled forbids every pangolin route even for an authenticated user'
     $this->actingAs($user)->get(route('pangolin.index'))->assertForbidden();
     $this->actingAs($user)->post(route('pangolin.resources.import'))->assertForbidden();
     $this->actingAs($user)->post(route('pangolin.resources.normalize'))->assertForbidden();
+    $this->actingAs($user)->post(route('pangolin.newt-connections.fetch'))->assertForbidden();
 });
 
 test('a non-admin authenticated user can reach pangolin once its menu is enabled', function () {

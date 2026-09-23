@@ -20,6 +20,7 @@ use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogReaderController;
 use App\Http\Controllers\PangolinController;
+use App\Http\Controllers\PangolinNewtAgentController;
 use App\Http\Controllers\NetworkLookupController;
 use App\Http\Controllers\NetworkDeviceController;
 use App\Http\Controllers\SheetmailerController;
@@ -112,6 +113,9 @@ Route::prefix('pangolin')->middleware(['auth', PangolinEnabled::class])->name('p
     Route::post('/resources/import', [PangolinController::class, 'resourcesImport'])->name('resources.import');
     Route::post('/resources/normalize', [PangolinController::class, 'resourcesNormalize'])->name('resources.normalize');
     Route::get('/resources/{run}/download', [PangolinController::class, 'resourcesDownload'])->name('resources.download');
+
+    Route::post('/newt-connections/fetch', [PangolinController::class, 'newtConnectionsFetch'])->name('newt-connections.fetch');
+    Route::resource('newt-agents', PangolinNewtAgentController::class)->except(['index', 'show']);
 });
 
 Route::prefix('network-lookup')->middleware(['auth', NetworkLookupEnabled::class])->name('network-lookup.')->group(function () {
