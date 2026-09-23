@@ -23,7 +23,11 @@ class PangolinController extends Controller
 
         $newtAgents = PangolinNewtAgent::orderBy('name')->get();
         $newtConnectionRuns = PangolinRun::ofType('newt_connections')->with('user')->latest()->take(10)->get();
-        $connections = $this->connectionsQuery($request)->paginate(25)->withQueryString();
+        $connections = $this->connectionsQuery($request)->paginate(25)->withQueryString()
+            // Pin the tab explicitly — the URL's ?tab= is only client-side
+            // (history.replaceState) when the tab was switched by click, so
+            // withQueryString() alone would link back to the Import tab.
+            ->appends(['tab' => 'connections']);
         // Sourced from the connections themselves (not a live Pangolin
         // Postgres query on every page load) — same site_name values the
         // Site column already displays. A newly added agent with no fetch

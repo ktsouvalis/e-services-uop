@@ -120,6 +120,18 @@ test('the index page lists newt agents and filters the connections list by user'
     expect($response['connections']->first()->user_name)->toBe('Kostas Tsouvalis');
 });
 
+test('connections pagination links keep the connections tab even when the page was loaded without ?tab=', function () {
+    $user = User::factory()->create();
+    $agent = PangolinNewtAgent::factory()->create();
+    PangolinNewtConnection::factory()->count(30)->create([
+        'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+    ]);
+
+    $response = $this->actingAs($user)->get(route('pangolin.index'));
+
+    expect($response['connections']->nextPageUrl())->toContain('tab=connections');
+});
+
 test('the connections list is filtered by resource name', function () {
     $user = User::factory()->create();
     $agent = PangolinNewtAgent::factory()->create();
