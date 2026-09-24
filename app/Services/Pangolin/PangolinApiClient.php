@@ -36,7 +36,12 @@ class PangolinApiClient
 
     private function http()
     {
-        return Http::withToken(config('pangolin.api_key'));
+        // Without an explicit timeout every call falls back to Laravel's 30s
+        // default, so a stalled tunnel turned one import into many minutes of
+        // hanging instead of failing fast.
+        return Http::withToken(config('pangolin.api_key'))
+            ->connectTimeout(config('pangolin.http_timeout'))
+            ->timeout(config('pangolin.http_timeout'));
     }
 
     /** GET /v1/org/{orgSlug} — sanity-checks the org/api key before anything else. */
@@ -62,15 +67,16 @@ class PangolinApiClient
     /**
      * sanitized local-part -> [[email, userId], ...] across every org user —
      * ported from normalize_private_resources.py's build_org_email_index().
-     * Unlike buildUserIndex() (flat email->userId, used by Import), this
-     * groups by *sanitized* local part and keeps every match, since more
-     * than one org account can share one (see NormalizeResolver's own
-     * EMAIL_DOMAIN_PRIORITY tie-break for why).
+     * Used by both Import and Normalize. Groups by *sanitized* local part
+     * and keeps every match, since more than one org account can share one
+     * (see NormalizeResolver's own EMAIL_DOMAIN_PRIORITY tie-break for why).
      */
     public function buildOrgEmailIndex(): array
     {
         $index = [];
         foreach ($this->listUsers() as $u) {
+            // User rows show up flat ({email, id}) or nested under {user:
+            // {email, id}} depending on the endpoint/Pangolin version.
             $email = strtolower((string) ($u['email'] ?? $u['user']['email'] ?? ''));
             $uid = $u['id'] ?? $u['user']['id'] ?? null;
             if ($email === '' || $uid === null) {
@@ -117,26 +123,6 @@ class PangolinApiClient
         $this->http()
             ->post("{$this->baseUrl()}/v1/site-resource/{$siteResourceId}/users", ['userIds' => $userIds])
             ->throw();
-    }
-
-    /**
-     * email(lower) -> userId map, built from listUsers(). The API's user
-     * rows show up either flat ({email, id}) or nested under {user: {email,
-     * id}} depending on the endpoint/Pangolin version — both shapes handled,
-     * matching build_user_index()'s own defensive `.get()` fallback.
-     */
-    public function buildUserIndex(): array
-    {
-        $index = [];
-        foreach ($this->listUsers() as $u) {
-            $email = strtolower((string) ($u['email'] ?? $u['user']['email'] ?? ''));
-            $uid = $u['id'] ?? $u['user']['id'] ?? null;
-            if ($email !== '' && $uid !== null) {
-                $index[$email] = $uid;
-            }
-        }
-
-        return $index;
     }
 
     /**

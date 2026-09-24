@@ -111,6 +111,27 @@ test('a dry run makes no create/update calls and reports DRY-RUN statuses', func
     Http::assertNotSent(fn ($request) => in_array($request->method(), ['PUT', 'POST'], true));
 });
 
+test('a sheet formatted down to the last Excel row only parses rows that hold data', function () {
+    fakePangolinIntegrationApi();
+    $inputPath = makePangolinImportInputFile();
+    $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputPath);
+    $spreadsheet->getSheetByName('Requests')->getStyle('A1048576')->getFont()->setBold(true);
+    (new Xlsx($spreadsheet))->save($inputPath);
+    expect(\PhpOffice\PhpSpreadsheet\IOFactory::load($inputPath)->getSheetByName('Requests')->getHighestRow())->toBe(1048576);
+
+    $run = PangolinRun::factory()->create([
+        'type' => 'import',
+        'input_path' => $inputPath,
+        'options' => ['dry_run' => true],
+    ]);
+
+    RunImport::dispatch($run);
+
+    $run->refresh();
+    expect($run->status)->toBe('completed');
+    expect($run->summary)->toBe(['DRY-RUN' => 1, 'DRY-RUN_NO_USER' => 1]);
+});
+
 test('an unresolved email still creates its resource, disabled and with no user attached', function () {
     fakePangolinIntegrationApi();
     $inputPath = makePangolinImportInputFile();
@@ -120,7 +141,43 @@ test('an unresolved email still creates its resource, disabled and with no user 
 
     Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/org/uop/site-resource'
         && $request['name'] === 'patra-unknown-2302-50'
-        && $request['userIds'] === []);
+        && $request['userIds'] === []
+        // No owner → no niceId sent; Pangolin keeps its own generated one
+        // until Normalize finds the user.
+        && ! array_key_exists('niceId', $request->data()));
+});
+
+test('an email not in the org falls back to the org user with the same sanitized username (dots/underscores stripped)', function () {
+    Http::fake([
+        'https://pangolin.test/v1/org/uop' => Http::response(['data' => ['name' => 'UoP']], 200),
+        'https://pangolin.test/v1/org/uop/sites*' => Http::response([
+            'data' => ['sites' => [['siteId' => 5, 'name' => 'Patra Site']], 'pagination' => ['total' => 1]],
+        ], 200),
+        'https://pangolin.test/v1/org/uop/users*' => Http::response([
+            'data' => ['users' => [['id' => 77, 'email' => 'costas.p@uop.gr']], 'pagination' => ['total' => 1]],
+        ], 200),
+        'https://pangolin.test/v1/org/uop/site-resource' => Http::response(['data' => ['siteResourceId' => 100, 'niceId' => 'costasp-1529-201-p22']], 200),
+        'https://pangolin.test/v1/site-resource/*' => Http::response([], 200),
+    ]);
+    $path = storage_path('app/private/pangolin/imports/'.uniqid('input', true).'.xlsx');
+    File::ensureDirectoryExists(dirname($path));
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Requests');
+    $sheet->fromArray(['Name', 'Destination', 'Ports', 'Alias', 'User Emails', 'Notes'], null, 'A1');
+    $sheet->fromArray(['tripoli', '10.15.29.201', '22', null, 'costas_p@go.uop.gr', null], null, 'A2');
+    (new Xlsx($spreadsheet))->save($path);
+    $run = PangolinRun::factory()->create(['type' => 'import', 'input_path' => $path]);
+
+    RunImport::dispatch($run);
+
+    expect($run->fresh()->summary)->toBe(['OK' => 1]);
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/org/uop/site-resource'
+        && $request['name'] === 'tripoli-costasp-1529-201'
+        && $request['niceId'] === 'costasp-1529-201-p22'
+        && $request['userIds'] === [77]);
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
+        && $request['enabled'] === true);
 });
 
 test('an unreachable Integration API fails the run with a clear error, before touching the xlsx', function () {

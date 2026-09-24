@@ -18,6 +18,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\File;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use romanzipp\QueueMonitor\Traits\IsMonitored;
 
 /**
@@ -70,7 +71,7 @@ class RunImport implements ShouldQueue
             if (! $sites) {
                 throw new \RuntimeException('no sites found in this org');
             }
-            $userIndex = $api->buildUserIndex();
+            $orgEmailIndex = $api->buildOrgEmailIndex();
         } catch (RequestException|\RuntimeException $e) {
             $this->finishRun([
                 'status' => 'failed',
@@ -94,7 +95,7 @@ class RunImport implements ShouldQueue
 
             return;
         }
-        $highestRow = $sheet->getHighestRow();
+        $highestRow = $this->lastRowWithValues($sheet, 6);
 
         $resolvedReqs = [];
         $upfrontFails = [];
@@ -104,7 +105,7 @@ class RunImport implements ShouldQueue
                 $letter = Coordinate::stringFromColumnIndex($col);
                 $row[] = $sheet->getCell("{$letter}{$rowNum}")->getCalculatedValue();
             }
-            [$resolved, $fails] = $parser->parseRow($rowNum, $row, $userIndex);
+            [$resolved, $fails] = $parser->parseRow($rowNum, $row, $orgEmailIndex);
             $resolvedReqs = array_merge($resolvedReqs, $resolved);
             $upfrontFails = array_merge($upfrontFails, $fails);
         }
@@ -131,5 +132,28 @@ class RunImport implements ShouldQueue
             'summary' => $summary,
             'error' => null,
         ]);
+    }
+
+    /**
+     * Last row with a non-blank value in the first $columns columns. Neither
+     * getHighestRow() nor getHighestDataRow() is safe here: a sheet formatted
+     * down to Excel's last row (or with one styled empty cell there) reports
+     * 1048576, and parsing a million empty rows ran the job out of memory /
+     * time. Only walks cells that actually exist, never the full grid.
+     */
+    private function lastRowWithValues(Worksheet $sheet, int $columns): int
+    {
+        $lastRow = 1;
+        foreach ($sheet->getCellCollection()->getCoordinates() as $coordinate) {
+            [$column, $row] = Coordinate::coordinateFromString($coordinate);
+            if ((int) $row <= $lastRow || Coordinate::columnIndexFromString($column) > $columns) {
+                continue;
+            }
+            if (trim((string) $sheet->getCell($coordinate)->getValue()) !== '') {
+                $lastRow = (int) $row;
+            }
+        }
+
+        return $lastRow;
     }
 }

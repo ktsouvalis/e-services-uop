@@ -8,7 +8,10 @@ return [
     'org_slug' => env('PANGOLIN_ORG_SLUG'),
     'api_key' => env('PANGOLIN_API_KEY'),
 
-    'http_timeout' => (int) env('PANGOLIN_HTTP_TIMEOUT', 5),
+    // Per-request connect + response timeout (seconds) for PangolinApiClient.
+    // Keep generous enough for createSiteResource: a create that times out
+    // client-side may still have succeeded server-side.
+    'http_timeout' => (int) env('PANGOLIN_HTTP_TIMEOUT', 15),
 
     // SSH used to pull `docker logs newt` from each admin-managed
     // App\Models\PangolinNewtAgent (App\Services\Pangolin\SshCommandRunner,

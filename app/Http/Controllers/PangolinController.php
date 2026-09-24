@@ -142,6 +142,10 @@ class PangolinController extends Controller
 
         $uploaded = $request->file('file');
         $stored = $uploaded->store('pangolin/imports');
+        // The local disk has 'throw' => false, so an unwritable directory
+        // (e.g. created by root with 0700) returns false instead of throwing —
+        // without this the job was queued with the bare app/private/ path.
+        abort_if($stored === false, 500, 'Could not store the uploaded file (check permissions on storage/app/private/pangolin/imports).');
         $inputPath = storage_path("app/private/{$stored}");
 
         $run = PangolinRun::create([

@@ -14,12 +14,16 @@ use Carbon\Carbon;
  */
 class ImportRequestParser
 {
+    public function __construct(private readonly NormalizeResolver $resolver)
+    {
+    }
+
     /**
      * @param  array<int, mixed>  $row  [city, destination, ports, alias, emails, notes]
-     * @param  array<string, int>  $userIndex  email(lower) -> userId
+     * @param  array<string, array<int, array{0: string, 1: int}>>  $orgEmailIndex  PangolinApiClient::buildOrgEmailIndex()
      * @return array{0: array<int, array>, 1: array<int, array>} [resolvedRequests, failResults]
      */
-    public function parseRow(int $rowNum, array $row, array $userIndex): array
+    public function parseRow(int $rowNum, array $row, array $orgEmailIndex): array
     {
         [$city, $destination, $portsValue, $alias, $emails, $notes] = array_pad($row, 6, null);
 
@@ -68,17 +72,16 @@ class ImportRequestParser
                 continue;
             }
 
-            $username = str_replace('.', '', strstr($email, '@', true) ?: $email);
+            $username = ResourceNaming::sanitizeUsername($email);
             $resourceName = implode('-', [strtolower($city), $username, $vlan, $tail]);
-            $niceId = ResourceNaming::expectedNiceId($username, $vlan, $tail, explode(',', $tcpPorts));
-
-            $userId = $userIndex[$email] ?? null;
+            [$matchedEmail, $userId] = $this->resolveUser($email, $username, $orgEmailIndex);
             $req = [
                 '_row_num' => $rowNum,
                 '_city' => $city,
                 '_notes' => $notesVal,
                 '_email' => $rawEmail,
                 '_user_resolved' => $userId !== null,
+                '_matched_email' => $matchedEmail,
                 'name' => $resourceName,
                 'mode' => $mode,
                 'destination' => $destination,
@@ -88,13 +91,17 @@ class ImportRequestParser
                 'roleIds' => [],
                 'clientIds' => [],
                 'userIds' => $userId !== null ? [$userId] : [],
-                'niceId' => $niceId,
                 // Enabled only when a live org account was actually matched
-                // — see the module docstring on create_private_resources.py:
-                // a resource created for an unmatched email stays disabled
-                // until normalize_private_resources.py backfills access.
+                // — a resource created for an unmatched email stays disabled
+                // until Normalize backfills access.
                 'enabled' => $userId !== null,
             ];
+            // No match → no niceId sent, so Pangolin keeps its own generated
+            // (random) default instead of one claiming an owner that doesn't
+            // exist yet. Normalize sets the real one once the user is found.
+            if ($userId !== null) {
+                $req['niceId'] = ResourceNaming::expectedNiceId($username, $vlan, $tail, explode(',', $tcpPorts));
+            }
             if ($alias) {
                 $req['alias'] = $alias;
             }
@@ -102,5 +109,23 @@ class ImportRequestParser
         }
 
         return [$resolvedReqs, $failResults];
+    }
+
+    /**
+     * Exact email match first; otherwise the org user whose sanitized local
+     * part equals the resource name's username segment (e.g. "costas" in
+     * tripoli-costas-1529-201), with NormalizeResolver's domain tie-break.
+     *
+     * @return array{0: ?string, 1: ?int} [matchedEmail, userId]
+     */
+    private function resolveUser(string $email, string $username, array $orgEmailIndex): array
+    {
+        foreach ($orgEmailIndex[$username] ?? [] as [$candidateEmail, $uid]) {
+            if ($candidateEmail === $email) {
+                return [$candidateEmail, $uid];
+            }
+        }
+
+        return $this->resolver->pickUniqueCandidate($orgEmailIndex[$username] ?? []);
     }
 }

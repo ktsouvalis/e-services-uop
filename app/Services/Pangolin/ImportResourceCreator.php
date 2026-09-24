@@ -41,12 +41,14 @@ class ImportResourceCreator
             // Set deterministically at request-build time — shown here
             // already for a dry run; overwritten with the API's own echoed
             // value below once a live create actually succeeds.
-            'nice_id' => $req['niceId'],
+            'nice_id' => $req['niceId'] ?? null,
             'enabled' => $req['enabled'],
             'timestamp' => Carbon::now()->format('Y-m-d H:i:s'),
-            'error' => $noUser
-                ? "no user match: '{$req['_email']}' not found among org users -- resource created without access, backfill later via normalize_private_resources"
-                : null,
+            'error' => match (true) {
+                $noUser => "no user match: '{$req['_email']}' (username '".ResourceNaming::sanitizeUsername($req['_email'])."') not found among org users -- resource created disabled, without access and with Pangolin's default niceId; backfill later via Normalize",
+                $req['_matched_email'] !== strtolower($req['_email']) => "matched org user '{$req['_matched_email']}' by username",
+                default => null,
+            },
         ];
 
         if ($dryRun) {
@@ -70,7 +72,7 @@ class ImportResourceCreator
         }
 
         $result['status'] = $noUser ? 'OK_NO_USER' : 'OK';
-        $result['nice_id'] = $body['niceId'];
+        $result['nice_id'] = $body['niceId'] ?? $result['nice_id'];
 
         try {
             $this->api->updateSiteResource($body['siteResourceId'], ['enabled' => $req['enabled']]);

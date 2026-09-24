@@ -204,12 +204,12 @@ class ResourceNaming
         return $tokens;
     }
 
-    /** email local-part, lowercased, with dots stripped: "m.katsis@x" -> "mkatsis". */
+    /** email local-part, lowercased, with dots and underscores stripped: "m.kat_sis@x" -> "mkatsis". */
     public static function sanitizeUsername(string $email): string
     {
         $local = explode('@', $email, 2)[0];
 
-        return str_replace('.', '', strtolower(trim($local)));
+        return str_replace(['.', '_'], '', strtolower(trim($local)));
     }
 
     /**

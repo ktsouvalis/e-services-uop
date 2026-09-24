@@ -46,7 +46,8 @@ function fakePangolinNormalizeApi(array $resources, array $usersByResourceId = [
             return Http::response(['data' => ['users' => [
                 ['id' => 42, 'email' => 'ktsouvalis@uop.gr'],
                 ['id' => 43, 'email' => 'jdoe@uop.gr'],
-            ], 'pagination' => ['total' => 2]]], 200);
+                ['id' => 44, 'email' => 'costas_p@uop.gr'],
+            ], 'pagination' => ['total' => 3]]], 200);
         }
         if (str_contains($url, '/v1/org/uop/site-resources')) {
             return Http::response(['data' => ['siteResources' => $resources, 'pagination' => ['total' => count($resources)]]], 200);
@@ -258,6 +259,29 @@ test('a 0-user resource whose name exactly matches the naming convention is auto
         && $request->method() === 'POST' && $request['userIds'] === [42]);
     Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
         && $request->method() === 'POST' && $request['enabled'] === true);
+});
+
+test('a 0-user resource Import left with a random niceId gets its owner, real niceId, and enabled once the user exists', function () {
+    // What Import creates for an email not (yet) in the org: convention name
+    // (underscore stripped from the username), Pangolin's own random niceId,
+    // disabled, no users.
+    fakePangolinNormalizeApi([
+        ['siteResourceId' => 100, 'niceId' => 'wry-happy-otter', 'name' => 'tripoli-costasp-1529-201', 'mode' => 'host',
+            'destination' => '10.15.29.201', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
+            'enabled' => false, 'siteIds' => [5]],
+    ], usersByResourceId: [100 => []]);
+
+    $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
+
+    RunNormalize::dispatch($run);
+
+    expect($run->fresh()->summary)->toBe(['OK' => 1]);
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100/users'
+        && $request->method() === 'POST' && $request['userIds'] === [44]);
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
+        && $request->method() === 'POST'
+        && $request['enabled'] === true
+        && $request['niceId'] === 'costasp-1529-201-p22');
 });
 
 test('a 2+ user resource with no resolvable primary is skipped as ambiguous, access left untouched', function () {
