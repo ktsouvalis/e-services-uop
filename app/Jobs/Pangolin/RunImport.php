@@ -36,6 +36,11 @@ class RunImport implements ShouldQueue
 
     public int $timeout = 900;
 
+    // Creates/mutates live Pangolin resources and isn't idempotent — a retry
+    // would re-apply a partially-completed run (and RunImport's uploaded
+    // input file is already consumed by the first attempt).
+    public int $tries = 1;
+
     public function __construct(private readonly PangolinRun $run)
     {
     }

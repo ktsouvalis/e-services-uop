@@ -39,7 +39,10 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Must exceed the longest job $timeout (RunImport/RunNormalize: 900s).
+            // At 90 the worker re-reserved a still-running Pangolin import as a
+            // second attempt, which then found its input file already consumed.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 960),
             'after_commit' => false,
         ],
 

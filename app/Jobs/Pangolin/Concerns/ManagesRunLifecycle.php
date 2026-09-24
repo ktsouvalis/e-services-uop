@@ -29,4 +29,16 @@ trait ManagesRunLifecycle
     {
         $this->run->update($attributes + ['finished_at' => now()]);
     }
+
+    /**
+     * Queue failure hook (uncaught exception, timeout, max attempts) — without
+     * it the run row is left on 'running' forever.
+     */
+    public function failed(?\Throwable $exception): void
+    {
+        $this->finishRun([
+            'status' => 'failed',
+            'error' => $exception?->getMessage() ?? 'Job failed.',
+        ]);
+    }
 }
