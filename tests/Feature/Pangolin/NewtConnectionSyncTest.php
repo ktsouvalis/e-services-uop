@@ -125,3 +125,39 @@ test('a Postgres lookup failure falls back to unresolved identity fields rather 
     expect($row->user_name)->toBeNull();
     expect($row->src_ip)->toBe('10.1.2.3');
 });
+
+test('a correlated dial failure is stored on the row, and a later fetch without the Failed line does not clear it', function () {
+    PangolinNewtAgent::factory()->create(['ip' => '10.23.2.60']);
+
+    $start = 'ACCESS START session=bad resource=35 proto=tcp src=10.1.2.3:5000 dst=10.16.2.10:5000 time=2026-09-28T05:45:58Z';
+    $failed = 'INFO: 2026/09/28 08:46:03 TCP Forwarder: Failed to connect to 10.16.2.10:5000: dial tcp 10.16.2.10:5000: i/o timeout';
+    $end = 'ACCESS END session=bad resource=35 proto=tcp src=10.1.2.3:5000 dst=10.16.2.10:5000 started=2026-09-28T05:45:58Z ended=2026-09-28T05:46:03Z duration=5s';
+
+    $ssh = Mockery::mock(SshCommandRunner::class);
+    $ssh->shouldReceive('run')->once()->andReturn("{$start}\n{$failed}\n{$end}");
+    newtSyncWith($ssh)->run();
+
+    $row = PangolinNewtConnection::first();
+    expect($row->failed)->toBeTrue();
+    expect($row->failure_reason)->toBe('timeout');
+    expect($row->failure_detail)->toBe('dial tcp 10.16.2.10:5000: i/o timeout');
+
+    // --since window cut off the START and Failed line, END still in it.
+    $ssh2 = Mockery::mock(SshCommandRunner::class);
+    $ssh2->shouldReceive('run')->once()->andReturn($end);
+    newtSyncWith($ssh2)->run();
+
+    expect(PangolinNewtConnection::first()->failed)->toBeTrue();
+});
+
+test('a session without a Failed line is stored as not failed', function () {
+    PangolinNewtAgent::factory()->create(['ip' => '10.23.2.60']);
+
+    $ssh = Mockery::mock(SshCommandRunner::class);
+    $ssh->shouldReceive('run')->once()->andReturn(NEWT_LOG_ONE_SESSION);
+    newtSyncWith($ssh)->run();
+
+    $row = PangolinNewtConnection::first();
+    expect($row->failed)->toBeFalse();
+    expect($row->failure_reason)->toBeNull();
+});

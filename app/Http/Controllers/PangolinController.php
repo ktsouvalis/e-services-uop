@@ -8,22 +8,33 @@ use App\Jobs\Pangolin\RunNormalize;
 use App\Models\PangolinNewtAgent;
 use App\Models\PangolinNewtConnection;
 use App\Models\PangolinRun;
+use App\Services\Pangolin\NewtSessionConsolidator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Ods;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class PangolinController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, NewtSessionConsolidator $consolidator)
     {
         $importRuns = PangolinRun::ofType('import')->with('user')->latest()->take(10)->get();
         $normalizeRuns = PangolinRun::ofType('normalize')->with('user')->latest()->take(10)->get();
 
         $newtAgents = PangolinNewtAgent::orderBy('name')->get();
         $newtConnectionRuns = PangolinRun::ofType('newt_connections')->with('user')->latest()->take(10)->get();
-        $connections = $this->connectionsQuery($request)->paginate(25)->withQueryString()
+        // Consolidation happens in PHP over the whole filtered set (a logical
+        // session can span flows that SQL pagination would split), so this
+        // paginates the consolidated collection rather than the query.
+        $rows = $this->connectionRows($request, $consolidator);
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $connections = (new LengthAwarePaginator(
+            $rows->forPage($page, 25)->values(), $rows->count(), 25, $page,
+            ['path' => LengthAwarePaginator::resolveCurrentPath()],
+        ))->withQueryString()
             // Pin the tab explicitly — the URL's ?tab= is only client-side
             // (history.replaceState) when the tab was switched by click, so
             // withQueryString() alone would link back to the Import tab.
@@ -60,6 +71,10 @@ class PangolinController extends Controller
     private function connectionsQuery(Request $request)
     {
         return PangolinNewtConnection::query()
+            // `failed` is part of the consolidator's grouping key, so
+            // filtering raw flows by it first can't split a logical session.
+            ->when($request->input('status') === 'ok', fn ($q) => $q->where('failed', false))
+            ->when($request->input('status') === 'failed', fn ($q) => $q->where('failed', true))
             ->when($request->filled('user'), function ($q) use ($request) {
                 $term = "%{$request->input('user')}%";
                 $q->where(fn ($q) => $q->where('user_name', 'like', $term)->orWhere('user_email', 'like', $term));
@@ -86,34 +101,50 @@ class PangolinController extends Controller
             ->orderByDesc('id');
     }
 
-    public function connectionsExport(Request $request)
+    /**
+     * The filtered raw flows, merged into logical sessions — or left one row
+     * per flow when the "raw flows" debugging toggle is on. Shared by
+     * index() and connectionsExport().
+     *
+     * @return Collection<int, \App\Services\Pangolin\NewtLogicalSession>
+     */
+    private function connectionRows(Request $request, NewtSessionConsolidator $consolidator): Collection
+    {
+        $flows = $this->connectionsQuery($request)->get();
+
+        return $request->boolean('raw')
+            ? $consolidator->asRawFlows($flows)
+            : $consolidator->consolidate($flows);
+    }
+
+    public function connectionsExport(Request $request, NewtSessionConsolidator $consolidator)
     {
         $format = $request->query('format', 'xlsx');
         abort_unless(in_array($format, ['xlsx', 'ods'], true), 404);
 
-        $connections = $this->connectionsQuery($request)->get();
+        $connections = $this->connectionRows($request, $consolidator);
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Newt connections');
-        $sheet->fromArray(['Started (Athens time)', 'Duration', 'Who', 'Client', 'Site', 'Resource', 'Destination'], null, 'A1');
+        $sheet->fromArray(['Started (Athens time)', 'Duration', 'Connections', 'Status', 'Who', 'Client', 'Sites', 'Resource', 'Destination'], null, 'A1');
 
         $row = 2;
         foreach ($connections as $connection) {
             $sheet->fromArray([
                 $connection->started_at_local->format('Y-m-d H:i:s'),
-                $connection->ended_at
-                    ? $connection->started_at->diffForHumans($connection->ended_at, true)
-                    : 'ongoing',
-                $connection->user_name ?: ($connection->user_email ?: $connection->src_ip),
+                $connection->durationLabel(),
+                $connection->connection_count,
+                $connection->statusLabel(),
+                $connection->who(),
                 $connection->client_name ?: '—',
-                $connection->site_name ?: "site#{$connection->resource_id}",
+                implode(', ', $connection->sites()),
                 $connection->resource_name ?: '—',
-                "{$connection->dst_ip}:{$connection->dst_port}",
+                $connection->destination(),
             ], null, "A{$row}");
             $row++;
         }
-        foreach (range('A', 'G') as $column) {
+        foreach (range('A', 'I') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 

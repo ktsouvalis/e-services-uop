@@ -28,6 +28,16 @@ class PangolinNewtConnectionFactory extends Factory
             'dst_port' => '22',
             'started_at' => now(),
             'ended_at' => now()->addMinutes(5),
+            'failed' => false,
         ];
+    }
+
+    public function failed(string $reason = 'timeout'): static
+    {
+        return $this->state(fn () => [
+            'failed' => true,
+            'failure_reason' => $reason,
+            'failure_detail' => 'dial tcp: i/o timeout',
+        ]);
     }
 }

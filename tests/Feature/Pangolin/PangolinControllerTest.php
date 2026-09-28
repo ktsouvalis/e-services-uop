@@ -196,6 +196,68 @@ test('the from/to date filters treat the picked dates as Athens calendar days, n
     expect($ids)->toContain($justAfterAthensMidnight->id);
 });
 
+/** $count back-to-back flows from one user to one destination, 1s apart. */
+function newtIndexBurst(PangolinNewtAgent $agent, int $count, array $overrides = []): void
+{
+    foreach (range(0, $count - 1) as $i) {
+        PangolinNewtConnection::factory()->create([
+            'newt_agent_id' => $agent->id, 'agent_name' => $agent->name, 'agent_ip' => $agent->ip,
+            'user_name' => 'Kostas Tsouvalis', 'src_ip' => '100.90.0.5', 'dst_ip' => '10.23.2.50', 'dst_port' => '22',
+            'resource_id' => 35, 'started_at' => now()->subHour()->addSeconds($i * 2),
+            'ended_at' => now()->subHour()->addSeconds($i * 2 + 1),
+            ...$overrides,
+        ]);
+    }
+}
+
+test('the connections list shows consolidated sessions, and the raw flows toggle shows one row per stored flow', function () {
+    $user = User::factory()->create();
+    $agent = PangolinNewtAgent::factory()->create();
+    newtIndexBurst($agent, 15);
+    newtIndexBurst($agent, 4, ['dst_port' => '3389', 'failed' => true, 'failure_reason' => 'timeout']);
+
+    $response = $this->actingAs($user)->get(route('pangolin.index', ['tab' => 'connections']));
+    $response->assertOk();
+    expect($response['connections']->total())->toBe(2);
+    expect($response['connections']->pluck('connection_count')->sort()->values()->all())->toBe([4, 15]);
+    $response->assertSee('Failed: timeout');
+    $response->assertSee('4 attempts, ');
+
+    $raw = $this->actingAs($user)->get(route('pangolin.index', ['tab' => 'connections', 'raw' => 1]));
+    expect($raw['connections']->total())->toBe(19);
+    expect($raw['connections']->nextPageUrl())->toBeNull(); // 19 < 25 per page
+});
+
+test('the connections list is filtered by status', function () {
+    $user = User::factory()->create();
+    $agent = PangolinNewtAgent::factory()->create();
+    newtIndexBurst($agent, 3);
+    newtIndexBurst($agent, 2, ['dst_port' => '3389', 'failed' => true, 'failure_reason' => 'refused']);
+
+    $failed = $this->actingAs($user)->get(route('pangolin.index', ['tab' => 'connections', 'status' => 'failed']));
+    expect($failed['connections']->total())->toBe(1);
+    expect($failed['connections']->first()->failed)->toBeTrue();
+
+    $ok = $this->actingAs($user)->get(route('pangolin.index', ['tab' => 'connections', 'status' => 'ok']));
+    expect($ok['connections']->total())->toBe(1);
+    expect($ok['connections']->first()->connection_count)->toBe(3);
+});
+
+test('consolidated sessions are paginated after merging, keeping the query string', function () {
+    $user = User::factory()->create();
+    $agent = PangolinNewtAgent::factory()->create();
+    // 30 separate sessions (distinct ports), each of 2 flows.
+    foreach (range(1, 30) as $port) {
+        newtIndexBurst($agent, 2, ['dst_port' => (string) (1000 + $port)]);
+    }
+
+    $page2 = $this->actingAs($user)->get(route('pangolin.index', ['user' => 'Kostas', 'page' => 2]));
+
+    expect($page2['connections']->total())->toBe(30);
+    expect($page2['connections']->count())->toBe(5);
+    expect($page2['connections']->previousPageUrl())->toContain('user=Kostas')->toContain('tab=connections');
+});
+
 test('started_at_local converts the stored UTC timestamp to Europe/Athens', function () {
     $connection = PangolinNewtConnection::factory()->create(['started_at' => '2026-09-22 10:00:00']);
 

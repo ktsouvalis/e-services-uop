@@ -2,7 +2,7 @@
     <div class="flex items-center justify-between mb-4">
         <div>
             <h3 class="text-lg font-semibold">{{ __('Newt connections') }}</h3>
-            <p class="text-sm text-gray-500">{{ __('Which user connected to which resource, resolved from each Newt agent\'s access log.') }}</p>
+            <p class="text-sm text-gray-500">{{ __('Which user connected to which resource, resolved from each Newt agent\'s access log. Rows are logical sessions: back-to-back connections from the same user to the same destination are merged, and repeated failed attempts are rolled up.') }}</p>
         </div>
         <form action="{{ route('pangolin.newt-connections.fetch') }}" method="POST">
             @csrf
@@ -37,13 +37,27 @@
             <label for="filter_to" class="block text-xs font-medium text-gray-700">{{ __('To') }}</label>
             <input type="date" name="to" id="filter_to" value="{{ request('to') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
         </div>
+        <div>
+            <label for="filter_status" class="block text-xs font-medium text-gray-700">{{ __('Status') }}</label>
+            <select name="status" id="filter_status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                <option value="">{{ __('Any') }}</option>
+                <option value="ok" {{ request('status') === 'ok' ? 'selected' : '' }}>{{ __('OK') }}</option>
+                <option value="failed" {{ request('status') === 'failed' ? 'selected' : '' }}>{{ __('Failed') }}</option>
+            </select>
+        </div>
+        <div class="sm:col-span-5 flex items-end">
+            <label for="filter_raw" class="inline-flex items-center gap-2 text-sm text-gray-700 pb-2">
+                <input type="checkbox" name="raw" id="filter_raw" value="1" {{ request()->boolean('raw') ? 'checked' : '' }} class="rounded border-gray-300">
+                {{ __('Raw flows (one row per TCP/UDP connection, no merging — for debugging)') }}
+            </label>
+        </div>
         <div class="sm:col-span-6 flex items-center justify-end gap-3">
-            @if (request()->hasAny(['user', 'site', 'resource', 'from', 'to']))
+            @if (request()->hasAny(['user', 'site', 'resource', 'from', 'to', 'status', 'raw']))
                 <a href="{{ route('pangolin.index', ['tab' => 'connections']) }}" class="text-sm text-gray-500 hover:underline">{{ __('Clear filters') }}</a>
             @endif
             <span class="text-sm text-gray-500">{{ __('Export') }}:</span>
-            <a href="{{ route('pangolin.newt-connections.export', array_merge(request()->only(['user', 'site', 'resource', 'from', 'to']), ['format' => 'xlsx'])) }}" class="text-sm text-blue-600 hover:underline">xlsx</a>
-            <a href="{{ route('pangolin.newt-connections.export', array_merge(request()->only(['user', 'site', 'resource', 'from', 'to']), ['format' => 'ods'])) }}" class="text-sm text-blue-600 hover:underline">ods</a>
+            <a href="{{ route('pangolin.newt-connections.export', array_merge(request()->only(['user', 'site', 'resource', 'from', 'to', 'status', 'raw']), ['format' => 'xlsx'])) }}" class="text-sm text-blue-600 hover:underline">xlsx</a>
+            <a href="{{ route('pangolin.newt-connections.export', array_merge(request()->only(['user', 'site', 'resource', 'from', 'to', 'status', 'raw']), ['format' => 'ods'])) }}" class="text-sm text-blue-600 hover:underline">ods</a>
             <x-primary-button>{{ __('Filter') }}</x-primary-button>
         </div>
     </form>
@@ -54,9 +68,11 @@
                 <tr class="text-left text-xs font-medium text-gray-500 uppercase">
                     <th class="px-3 py-2">{{ __('Started (Athens time)') }}</th>
                     <th class="px-3 py-2">{{ __('Duration') }}</th>
+                    <th class="px-3 py-2">{{ __('Connections') }}</th>
+                    <th class="px-3 py-2">{{ __('Status') }}</th>
                     <th class="px-3 py-2">{{ __('Who') }}</th>
                     <th class="px-3 py-2">{{ __('Client') }}</th>
-                    <th class="px-3 py-2">{{ __('Site') }}</th>
+                    <th class="px-3 py-2">{{ __('Sites') }}</th>
                     <th class="px-3 py-2">{{ __('Resource') }}</th>
                     {{-- <th class="px-3 py-2">{{ __('Proto') }}</th> --}}
                     <th class="px-3 py-2">{{ __('Destination') }}</th>
@@ -64,25 +80,29 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
                 @forelse ($connections as $connection)
-                    <tr>
+                    <tr @class(['text-red-700/70' => $connection->failed])>
                         <td class="px-3 py-2 ">{{ $connection->started_at_local->format('Y-m-d H:i:s') }}</td>
                         <td class="px-3 py-2 whitespace-nowrap">
-                            @if ($connection->ended_at)
-                                {{ $connection->started_at->diffForHumans($connection->ended_at, true) }}
-                            @else
+                            @if (! $connection->failed && ! $connection->ended_at)
                                 <span class="text-amber-600">{{ __('ongoing') }}</span>
+                            @else
+                                {{ $connection->durationLabel() }}
                             @endif
                         </td>
-                        <td class="px-3 py-2">{{ $connection->user_name ?: ($connection->user_email ?: $connection->src_ip) }}</td>
-                        <td class="px-3 py-2 text-gray-500">{{ $connection->client_name ?: '—' }}</td>
-                        <td class="px-3 py-2">{{ $connection->site_name ?: "site#{$connection->resource_id}" }}</td>
-                        <td class="px-3 py-2 text-gray-500">{{ $connection->resource_name ?: '—' }}</td>
+                        <td class="px-3 py-2">{{ $connection->connection_count }}</td>
+                        <td class="px-3 py-2 whitespace-nowrap" @if ($connection->failed) title="{{ $connection->members->pluck('failure_detail')->filter()->last() }}" @endif>
+                            {{ $connection->statusLabel() }}
+                        </td>
+                        <td class="px-3 py-2">{{ $connection->who() }}</td>
+                        <td @class(['px-3 py-2', 'text-gray-500' => ! $connection->failed])>{{ $connection->client_name ?: '—' }}</td>
+                        <td class="px-3 py-2">{{ implode(', ', $connection->sites()) }}</td>
+                        <td @class(['px-3 py-2', 'text-gray-500' => ! $connection->failed])>{{ $connection->resource_name ?: '—' }}</td>
                         {{-- <td class="px-3 py-2 uppercase text-gray-500">{{ $connection->proto }}</td> --}}
-                        <td class="px-3 py-2 text-gray-500">{{ $connection->dst_ip }}:{{ $connection->dst_port }}</td>
+                        <td @class(['px-3 py-2', 'text-gray-500' => ! $connection->failed])>{{ $connection->destination() }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-3 py-6 text-center text-gray-500">{{ __('No connections recorded yet — click "Fetch now" to pull from the configured Newt agents.') }}</td>
+                        <td colspan="9" class="px-3 py-6 text-center text-gray-500">{{ __('No connections recorded yet — click "Fetch now" to pull from the configured Newt agents.') }}</td>
                     </tr>
                 @endforelse
             </tbody>

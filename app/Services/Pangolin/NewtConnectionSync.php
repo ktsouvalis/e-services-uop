@@ -14,7 +14,14 @@ use Throwable;
  * read against Pangolin's own DB (NewtAccessLogResolver), and upsert into
  * pangolin_newt_connections keyed by (newt_agent_id, session_id) — so
  * repeated fetches never duplicate a session, only fill in ended_at for one
- * that was still open last time. Dispatched by
+ * that was still open last time. Rows are raw flows (one per Newt ACCESS
+ * START/END pair), not logical sessions — the Connections tab merges them at
+ * read time via NewtSessionConsolidator. `failed`/`failure_reason`/
+ * `failure_detail` come from the parser's Failed-line correlation and are
+ * only ever written when a failure was seen, never reset to false: the
+ * parser's failed=false means "no Failed line in this window", not "known
+ * good", so a later fetch whose --since window cut off the Failed line must
+ * not un-fail a row. Dispatched by
  * App\Jobs\Pangolin\FetchNewtConnections. See CLAUDE.md's Pangolin module
  * section.
  */
@@ -84,6 +91,11 @@ class NewtConnectionSync
                         'started_at' => $startedAt,
                         'ended_at' => $session['ended'] ? $this->parseTimestamp($session['ended']) : null,
                         ...$identity,
+                        ...($session['failed'] ? [
+                            'failed' => true,
+                            'failure_reason' => $session['failure_reason'],
+                            'failure_detail' => mb_substr($session['failure_detail'], 0, 255),
+                        ] : []),
                     ],
                 );
                 $synced++;

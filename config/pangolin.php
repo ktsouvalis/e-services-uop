@@ -28,6 +28,16 @@ return [
     // days) matches logs_viewer.py's ACCESS_LOG_HOURS default.
     'newt_log_lookback_hours' => (int) env('PANGOLIN_NEWT_LOG_LOOKBACK_HOURS', 168),
 
+    // Read-time consolidation of raw Newt flows into logical sessions on the
+    // Connections tab (App\Services\Pangolin\NewtSessionConsolidator).
+    // session_gap_seconds: merge successful flows whose start is within this
+    // many seconds of the previous flow's end — 5 mirrors Newt's own
+    // consolidateSessions(). failure_rollup_gap_seconds: merge failed dial
+    // attempts whose starts are within this many seconds of each other, so a
+    // client's reconnect loop collapses to one row.
+    'session_gap_seconds' => (int) env('PANGOLIN_SESSION_GAP_SECONDS', 5),
+    'failure_rollup_gap_seconds' => (int) env('PANGOLIN_FAILURE_ROLLUP_GAP_SECONDS', 60),
+
     // Direct, read-only Postgres connection to Pangolin's own cluster DB —
     // the only way to resolve which user a Newt session's client IP belongs
     // to (the Integration API has no client-IP-to-user mapping; see

@@ -12,7 +12,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Pangolin resource), upserted by App\Services\Pangolin\NewtConnectionSync
  * keyed on (newt_agent_id, session_id) — see that class and the migration
  * for the full shape. ended_at null means the session was still open the
- * last time it was fetched.
+ * last time it was fetched. One row is one raw flow (a single Newt ACCESS
+ * START/END pair), not a logical user session — see
+ * App\Services\Pangolin\NewtSessionConsolidator. `failed` is set only
+ * from a correlated "TCP Forwarder: Failed to connect" log line.
  */
 class PangolinNewtConnection extends Model
 {
@@ -25,6 +28,7 @@ class PangolinNewtConnection extends Model
         return [
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'failed' => 'boolean',
         ];
     }
 
