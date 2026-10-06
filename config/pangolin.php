@@ -13,6 +13,31 @@ return [
     // client-side may still have succeeded server-side.
     'http_timeout' => (int) env('PANGOLIN_HTTP_TIMEOUT', 15),
 
+    // Which single site each private resource goes on (App\Services\Pangolin\
+    // SiteRouting) — Import and Normalize never span more than one site.
+    // by_prefix (destination's first two octets) wins; by_city (Import's
+    // column 1 / the resource name's city segment) is the fallback. Values
+    // are Pangolin site names, matched case-insensitively.
+    'site_routing' => [
+        'by_prefix' => [
+            '10.23' => 'Patras',
+            '10.15' => 'Tripoli',
+            '10.16' => 'Tripoli',
+            '10.22' => 'Tripoli',
+            '10.58' => 'Tripoli',
+            '10.11' => 'Kalamata',
+            '10.13' => 'Kalamata',
+        ],
+        'by_city' => [
+            'patra' => 'Patras',
+            'tripoli' => 'Tripoli',
+            'korinthos' => 'Tripoli',
+            'nafplio' => 'Tripoli',
+            'kalamata' => 'Kalamata',
+            'sparti' => 'Kalamata',
+        ],
+    ],
+
     // SSH used to pull `docker logs newt` from each admin-managed
     // App\Models\PangolinNewtAgent (App\Services\Pangolin\SshCommandRunner,
     // orchestrated by NewtConnectionSync). One shared username/key for every

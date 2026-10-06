@@ -49,7 +49,7 @@ function fakePangolinIntegrationApi(): void
     Http::fake([
         'https://pangolin.test/v1/org/uop' => Http::response(['data' => ['name' => 'UoP']], 200),
         'https://pangolin.test/v1/org/uop/sites*' => Http::response([
-            'data' => ['sites' => [['siteId' => 5, 'name' => 'Patra Site', 'online' => true]], 'pagination' => ['total' => 1]],
+            'data' => ['sites' => [['siteId' => 35, 'name' => 'Patras', 'online' => true], ['siteId' => 36, 'name' => 'Tripoli', 'online' => true], ['siteId' => 69, 'name' => 'Kalamata', 'online' => true]], 'pagination' => ['total' => 3]],
         ], 200),
         'https://pangolin.test/v1/org/uop/users*' => Http::response([
             'data' => ['users' => [['id' => 42, 'email' => 'ktsouvalis@uop.gr']], 'pagination' => ['total' => 1]],
@@ -82,6 +82,7 @@ test('a successful import creates one resource per resolved email, writes a Resu
         && $request['name'] === 'patra-ktsouvalis-2302-50'
         && $request['niceId'] === 'ktsouvalis-2302-50-p22-p3389'
         && $request['userIds'] === [42]
+        && $request['siteIds'] === [35]
         && ! array_key_exists('enabled', $request->data()));
 
     Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
@@ -151,7 +152,7 @@ test('an email not in the org falls back to the org user with the same sanitized
     Http::fake([
         'https://pangolin.test/v1/org/uop' => Http::response(['data' => ['name' => 'UoP']], 200),
         'https://pangolin.test/v1/org/uop/sites*' => Http::response([
-            'data' => ['sites' => [['siteId' => 5, 'name' => 'Patra Site']], 'pagination' => ['total' => 1]],
+            'data' => ['sites' => [['siteId' => 35, 'name' => 'Patras'], ['siteId' => 36, 'name' => 'Tripoli'], ['siteId' => 69, 'name' => 'Kalamata']], 'pagination' => ['total' => 3]],
         ], 200),
         'https://pangolin.test/v1/org/uop/users*' => Http::response([
             'data' => ['users' => [['id' => 77, 'email' => 'costas.p@uop.gr']], 'pagination' => ['total' => 1]],
@@ -175,7 +176,8 @@ test('an email not in the org falls back to the org user with the same sanitized
     Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/org/uop/site-resource'
         && $request['name'] === 'tripoli-costasp-1529-201'
         && $request['niceId'] === 'costasp-1529-201-p22'
-        && $request['userIds'] === [77]);
+        && $request['userIds'] === [77]
+        && $request['siteIds'] === [36]);
     Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
         && $request['enabled'] === true);
 });
@@ -225,6 +227,43 @@ test('invalid ports fail that row locally without calling the create endpoint', 
     RunImport::dispatch($run);
 
     expect($run->fresh()->status)->toBe('completed');
+    expect($run->fresh()->summary)->toBe(['FAIL' => 1]);
+    Http::assertNotSent(fn ($request) => $request->method() === 'PUT');
+});
+
+function makePangolinImportRow(array $row): string
+{
+    $path = storage_path('app/private/pangolin/imports/'.uniqid('input', true).'.xlsx');
+    File::ensureDirectoryExists(dirname($path));
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Requests');
+    $sheet->fromArray(['Name', 'Destination', 'Ports', 'Alias', 'User Emails', 'Notes'], null, 'A1');
+    $sheet->fromArray($row, null, 'A2');
+    (new Xlsx($spreadsheet))->save($path);
+
+    return $path;
+}
+
+test('an unmapped destination prefix falls back to the city column for its single site', function () {
+    fakePangolinIntegrationApi();
+    $run = PangolinRun::factory()->create(['type' => 'import',
+        'input_path' => makePangolinImportRow(['Sparti', '10.99.2.50', '22', null, 'ktsouvalis@uop.gr', null])]);
+
+    RunImport::dispatch($run);
+
+    expect($run->fresh()->summary)->toBe(['OK' => 1]);
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/org/uop/site-resource'
+        && $request->method() === 'PUT' && $request['siteIds'] === [69]);
+});
+
+test('a row whose site cannot be determined fails locally without calling the create endpoint', function () {
+    fakePangolinIntegrationApi();
+    $run = PangolinRun::factory()->create(['type' => 'import',
+        'input_path' => makePangolinImportRow(['athens', '10.99.2.50', '22', null, 'ktsouvalis@uop.gr', null])]);
+
+    RunImport::dispatch($run);
+
     expect($run->fresh()->summary)->toBe(['FAIL' => 1]);
     Http::assertNotSent(fn ($request) => $request->method() === 'PUT');
 });

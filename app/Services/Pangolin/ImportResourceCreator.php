@@ -8,8 +8,9 @@ use Illuminate\Http\Client\RequestException;
 /**
  * Ported from create_private_resources.py's create_site_resource(). Creates
  * one site resource per resolved request (each row's User Emails entry —
- * see ImportRequestParser), spanning every org site for HA, and returns a
- * report row matching the Python original's Results-sheet fields exactly.
+ * see ImportRequestParser), on the single site SiteRouting picks for it,
+ * and returns a report row matching the Python original's Results-sheet
+ * fields exactly.
  */
 class ImportResourceCreator
 {
@@ -23,8 +24,8 @@ class ImportResourceCreator
     public function create(array $sites, array $req, bool $dryRun): array
     {
         $payload = collect($req)->reject(fn ($v, $k) => str_starts_with($k, '_'))->all();
-        $payload['siteIds'] = array_map(fn ($s) => $s['siteId'], $sites);
-        $siteNames = implode(', ', array_map(fn ($s) => $s['name'], $sites));
+        [$site, $siteError] = SiteRouting::pick($sites, $req['destination'], $req['_city']);
+        $payload['siteIds'] = $site ? [$site['siteId']] : [];
         $noUser = ! $req['_user_resolved'];
 
         $result = [
@@ -36,7 +37,7 @@ class ImportResourceCreator
             'tcp_ports' => $req['tcpPortRangeString'] ?: null,
             'email' => $req['_email'],
             'notes' => $req['_notes'],
-            'sites' => $siteNames,
+            'sites' => $site['name'] ?? null,
             'status' => null,
             // Set deterministically at request-build time — shown here
             // already for a dry run; overwritten with the API's own echoed
@@ -50,6 +51,15 @@ class ImportResourceCreator
                 default => null,
             },
         ];
+
+        if ($siteError) {
+            $result['status'] = 'FAIL';
+            $result['nice_id'] = null;
+            $result['enabled'] = null;
+            $result['error'] = $siteError;
+
+            return $result;
+        }
 
         if ($dryRun) {
             $result['status'] = $noUser ? 'DRY-RUN_NO_USER' : 'DRY-RUN';

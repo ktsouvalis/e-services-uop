@@ -63,6 +63,13 @@ class NormalizeProcessor
         $city = strtolower(trim($nameParts[0]));
         $row['city'] = $city;
 
+        // Every resource lives on exactly one site (SiteRouting). When none
+        // can be determined, siteIds is left as-is and only noted below.
+        [$site, $siteError] = SiteRouting::pick($sites, $res['destination'], $city);
+        $currentSiteIds = array_values(array_unique(array_map('intval', $res['siteIds'] ?? [])));
+        $expectedSiteIds = $site ? [(int) $site['siteId']] : ($res['siteIds'] ?? []);
+        $needsSiteFix = $site && $currentSiteIds !== $expectedSiteIds;
+
         $tcpPorts = ResourceNaming::expectedPorts($res['tcpPortRangeString'] ?? null);
         // A blank/empty udpPortRangeString means "no UDP ports" (the common
         // case — most private resources still block UDP entirely). Anything
@@ -97,6 +104,9 @@ class NormalizeProcessor
         $notes = [];
         if (collect($roleNames)->contains(fn ($n) => $n !== 'Admin')) {
             $notes[] = 'unexpected role(s) attached (roles='.json_encode($roleNames).') -- not modified, review manually';
+        }
+        if ($siteError) {
+            $notes[] = "siteIds not checked: {$siteError}";
         }
         if (! $portsKnown) {
             $notes[] = "niceId not checked: tcpPortRangeString '".($res['tcpPortRangeString'] ?? '')."' isn't a plain comma-separated list of ports/ranges";
@@ -140,6 +150,9 @@ class NormalizeProcessor
                 if (($res['disableIcmp'] ?? null) !== true) {
                     $row['action'] .= '+block_icmp';
                 }
+                if ($needsSiteFix) {
+                    $row['action'] .= '+fix_site';
+                }
                 $row['new_enabled'] = false;
                 if (! $applyChanges) {
                     $row['status'] = 'DRY-RUN';
@@ -153,7 +166,7 @@ class NormalizeProcessor
                         'roleIds' => array_map(fn ($r) => $r['roleId'], $roles),
                         'clientIds' => array_map(fn ($c) => $c['clientId'], $clients),
                         'destination' => $res['destination'],
-                        'siteIds' => $res['siteIds'],
+                        'siteIds' => $expectedSiteIds,
                         'tcpPortRangeString' => $res['tcpPortRangeString'] ?? '',
                         'udpPortRangeString' => $needsUdpBlockFix ? '' : ($res['udpPortRangeString'] ?? ''),
                         // Actively enforced (always true), not just echoed
@@ -218,7 +231,7 @@ class NormalizeProcessor
 
         $reason = $notes ? implode('; ', $notes) : null;
 
-        if (! ($needsRename || $needsNiceIdFix || $needsAccessFix || $needsEnableFix || $needsIcmpFix || $needsUdpBlockFix)) {
+        if (! ($needsRename || $needsNiceIdFix || $needsAccessFix || $needsEnableFix || $needsIcmpFix || $needsUdpBlockFix || $needsSiteFix)) {
             $row['status'] = 'OK';
             $row['reason'] = $reason;
 
@@ -237,6 +250,9 @@ class NormalizeProcessor
         }
         if ($needsUdpBlockFix) {
             $actions[] = 'block_udp';
+        }
+        if ($needsSiteFix) {
+            $actions[] = 'fix_site';
         }
         if ($needsEnableFix) {
             $actions[] = 'enable';
@@ -265,7 +281,7 @@ class NormalizeProcessor
                 // correctly TCP-only via expectedNiceId(), not a regression
                 // from the dual-protocol formula used for the resource being
                 // audited above.
-                $newRes = $this->createSplitResource($sites, $res, $city, $vlan, $tail, $tcpPorts, $email, $userId);
+                $newRes = $this->createSplitResource($expectedSiteIds, $res, $city, $vlan, $tail, $tcpPorts, $email, $userId);
                 $created[] = "{$email} -> siteResourceId={$newRes['siteResourceId']} niceId={$newRes['niceId']}";
             }
             if ($created) {
@@ -273,7 +289,7 @@ class NormalizeProcessor
                     array_map(fn ($u) => "<no-email:{$u}> -> dropped (no email to split to)", $unsplittableUsers)));
             }
 
-            if ($needsRename || $needsNiceIdFix || $needsEnableFix || $needsIcmpFix || $needsUdpBlockFix) {
+            if ($needsRename || $needsNiceIdFix || $needsEnableFix || $needsIcmpFix || $needsUdpBlockFix || $needsSiteFix) {
                 $updateFields = [];
                 if ($needsRename) {
                     $updateFields['name'] = $expectedName;
@@ -290,7 +306,8 @@ class NormalizeProcessor
                 $updateFields['roleIds'] = array_map(fn ($r) => $r['roleId'], $roles);
                 $updateFields['clientIds'] = array_map(fn ($c) => $c['clientId'], $clients);
                 $updateFields['destination'] = $res['destination'];
-                $updateFields['siteIds'] = $res['siteIds'];
+                // Actively enforced to the single routed site when known.
+                $updateFields['siteIds'] = $expectedSiteIds;
                 // Confirmed live Pangolin behavior: omitting tcp/udp on an
                 // update doesn't leave them alone, it resets udp back to
                 // "all". Always re-assert current values -- except udp when
@@ -322,7 +339,7 @@ class NormalizeProcessor
     /**
      * Create a new site-resource for a user being split off a multi-user
      * resource — same destination/TCP-ports/alias as the resource they're
-     * being split from, spanning every org site, named/niceId'd for just
+     * being split from, on the original's routed site, named/niceId'd for just
      * them. Unlike ImportResourceCreator's rows, the target user is already
      * fully resolved here, so niceId/enabled are both set immediately.
      * udpPortRangeString is always forced blank below (same as the Python
@@ -331,7 +348,7 @@ class NormalizeProcessor
      * UDP state, not a regression from the dual-protocol formula used for
      * the resource being audited in process().
      */
-    private function createSplitResource(array $sites, array $res, string $city, string $vlan, string $tail, ?array $ports, string $email, int $userId): array
+    private function createSplitResource(array $siteIds, array $res, string $city, string $vlan, string $tail, ?array $ports, string $email, int $userId): array
     {
         $username = ResourceNaming::sanitizeUsername($email);
         $name = "{$city}-{$username}-{$vlan}-{$tail}";
@@ -345,7 +362,7 @@ class NormalizeProcessor
             'roleIds' => [],
             'clientIds' => [],
             'userIds' => [$userId],
-            'siteIds' => array_map(fn ($s) => $s['siteId'], $sites),
+            'siteIds' => $siteIds,
         ];
         if ($ports !== null) {
             $payload['niceId'] = ResourceNaming::expectedNiceId($username, $vlan, $tail, $ports);

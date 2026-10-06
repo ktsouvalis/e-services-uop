@@ -40,7 +40,7 @@ function fakePangolinNormalizeApi(array $resources, array $usersByResourceId = [
             return Http::response(['data' => ['name' => 'UoP']], 200);
         }
         if (str_contains($url, '/v1/org/uop/sites')) {
-            return Http::response(['data' => ['sites' => [['siteId' => 5, 'name' => 'Patra Site']], 'pagination' => ['total' => 1]]], 200);
+            return Http::response(['data' => ['sites' => [['siteId' => 35, 'name' => 'Patras'], ['siteId' => 36, 'name' => 'Tripoli'], ['siteId' => 69, 'name' => 'Kalamata']], 'pagination' => ['total' => 3]]], 200);
         }
         if (str_contains($url, '/v1/org/uop/users')) {
             return Http::response(['data' => ['users' => [
@@ -91,7 +91,7 @@ test('a dry run scans every resource and makes no mutating calls', function () {
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'wrong', 'name' => 'patra-badname-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-            'enabled' => false, 'siteIds' => [5]],
+            'enabled' => false, 'siteIds' => [35]],
     ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => false, 'resource_ids' => []]]);
@@ -108,7 +108,7 @@ test('an already-correct single-user resource is reported OK with no update call
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'ktsouvalis-2302-50-p22', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-            'enabled' => true, 'siteIds' => [5]],
+            'enabled' => true, 'siteIds' => [35]],
     ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
@@ -123,7 +123,7 @@ test('applying fixes a mis-named resource: rename, niceId, enable, and icmp all 
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'stale-id', 'name' => 'patra-oldname-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => false,
-            'enabled' => false, 'siteIds' => [5]],
+            'enabled' => false, 'siteIds' => [35]],
     ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
@@ -147,7 +147,7 @@ test('a resource with real UDP ports gets a niceId that incorporates them alongs
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'stale-id', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22,3389', 'udpPortRangeString' => '53', 'disableIcmp' => true,
-            'enabled' => true, 'siteIds' => [5]],
+            'enabled' => true, 'siteIds' => [35]],
     ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
@@ -168,7 +168,7 @@ test('a UDP value that is not a parseable port list (e.g. "*") is forced blocked
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'whatever', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '*', 'disableIcmp' => true,
-            'enabled' => true, 'siteIds' => [5]],
+            'enabled' => true, 'siteIds' => [35]],
     ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
@@ -192,7 +192,7 @@ test('UDP is still forced blocked even when TCP is a wildcard that skips niceId 
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'whatever', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '*', 'udpPortRangeString' => '*', 'disableIcmp' => true,
-            'enabled' => true, 'siteIds' => [5]],
+            'enabled' => true, 'siteIds' => [35]],
     ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
@@ -213,7 +213,7 @@ test('a 0-user resource with real UDP ports resolves via the dual-protocol niceI
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'ktsouvalis-2302-50-p22-u53', 'name' => 'patra-something-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '53', 'disableIcmp' => true,
-            'enabled' => false, 'siteIds' => [5]],
+            'enabled' => false, 'siteIds' => [35]],
     ], usersByResourceId: [100 => []]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
@@ -229,7 +229,7 @@ test('a 0-user resource with no resolvable owner is disabled rather than left re
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'legacy', 'name' => 'patra-nomatch-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-            'enabled' => true, 'siteIds' => [5]],
+            'enabled' => true, 'siteIds' => [35]],
     ], usersByResourceId: [100 => []]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
@@ -247,7 +247,7 @@ test('a 0-user resource whose name exactly matches the naming convention is auto
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'ktsouvalis-2302-50-p22', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-            'enabled' => false, 'siteIds' => [5]],
+            'enabled' => false, 'siteIds' => [35]],
     ], usersByResourceId: [100 => []]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
@@ -268,7 +268,7 @@ test('a 0-user resource Import left with a random niceId gets its owner, real ni
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'wry-happy-otter', 'name' => 'tripoli-costasp-1529-201', 'mode' => 'host',
             'destination' => '10.15.29.201', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-            'enabled' => false, 'siteIds' => [5]],
+            'enabled' => false, 'siteIds' => [36]],
     ], usersByResourceId: [100 => []]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
@@ -288,7 +288,7 @@ test('a 2+ user resource with no resolvable primary is skipped as ambiguous, acc
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'legacy', 'name' => 'patra-nomatch-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-            'enabled' => true, 'siteIds' => [5]],
+            'enabled' => true, 'siteIds' => [35]],
     ], usersByResourceId: [100 => [
         ['userId' => 42, 'email' => 'ktsouvalis@uop.gr'],
         ['userId' => 43, 'email' => 'jdoe@uop.gr'],
@@ -306,7 +306,7 @@ test('a 2+ user resource with a resolvable primary splits the other user off int
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'legacy', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-            'enabled' => true, 'siteIds' => [5]],
+            'enabled' => true, 'siteIds' => [35]],
     ], usersByResourceId: [100 => [
         ['userId' => 42, 'email' => 'ktsouvalis@uop.gr'],
         ['userId' => 43, 'email' => 'jdoe@uop.gr'],
@@ -328,16 +328,19 @@ test('a 2+ user resource with a resolvable primary splits the other user off int
     // The original is pruned to just the resolved primary.
     Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100/users'
         && $request->method() === 'POST' && $request['userIds'] === [42]);
+    // The split resource goes on the original's single routed site only.
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/org/uop/site-resource'
+        && $request->method() === 'PUT' && $request['siteIds'] === [35]);
 });
 
 test('resolves a niceId to its numeric siteResourceId and scopes the run to just that resource', function () {
     fakePangolinNormalizeApi([
         ['siteResourceId' => 555, 'niceId' => 'mkatsis-2302-50-p22', 'name' => 'patra-mkatsis-2302-50', 'mode' => 'host',
             'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-            'enabled' => true, 'siteIds' => [5]],
+            'enabled' => true, 'siteIds' => [35]],
         ['siteResourceId' => 556, 'niceId' => 'other-2302-51-p22', 'name' => 'patra-other-2302-51', 'mode' => 'host',
             'destination' => '10.23.2.51', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-            'enabled' => true, 'siteIds' => [5]],
+            'enabled' => true, 'siteIds' => [35]],
     ]);
 
     $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => [
@@ -375,7 +378,7 @@ test('an update failure mid-apply is reported as FAIL for that resource, not a c
             return Http::response(['data' => ['name' => 'UoP']], 200);
         }
         if (str_contains($url, '/v1/org/uop/sites')) {
-            return Http::response(['data' => ['sites' => [['siteId' => 5, 'name' => 'Patra Site']], 'pagination' => ['total' => 1]]], 200);
+            return Http::response(['data' => ['sites' => [['siteId' => 35, 'name' => 'Patras'], ['siteId' => 36, 'name' => 'Tripoli'], ['siteId' => 69, 'name' => 'Kalamata']], 'pagination' => ['total' => 3]]], 200);
         }
         if (str_contains($url, '/v1/org/uop/users')) {
             return Http::response(['data' => ['users' => [['id' => 42, 'email' => 'ktsouvalis@uop.gr']], 'pagination' => ['total' => 1]]], 200);
@@ -384,7 +387,7 @@ test('an update failure mid-apply is reported as FAIL for that resource, not a c
             return Http::response(['data' => ['siteResources' => [
                 ['siteResourceId' => 100, 'niceId' => 'stale', 'name' => 'patra-oldname-2302-50', 'mode' => 'host',
                     'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
-                    'enabled' => true, 'siteIds' => [5]],
+                    'enabled' => true, 'siteIds' => [35]],
             ], 'pagination' => ['total' => 1]]], 200);
         }
         if (str_contains($url, '/users') && $request->method() === 'GET') {
@@ -410,4 +413,35 @@ test('an update failure mid-apply is reported as FAIL for that resource, not a c
     $run->refresh();
     expect($run->status)->toBe('completed'); // the run itself completes and produces a report
     expect($run->summary)->toBe(['FAIL' => 1]);
+});
+
+test('a resource spanning several sites is moved onto its single routed site', function () {
+    fakePangolinNormalizeApi([
+        ['siteResourceId' => 100, 'niceId' => 'ktsouvalis-2302-50-p22', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',
+            'destination' => '10.23.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
+            'enabled' => true, 'siteIds' => [35, 36, 69]],
+    ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
+
+    $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
+
+    RunNormalize::dispatch($run);
+
+    expect($run->fresh()->summary)->toBe(['OK' => 1]);
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
+        && $request->method() === 'POST' && $request['siteIds'] === [35]);
+});
+
+test('an unroutable resource keeps its current sites', function () {
+    fakePangolinNormalizeApi([
+        ['siteResourceId' => 100, 'niceId' => 'stale', 'name' => 'athens-ktsouvalis-9902-50', 'mode' => 'host',
+            'destination' => '10.99.2.50', 'tcpPortRangeString' => '22', 'udpPortRangeString' => '', 'disableIcmp' => true,
+            'enabled' => true, 'siteIds' => [35, 36]],
+    ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
+
+    $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
+
+    RunNormalize::dispatch($run);
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
+        && $request->method() === 'POST' && $request['siteIds'] === [35, 36]);
 });

@@ -51,8 +51,8 @@ class PangolinApiClient
     }
 
     /**
-     * Every private resource this tooling creates spans every site in the
-     * org (via siteIds) for HA — same call create_/normalize_ both make.
+     * Every private resource this tooling creates/edits goes on exactly one
+     * of these sites — see SiteRouting.
      */
     public function listSites(): array
     {
