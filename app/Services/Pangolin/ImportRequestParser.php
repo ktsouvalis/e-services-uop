@@ -99,8 +99,11 @@ class ImportRequestParser
             // No match → no niceId sent, so Pangolin keeps its own generated
             // (random) default instead of one claiming an owner that doesn't
             // exist yet. Normalize sets the real one once the user is found.
-            if ($userId !== null) {
-                $req['niceId'] = ResourceNaming::expectedNiceId($username, $vlan, $tail, explode(',', $tcpPorts));
+            // Same when the formula would exceed Pangolin's niceId length
+            // limit (too many ports) — omitted rather than 400ing the create.
+            $niceId = $userId !== null ? ResourceNaming::expectedNiceId($username, $vlan, $tail, explode(',', $tcpPorts)) : null;
+            if ($niceId !== null) {
+                $req['niceId'] = $niceId;
             }
             if ($alias) {
                 $req['alias'] = $alias;

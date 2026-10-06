@@ -196,6 +196,9 @@ class NormalizeProcessor
         $row['new_name'] = $expectedName;
 
         $expectedNiceId = $portsKnown ? ResourceNaming::expectedNiceIdWithUdp($username, $vlan, $tail, $tcpPorts, $udpPorts) : null;
+        if ($portsKnown && $expectedNiceId === null) {
+            $notes[] = 'niceId not checked: expected niceId would exceed '.ResourceNaming::MAX_NICE_ID_LENGTH.' characters even in its shortest (port-count) form -- left as-is';
+        }
         $row['new_nice_id'] = $expectedNiceId ?? ($res['niceId'] ?? null);
 
         $needsRename = $expectedName !== $res['name'];
@@ -364,8 +367,11 @@ class NormalizeProcessor
             'userIds' => [$userId],
             'siteIds' => $siteIds,
         ];
-        if ($ports !== null) {
-            $payload['niceId'] = ResourceNaming::expectedNiceId($username, $vlan, $tail, $ports);
+        // Omitted (Pangolin's own default kept) when ports are unknown or
+        // the formula would exceed Pangolin's niceId length limit.
+        $niceId = $ports !== null ? ResourceNaming::expectedNiceId($username, $vlan, $tail, $ports) : null;
+        if ($niceId !== null) {
+            $payload['niceId'] = $niceId;
         }
         if (! empty($res['alias'])) {
             $payload['alias'] = $res['alias'];

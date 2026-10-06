@@ -75,6 +75,24 @@ test('resolveUnassignedTargetFromNiceId reverses the dual tcp+udp niceId formula
         ->toBe(['ktsouvalis@uop.gr', 42]);
 });
 
+test('resolveUnassignedTargetFromNiceId reverses the merged-range and port-count niceId tiers', function () {
+    $index = ['ktsouvalis' => [['ktsouvalis@uop.gr', 42]]];
+
+    $consecutive = array_map('strval', range(1000, 1060));
+    expect($this->resolver->resolveUnassignedTargetFromNiceId('ktsouvalis-2302-50-p1000-1060', '2302', '50', $consecutive, [], $index))
+        ->toBe(['ktsouvalis@uop.gr', 42]);
+
+    $scattered = array_map('strval', range(1000, 1120, 2));
+    expect($this->resolver->resolveUnassignedTargetFromNiceId('ktsouvalis-2302-50-61tcp', '2302', '50', $scattered, [], $index))
+        ->toBe(['ktsouvalis@uop.gr', 42]);
+});
+
+test('resolveUnassignedTargetFromNiceId rejects a shorter tier when the full niceId would have fit', function () {
+    $index = ['ktsouvalis' => [['ktsouvalis@uop.gr', 42]]];
+    expect($this->resolver->resolveUnassignedTargetFromNiceId('ktsouvalis-2302-50-p22-23', '2302', '50', ['22', '23'], [], $index))
+        ->toBe([null, null]);
+});
+
 test('resolveUnassignedTargetFromNiceId returns null,null when either port list could not be computed', function () {
     $index = ['ktsouvalis' => [['ktsouvalis@uop.gr', 42]]];
 

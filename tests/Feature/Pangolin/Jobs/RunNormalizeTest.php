@@ -143,6 +143,26 @@ test('applying fixes a mis-named resource: rename, niceId, enable, and icmp all 
         && $request['udpPortRangeString'] === '');
 });
 
+test('a niceId that would exceed 255 characters merges consecutive ports instead of 400ing the update', function () {
+    $tcp = implode(',', range(1000, 1060));
+    fakePangolinNormalizeApi([
+        ['siteResourceId' => 100, 'niceId' => 'stale-id', 'name' => 'patra-oldname-2302-50', 'mode' => 'host',
+            'destination' => '10.23.2.50', 'tcpPortRangeString' => $tcp, 'udpPortRangeString' => '', 'disableIcmp' => true,
+            'enabled' => true, 'siteIds' => [35]],
+    ], usersByResourceId: [100 => [['userId' => 42, 'email' => 'ktsouvalis@uop.gr']]]);
+
+    $run = PangolinRun::factory()->create(['type' => 'normalize', 'options' => ['apply' => true, 'resource_ids' => []]]);
+
+    RunNormalize::dispatch($run);
+
+    expect($run->fresh()->summary)->toBe(['OK' => 1]);
+    Http::assertSent(fn ($request) => $request->url() === 'https://pangolin.test/v1/site-resource/100'
+        && $request->method() === 'POST'
+        && $request['name'] === 'patra-ktsouvalis-2302-50'
+        && $request['niceId'] === 'ktsouvalis-2302-50-p1000-1060'
+        && $request['tcpPortRangeString'] === $tcp);
+});
+
 test('a resource with real UDP ports gets a niceId that incorporates them alongside TCP', function () {
     fakePangolinNormalizeApi([
         ['siteResourceId' => 100, 'niceId' => 'stale-id', 'name' => 'patra-ktsouvalis-2302-50', 'mode' => 'host',

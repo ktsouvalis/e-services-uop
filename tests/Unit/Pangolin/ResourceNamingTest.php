@@ -63,6 +63,37 @@ test('expectedNiceIdWithUdp sorts UDP ports independently of TCP ports', functio
         ->toBe('ktsouvalis-2302-50-p22-p3389-u53-u514');
 });
 
+test('a niceId that fits keeps one token per port, even when ports are consecutive', function () {
+    expect(ResourceNaming::expectedNiceIdWithUdp('ktsouvalis', '2302', '50', ['22', '23', '24'], ['53']))
+        ->toBe('ktsouvalis-2302-50-p22-p23-p24-u53');
+});
+
+test('a niceId over 255 characters merges consecutive ports into ranges', function () {
+    $tcp = [...array_map('strval', range(1000, 1060)), '22', '1061-1070'];
+    expect(ResourceNaming::expectedNiceIdWithUdp('ktsouvalis', '2302', '50', $tcp, ['53', '54']))
+        ->toBe('ktsouvalis-2302-50-p22-p1000-1070-u53-54');
+    expect(ResourceNaming::expectedNiceId('ktsouvalis', '2302', '50', $tcp))
+        ->toBe('ktsouvalis-2302-50-p22-p1000-1070');
+});
+
+test('a niceId still over 255 characters after merging falls back to port counts', function () {
+    // Every other port: nothing to merge.
+    $tcp = array_map('strval', range(1000, 1120, 2));
+    expect(ResourceNaming::expectedNiceIdWithUdp('ktsouvalis', '2302', '50', [...$tcp, '5000-5009'], ['53']))
+        ->toBe('ktsouvalis-2302-50-71tcp-1udp');
+    expect(ResourceNaming::expectedNiceId('ktsouvalis', '2302', '50', $tcp))
+        ->toBe('ktsouvalis-2302-50-61tcp');
+});
+
+test('expectedNiceIdWithUdp returns null only when even the port-count form exceeds 255 characters', function () {
+    expect(ResourceNaming::expectedNiceId(str_repeat('a', 250), '2302', '50', ['22']))->toBeNull();
+});
+
+test('mergePortRanges sorts and merges overlapping and adjacent ports/ranges', function () {
+    expect(ResourceNaming::mergePortRanges(['1002', '1000-1001', '22', '1001-1005', '3389']))
+        ->toBe(['22', '1000-1005', '3389']);
+});
+
 test('expectedPorts parses a resource own tcpPortRangeString, sorted, or null for a non-port wildcard', function () {
     expect(ResourceNaming::expectedPorts('3389,22'))->toBe(['22', '3389']);
     expect(ResourceNaming::expectedPorts('32555-32590,22'))->toBe(['22', '32555-32590']);

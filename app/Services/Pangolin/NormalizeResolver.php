@@ -99,21 +99,25 @@ class NormalizeResolver
         if (! $niceId || $tcpPorts === null || $udpPorts === null) {
             return [null, null];
         }
-        $suffix = '-'.implode('-', [
-            $vlan, $tail,
-            ...array_map(fn ($p) => "p{$p}", $tcpPorts),
-            ...array_map(fn ($p) => "u{$p}", $udpPorts),
-        ]);
         $lnice = strtolower($niceId);
-        if (! str_ends_with($lnice, $suffix)) {
-            return [null, null];
-        }
-        $candidateUsername = substr($lnice, 0, strlen($lnice) - strlen($suffix));
-        if ($candidateUsername === '' || str_contains($candidateUsername, '-')) {
-            return [null, null];
+        // Any tier of expectedNiceIdWithUdp() (full / merged ranges / port
+        // counts); rebuilding the niceId confirms the tier actually chosen
+        // for this username is the one that matched.
+        foreach (ResourceNaming::niceIdPortSegments($tcpPorts, $udpPorts) as $portSegment) {
+            $suffix = '-'.implode('-', array_filter([$vlan, $tail, $portSegment], fn ($s) => $s !== ''));
+            if (! str_ends_with($lnice, $suffix)) {
+                continue;
+            }
+            $candidateUsername = substr($lnice, 0, strlen($lnice) - strlen($suffix));
+            if ($candidateUsername === '' || str_contains($candidateUsername, '-')
+                || ResourceNaming::expectedNiceIdWithUdp($candidateUsername, $vlan, $tail, $tcpPorts, $udpPorts) !== $lnice) {
+                continue;
+            }
+
+            return $this->pickUniqueCandidate($orgEmailIndex[$candidateUsername] ?? []);
         }
 
-        return $this->pickUniqueCandidate($orgEmailIndex[$candidateUsername] ?? []);
+        return [null, null];
     }
 
     /**

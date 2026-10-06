@@ -12,6 +12,9 @@ namespace App\Services\Pangolin;
  */
 class ResourceNaming
 {
+    /** Pangolin's create/update schema rejects a longer niceId with a 400. */
+    public const MAX_NICE_ID_LENGTH = 255;
+
     /**
      * 10.x.y.z host -> [vlan, tail], e.g. 10.23.2.50 -> ["2302", "50"].
      * vlan = x concatenated with y zero-padded to 2 digits; tail is the 4th
@@ -94,7 +97,7 @@ class ResourceNaming
      *
      * @param  string[]  $ports
      */
-    public static function expectedNiceId(string $username, string $vlan, string $tail, array $ports): string
+    public static function expectedNiceId(string $username, string $vlan, string $tail, array $ports): ?string
     {
         return self::expectedNiceIdWithUdp($username, $vlan, $tail, $ports, []);
     }
@@ -110,20 +113,98 @@ class ResourceNaming
      * native port — see CLAUDE.md's Pangolin module section; Import doesn't
      * use this (no UDP Ports column in its request sheet today).
      *
+     * Pangolin caps niceId at MAX_NICE_ID_LENGTH (API and UI alike), so the
+     * port segment degrades in tiers, each tried only when the previous one
+     * doesn't fit — a niceId that already fits is never changed:
+     *   1. one token per port/range, as above;
+     *   2. consecutive ports/ranges merged ("p1000-p1001-p1002" -> "p1000-1002");
+     *   3. port counts only, e.g. "<username>-<vlan>-<tail>-61tcp-2udp".
+     * Null only if even tier 3 doesn't fit (an absurdly long username).
+     *
      * @param  string[]  $tcpPorts
      * @param  string[]  $udpPorts
      */
-    public static function expectedNiceIdWithUdp(string $username, string $vlan, string $tail, array $tcpPorts, array $udpPorts): string
+    public static function expectedNiceIdWithUdp(string $username, string $vlan, string $tail, array $tcpPorts, array $udpPorts): ?string
     {
-        $segments = [$username, $vlan, $tail];
-        foreach (self::sortedByPort($tcpPorts) as $p) {
-            $segments[] = "p{$p}";
-        }
-        foreach (self::sortedByPort($udpPorts) as $p) {
-            $segments[] = "u{$p}";
+        foreach (self::niceIdPortSegments($tcpPorts, $udpPorts) as $portSegment) {
+            $niceId = implode('-', array_filter([$username, $vlan, $tail, $portSegment], fn ($s) => $s !== ''));
+            if (strlen($niceId) <= self::MAX_NICE_ID_LENGTH) {
+                return $niceId;
+            }
         }
 
-        return implode('-', $segments);
+        return null;
+    }
+
+    /**
+     * The port segment of a niceId for each tier of expectedNiceIdWithUdp(),
+     * most to least detailed. Public so NormalizeResolver can reverse
+     * whichever tier a niceId was built with.
+     *
+     * @param  string[]  $tcpPorts
+     * @param  string[]  $udpPorts
+     * @return string[]
+     */
+    public static function niceIdPortSegments(array $tcpPorts, array $udpPorts): array
+    {
+        $tokens = fn (array $tcp, array $udp) => implode('-', [
+            ...array_map(fn ($p) => "p{$p}", self::sortedByPort($tcp)),
+            ...array_map(fn ($p) => "u{$p}", self::sortedByPort($udp)),
+        ]);
+        $mergedTcp = self::mergePortRanges($tcpPorts);
+        $mergedUdp = self::mergePortRanges($udpPorts);
+        $counts = [];
+        if ($mergedTcp) {
+            $counts[] = self::countPorts($mergedTcp).'tcp';
+        }
+        if ($mergedUdp) {
+            $counts[] = self::countPorts($mergedUdp).'udp';
+        }
+
+        return [
+            $tokens($tcpPorts, $udpPorts),
+            $tokens($mergedTcp, $mergedUdp),
+            implode('-', $counts),
+        ];
+    }
+
+    /**
+     * Sorted ports/ranges with overlapping or adjacent ones merged:
+     * ["1002", "1000-1001", "22"] -> ["22", "1000-1002"].
+     *
+     * @param  string[]  $ports
+     * @return string[]
+     */
+    public static function mergePortRanges(array $ports): array
+    {
+        $intervals = array_map(function ($tok) {
+            [$start, , $end] = self::partition((string) $tok, '-');
+
+            return [(int) $start, (int) ($end !== '' ? $end : $start)];
+        }, $ports);
+        usort($intervals, fn ($a, $b) => $a[0] <=> $b[0]);
+
+        $merged = [];
+        foreach ($intervals as [$start, $end]) {
+            $last = count($merged) - 1;
+            if ($last >= 0 && $start <= $merged[$last][1] + 1) {
+                $merged[$last][1] = max($merged[$last][1], $end);
+            } else {
+                $merged[] = [$start, $end];
+            }
+        }
+
+        return array_map(fn ($i) => $i[0] === $i[1] ? (string) $i[0] : "{$i[0]}-{$i[1]}", $merged);
+    }
+
+    /** @param  string[]  $mergedPorts  output of mergePortRanges() (no overlaps) */
+    private static function countPorts(array $mergedPorts): int
+    {
+        return array_sum(array_map(function ($tok) {
+            [$start, , $end] = self::partition($tok, '-');
+
+            return $end !== '' ? (int) $end - (int) $start + 1 : 1;
+        }, $mergedPorts));
     }
 
     /** @param  string[]  $ports  @return string[] */
